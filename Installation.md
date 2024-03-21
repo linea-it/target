@@ -150,4 +150,17 @@ Alterar as configs:
 
 
 
+## Serviços
+
+- Ngnix
+  - Django app (Backend)
+  - Node / React (Frontend)
+  - Postgresql (Database)
+  - Redis/Rabbitmq (Mensageria)
+  - Django Celery Worker
+  - Django Celery Beat
+  - mailpit (Email)
+  - Sphinx (Documentation)
+  - Celery Flower (Debug/Monitoração)
+
 
