@@ -1,0 +1,12 @@
+ls -ltr
+python manage.py createsuperuser
+pwd
+cd /workspaces/
+ls -ltr
+cd backend/
+python manage.py --help
+cd /logs/
+ls -ltr
+cd 
+cd /workspaces/canvas
+pwd
