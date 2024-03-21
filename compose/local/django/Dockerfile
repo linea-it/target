@@ -47,6 +47,9 @@ RUN groupadd --gid 1000 dev-user \
 
 # Install required system dependencies
 RUN apt-get update && apt-get install --no-install-recommends -y \
+  # uWSGI dependencies
+  build-essential \
+  python3-dev \
   # psycopg2 dependencies
   libpq-dev \
   # Translations dependencies
@@ -84,9 +87,9 @@ COPY ./compose/local/django/celery/flower/start /start-flower
 RUN sed -i 's/\r$//g' /start-flower
 RUN chmod +x /start-flower
 
-RUN mkdir /logs /data /workspaces \
-  && chown -R 1000:1000 /logs /data /workspaces \
-  && chmod -R g+w /logs /data /workspaces 
+RUN mkdir -p /app/staticfiles /logs /data /workspaces \
+  && chown -R 1000:1000 /app/staticfiles /logs /data /workspaces \
+  && chmod -R g+w /app/staticfiles /logs /data /workspaces 
 
 # copy application code to WORKDIR
 COPY . ${APP_HOME}
