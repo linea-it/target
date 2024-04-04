@@ -88,27 +88,27 @@ services:
     container_name: canvas_local_flower
     command: /start-flower
 
-  # # Daiquiri (Userquery)
-  # daiquiri:
-  #   image: linea/lsp_daiquiri:c42a0e0
-  #   container_name: canvas_local_daiquiri
-  #   user: "1000:1000"
-  #   command: /start.sh
-  #   env_file:
-  #   - ./compose/local/daiquiri/.env   
-  #   volumes:
-  #     # Local Vars
-  #     - ./compose/local/daiquiri/local.py:/app/config/settings/local.py:ro
-  #     # Diretório de logs
-  #     - ./logs:/var/log/daiquiri
-  #     - ./logs:/var/log/celery
-  #     # Diretórios onde o backend pode manipular arquivos.
-  #     - ./data/daiquiri/files:/data/files
-  #     - ./data/daiquiri/download:/data/download
-  #     - ./data/daiquiri/upload:/data/upload
-  #   depends_on:
-  #     - postgres
-  #     - redis
+  # Daiquiri (Userquery)
+  daiquiri:
+    image: linea/lsp_daiquiri:c42a0e0
+    container_name: canvas_local_daiquiri
+    user: "1000:1000"
+    command: /start.sh
+    env_file:
+    - ./compose/local/daiquiri/.env
+    volumes:
+      # Local Vars
+      - ./compose/local/daiquiri/local.py:/app/config/settings/local.py:ro
+      # Diretório de logs
+      - ./logs:/var/log/daiquiri
+      - ./logs:/var/log/celery
+      # Diretórios onde o backend pode manipular arquivos.
+      - ./data/daiquiri/files:/data/files
+      - ./data/daiquiri/download:/data/download
+      - ./data/daiquiri/upload:/data/upload
+    depends_on:
+      - postgres
+      - rabbit
 
   # Servidor Web NGINX
   nginx:
@@ -127,4 +127,4 @@ services:
       - django
       - flower
       - mailpit
-      # - daiquiri
+      - daiquiri
