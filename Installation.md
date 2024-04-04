@@ -1,7 +1,7 @@
 ## Rascunho comandos para criar o repositório
 
-Executar um container python 3.12 
-```bash 
+Executar um container python 3.12
+```bash
 docker run -it --rm -v "$PWD":/usr/src/workspace -w /usr/src/workspace python:3.12-slim bash
 ```
 
@@ -9,22 +9,22 @@ Dentro do container:
 
 Instalar o git:
 
-```bash 
+```bash
 apt-get update && apt-get install git -y
 ```
 
 instalar o cookiecutter
 
-```bash 
+```bash
 pip install cookiecutter
 ```
 
 Executar o cookiecutter especifico para Django.
-```bash 
+```bash
 cookiecutter https://github.com/cookiecutter/cookiecutter-django
 ```
 
-```bash 
+```bash
 root@eda49fc2c56d:/usr/src/workspace# cookiecutter https://github.com/cookiecutter/cookiecutter-django
   [1/27] project_name (My Awesome Project): CANVAS
   [2/27] project_slug (canvas):
@@ -104,7 +104,7 @@ root@eda49fc2c56d:/usr/src/workspace# cookiecutter https://github.com/cookiecutt
 Sair do container
 Alterar o dono da pasta e permissão
 
-```bash 
+```bash
 sudo chown -R glauber:glauber canvas && sudo chmod -R g+w canvas
 ```
 
@@ -112,7 +112,7 @@ Testar o ambiente no navegador
 
 Copiar o docker compose yml
 
-```bash 
+```bash
 cp local.yml docker-compose.yml
 ```
 
@@ -120,16 +120,16 @@ cp local.yml docker-compose.yml
 
 Criar a pasta e alterar a permissão
 
-```bash 
+```bash
 mkdir backend && chmod -R g+w backend
 ```
 
 Mover tudo que for referente a python ou Django para a pasta backend
 
-Alterar o docker-compose para montar a pasta backend 
+Alterar o docker-compose para montar a pasta backend
 Alterar o Dockerfile do django para ler os requirements do backend.
 Corrigir o devcontainer, montar o arquivo bashhistory.sh e alterar o comando.
-Alterar as configs: 
+Alterar as configs:
   ACCOUNT_EMAIL_REQUIRED = False
   # https://docs.allauth.org/en/latest/account/configuration.html
   ACCOUNT_EMAIL_VERIFICATION = "none"
@@ -162,5 +162,3 @@ Alterar as configs:
   - mailpit (Email)
   - Sphinx (Documentation)
   - Celery Flower (Debug/Monitoração)
-
-

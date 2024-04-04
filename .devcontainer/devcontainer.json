@@ -7,11 +7,6 @@
     "init": true,
     "mounts": [
         {
-            "source": "../",
-            "target": "/workspaces",
-            "type": "bind"
-        },        
-        {
             "source": "./.devcontainer/bashrc.override.sh",
             "target": "/home/dev-user/bashrc.override.sh",
             "type": "bind"

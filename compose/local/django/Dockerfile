@@ -89,7 +89,7 @@ RUN chmod +x /start-flower
 
 RUN mkdir -p /app/staticfiles /logs /data /workspaces \
   && chown -R 1000:1000 /app/staticfiles /logs /data /workspaces \
-  && chmod -R g+w /app/staticfiles /logs /data /workspaces 
+  && chmod -R g+w /app/staticfiles /logs /data /workspaces
 
 # copy application code to WORKDIR
 COPY . ${APP_HOME}

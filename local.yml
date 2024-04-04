@@ -16,6 +16,7 @@ services:
       - redis
       - mailpit
     volumes:
+      - ..:/workspaces
       - ./backend:/app:z
       - ./logs:/logs
       - ./data:/data
@@ -38,8 +39,8 @@ services:
   mailpit:
     image: docker.io/axllent/mailpit:latest
     container_name: canvas_local_mailpit
-    ports:
-      - "8025:8025"
+    env_file:
+      - .env
 
   redis:
     image: docker.io/redis:6
@@ -71,8 +72,6 @@ services:
     <<: *django
     image: canvas_local_flower
     container_name: canvas_local_flower
-    # ports:
-    #   - '5555:5555'
     command: /start-flower
 
   # Servidor Web NGINX
@@ -90,6 +89,5 @@ services:
       - ./data:/var/www/data
     depends_on:
       - django
-    #   - frontend
-    #   - celery_flower
-    #   - rabbit
+      - flower
+      - mailpit
