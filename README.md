@@ -13,7 +13,8 @@ License: MIT
 - Django Admin: <http://localhost/admin/>
 - API Docs <http://localhost/api/docs/>
 - Mailpit: <http://localhost/mail/>
-
+- Rabbitmq Management: <http://localhost/rabbitmq/>
+- Celery Flower: <http://localhost/flower/>
 
 
 ## Settings

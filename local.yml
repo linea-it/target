@@ -3,6 +3,7 @@ version: '3'
 volumes:
   canvas_local_postgres_data: {}
   canvas_local_postgres_data_backups: {}
+  canvas_local_rabbitmq_data: {}
 
 services:
   django: &django
@@ -13,6 +14,7 @@ services:
     container_name: canvas_local_django
     depends_on:
       - postgres
+      - rabbit
       - redis
       - mailpit
     volumes:
@@ -31,10 +33,14 @@ services:
     image: canvas_production_postgres
     container_name: canvas_local_postgres
     volumes:
+      # Init Database Script
+      - ./compose/local/postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
       - canvas_local_postgres_data:/var/lib/postgresql/data
       - canvas_local_postgres_data_backups:/backups
     env_file:
       - ./.envs/.local/.postgres
+    ports:
+      - 5432:5432
 
   mailpit:
     image: docker.io/axllent/mailpit:latest
@@ -45,6 +51,14 @@ services:
   redis:
     image: docker.io/redis:6
     container_name: canvas_local_redis
+
+  # Message-Broker Software RabbitMQ
+  rabbit:
+    image: rabbitmq:3-management-alpine
+    env_file:
+      - .env
+    volumes:
+      - canvas_local_rabbitmq_data:/var/lib/rabbitmq/
 
   celeryworker:
     <<: *django
@@ -74,6 +88,28 @@ services:
     container_name: canvas_local_flower
     command: /start-flower
 
+  # # Daiquiri (Userquery)
+  # daiquiri:
+  #   image: linea/lsp_daiquiri:c42a0e0
+  #   container_name: canvas_local_daiquiri
+  #   user: "1000:1000"
+  #   command: /start.sh
+  #   env_file:
+  #   - ./compose/local/daiquiri/.env   
+  #   volumes:
+  #     # Local Vars
+  #     - ./compose/local/daiquiri/local.py:/app/config/settings/local.py:ro
+  #     # Diretório de logs
+  #     - ./logs:/var/log/daiquiri
+  #     - ./logs:/var/log/celery
+  #     # Diretórios onde o backend pode manipular arquivos.
+  #     - ./data/daiquiri/files:/data/files
+  #     - ./data/daiquiri/download:/data/download
+  #     - ./data/daiquiri/upload:/data/upload
+  #   depends_on:
+  #     - postgres
+  #     - redis
+
   # Servidor Web NGINX
   nginx:
     image: nginx:latest
@@ -91,3 +127,4 @@ services:
       - django
       - flower
       - mailpit
+      # - daiquiri
