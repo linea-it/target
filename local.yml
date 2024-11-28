@@ -1,0 +1,142 @@
+version: '3'
+
+volumes:
+  canvas_local_postgres_data: {}
+  canvas_local_postgres_data_backups: {}
+  canvas_local_rabbitmq_data: {}
+
+services:
+  django: &django
+    build:
+      context: .
+      dockerfile: ./compose/local/django/Dockerfile
+    image: canvas_local_django
+    container_name: canvas_local_django
+    depends_on:
+      - postgres
+      - rabbit
+      - redis
+      - mailpit
+    volumes:
+      - ..:/workspaces
+      - ./backend:/app:z
+      - ./logs:/logs
+      - ./data:/data
+    env_file:
+      - .env
+    command: /start
+
+  postgres:
+    build:
+      context: .
+      dockerfile: ./compose/production/postgres/Dockerfile
+    image: canvas_production_postgres
+    container_name: canvas_local_postgres
+    volumes:
+      # Init Database Script
+      - ./compose/local/postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+      - canvas_local_postgres_data:/var/lib/postgresql/data
+      - canvas_local_postgres_data_backups:/backups
+    env_file:
+      - ./.envs/.local/.postgres
+    ports:
+      - 5432:5432
+
+  mailpit:
+    image: docker.io/axllent/mailpit:latest
+    container_name: canvas_local_mailpit
+    env_file:
+      - .env
+
+  redis:
+    image: docker.io/redis:6
+    container_name: canvas_local_redis
+
+  # Message-Broker Software RabbitMQ
+  rabbit:
+    image: rabbitmq:3-management-alpine
+    env_file:
+      - .env
+    volumes:
+      - canvas_local_rabbitmq_data:/var/lib/rabbitmq/
+
+  celeryworker:
+    <<: *django
+    image: canvas_local_celeryworker
+    container_name: canvas_local_celeryworker
+    depends_on:
+      - redis
+      - postgres
+      - mailpit
+    ports: []
+    command: /start-celeryworker
+
+  celerybeat:
+    <<: *django
+    image: canvas_local_celerybeat
+    container_name: canvas_local_celerybeat
+    depends_on:
+      - redis
+      - postgres
+      - mailpit
+    ports: []
+    command: /start-celerybeat
+
+  flower:
+    <<: *django
+    image: canvas_local_flower
+    container_name: canvas_local_flower
+    command: /start-flower
+
+  # Daiquiri (Userquery)
+  daiquiri:
+    image: linea/lsp_daiquiri:c42a0e0
+    container_name: canvas_local_daiquiri
+    user: "1000:1000"
+    command: /start.sh
+    env_file:
+    - ./compose/local/daiquiri/.env
+    volumes:
+      # Local Vars
+      - ./compose/local/daiquiri/local.py:/app/config/settings/local.py:ro
+      # Diretório de logs
+      - ./logs:/var/log/daiquiri
+      - ./logs:/var/log/celery
+      # Diretórios onde o backend pode manipular arquivos.
+      - ./data/daiquiri/files:/data/files
+      - ./data/daiquiri/download:/data/download
+      - ./data/daiquiri/upload:/data/upload
+    depends_on:
+      - postgres
+      - rabbit
+
+  frontend:
+    image: node:lts-slim
+    user: "1000:1000"
+    working_dir: /src
+    volumes:
+      - ./frontend:/src
+    stdin_open: true
+    command: yarn dev
+    # command: /bin/sh -c "while sleep 1000; do :; done"
+    # ports:
+    # - 3000:3000
+
+  # Servidor Web NGINX
+  nginx:
+    image: nginx:latest
+    container_name: canvas_local_nginx
+    env_file:
+      - .env
+    ports:
+      - ${CANVAS_PORT:-80}:80
+    volumes:
+      # Arquivo de configuração do Ngnix para este ambiente.
+      - ./nginx-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+      # Diretório onde o backend manipula arquivos, e que deve ficar acessivel ao servidor web.
+      - ./data:/var/www/data
+    depends_on:
+      - django
+      - flower
+      - mailpit
+      - daiquiri
