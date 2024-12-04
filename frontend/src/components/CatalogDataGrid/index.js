@@ -2,7 +2,6 @@
 import * as React from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import Link from 'next/link'
-
 export default function CatalogDataGrid() {
   const columns = [
     // { field: 'id', headerName: 'ID', width: 90 },
@@ -30,7 +29,8 @@ export default function CatalogDataGrid() {
     },
   ];
   const rows = [
-    { id: 1, schema: 'mydb_glauber_costa', table: 'estrelas_brilhantes', name: 'Minha Lista', owner: 'Jon Snow', created_at: new Date() },
+    { id: 1, schema: 'mydb_glauber_costa', table: 'estrelas_brilhantes', name: 'My Target List', owner: 'glauber.costa', created_at: new Date(), type: 'single' },
+    { id: 2, schema: 'mydb_glauber_costa', table: 'my_cluster_galaxies', name: 'My Cluster Galaxies', owner: 'glauber.costa', created_at: new Date(), type: 'cluster' },
   ]
 
   return (

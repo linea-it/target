@@ -15,12 +15,27 @@ import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import ShareIcon from '@mui/icons-material/Share';
 import Aladin from "@/components/Aladin";
 import TargetProperties from "@/components/TargetProperties";
-import { getTargetById } from "@/components/TargetDataGrid/targets";
+import ClusterMembersDataGrid from "@/components/ClusterMembersDataGrid";
+
+import { getClusterById } from "@/components/TargetDataGrid/clusters";
+
 export default function SingleTargetDetail({ params }) {
   // asynchronous access of `params.id`.
   const { schema, table, id } = React.use(params)
 
-  const record = getTargetById(id)
+  console.log("SCHEMA: ", schema)
+  console.log("TABLE: ", table)
+  console.log("Target ID: ", id)
+
+  let record = undefined
+
+  if (id) {
+    record = getClusterById(id)
+  }
+
+  // const record = { id: 1, ra: 34.5905748, dec: -9.29177774, mag_auto_g: 18 }
+
+  console.log(params)
 
   return (
     <Box sx={{
@@ -62,26 +77,38 @@ export default function SingleTargetDetail({ params }) {
           <Button variant="outlined" size="large">Statistics</Button>
         </Stack>
       </Box>
-      <Grid container spacing={2} sx={{ height: '100%' }}>
-        <Grid size={{ md: 6 }}>
+      <Grid container spacing={2} >
+        <Grid size={{ md: 4 }}>
           <Paper sx={{
             height: '100%',
+            minHeight: 400,
             display: 'flex'
           }}>
             <TargetProperties record={record} />
           </Paper>
         </Grid>
-        <Grid size={{ md: 6 }}>
+        <Grid size={{ md: 8 }}>
           <Paper sx={{
             height: '100%',
+            minHeight: 400,
             display: 'flex'
           }}
           >
             <Aladin position={record && {
               ra: record.ra,
               dec: record.dec,
-              fov: 0.05
+              fov: 0.80
             }} />
+          </Paper>
+        </Grid>
+        <Grid size={{ md: 12 }}>
+          <Paper sx={{
+            height: '100%',
+            minHeight: 500,
+            display: 'flex'
+          }}
+          >
+            <ClusterMembersDataGrid cluster_id={id} />
           </Paper>
         </Grid>
       </Grid>

@@ -5,9 +5,12 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import CatalogDataGrid from '@/components/CatalogDataGrid';
 import Paper from '@mui/material/Paper';
-
+import Breadcrumbs from '@mui/material/Breadcrumbs';
+import Link from '@mui/material/Link'
 
 export default function Home() {
+
+  const schema = 'mydb_glauber_costa'
 
   return (
     <Box sx={{
@@ -18,17 +21,18 @@ export default function Home() {
       flexDirection: 'column',
     }}
       p={4}
+      pt={2}
     >
       <Box mb={4}>
-        <Typography variant="h4" gutterBottom>
-          Catalogs
-        </Typography>
-        {/* <Breadcrumbs aria-label="breadcrumb">
+        <Breadcrumbs aria-label="breadcrumb">
           <Link color="inherit" href="/">
             Home
           </Link>
-          <Typography color="textPrimary">Catalogs</Typography>
-        </Breadcrumbs> */}
+          <Typography >{schema}</Typography>
+        </Breadcrumbs>
+        <Typography variant="h5" mt={2}>
+          Catalogs
+        </Typography>
       </Box>
       <Paper sx={{
         flex: 1
