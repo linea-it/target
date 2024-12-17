@@ -2,10 +2,8 @@ import "./globals.css";
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
 import { Roboto } from 'next/font/google';
 import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
 import theme from '../theme';
-import Box from "@mui/material/Box";
-import Header from "@/components/Header";
+import MainContainer from "@/containers/MainContainer";
 
 const roboto = Roboto({
   weight: ['300', '400', '500', '700'],
@@ -26,18 +24,9 @@ export default function RootLayout(props) {
       <body className={roboto.variable}>
         <AppRouterCacheProvider options={{ enableCssLayer: true }}>
           <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <Header />
-            <Box
-              component='main'
-              sx={{
-                paddingLeft: 0,
-                paddingRight: 0,
-                display: 'flex',
-                height: 'calc(100vh - 64px)',
-              }}>
+            <MainContainer>
               {children}
-            </Box>
+            </MainContainer>
           </ThemeProvider>
         </AppRouterCacheProvider>
       </body>

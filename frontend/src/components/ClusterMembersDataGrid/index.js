@@ -1,7 +1,7 @@
 'use client';
 import * as React from 'react';
 import { DataGrid } from '@mui/x-data-grid';
-import { clustersMembersColumns, getMemebersByClusterId } from './clustersMembers';
+import { clustersMembersColumns, getMemebersByClusterId } from '../../data/clustersMembers';
 export default function ClusterMembersDataGrid(props) {
 
   const columns = clustersMembersColumns;

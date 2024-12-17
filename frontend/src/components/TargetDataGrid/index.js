@@ -2,8 +2,8 @@
 import * as React from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 
-import { clusterColumns, clusters } from './clusters';
-import { targetColumns, targets } from './targets';
+import { clusterColumns, clusters } from '../../data/clusters';
+import { targetColumns, targets } from '../../data/targets';
 
 export default function TargetDataGrid(props) {
 

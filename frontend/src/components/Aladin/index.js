@@ -76,6 +76,12 @@ export default class Aladin extends React.Component {
         this.gotoPosition()
       }
 
+      if (this.props.catalog) {
+        this.overlayCatalog()
+      }
+      if (this.props.radius) {
+        this.overlayRadius();
+      }
     })
   }
 
@@ -86,6 +92,14 @@ export default class Aladin extends React.Component {
     if (this.props.position !== prevProps.position) {
       this.gotoPosition();
     }
+
+    if (this.props.catalog !== prevProps.catalog) {
+      this.overlayCatalog();
+    }
+
+    if (this.props.radius !== prevProps.radius) {
+      this.overlayRadius();
+    }
   }
 
   gotoPosition() {
@@ -95,6 +109,68 @@ export default class Aladin extends React.Component {
     this.aladin.setFoV(this.props.position.fov);
   }
 
+
+  overlayCatalog() {
+    console.log("Aladin::Overlay Catalog")
+    // console.log(this.props.catalog)
+
+    const cat = A.catalog({});
+    this.aladin.addCatalog(cat);
+
+    this.props.catalog.forEach((source) => {
+      cat.addSources(A.source(source.ra, source.dec));
+    });
+  }
+
+  // drawCircle(source, canvasCtx, viewParams) {
+  //   canvasCtx.beginPath();
+  //   canvasCtx.arc(source.x, source.y, source.data['size'], 0, 2 * Math.PI, false);
+  //   canvasCtx.closePath();
+  //   canvasCtx.strokeStyle = '#c38';
+  //   canvasCtx.lineWidth = 3;
+  //   canvasCtx.globalAlpha = 0.7;
+  //   canvasCtx.stroke();
+  // }
+
+  // overlayRadius() {
+  //   console.log("Aladin::Overlay Radius")
+  //   const cat = A.catalog({ name: 'Cluster Radius', shape: this.drawCircle });
+
+  //   const size = this.props.radius.radius * 60;
+
+  //   cat.addSources(A.source(this.props.radius.ra, this.props.radius.dec, { size: size }));
+  //   this.aladin.addCatalog(cat);
+  // }
+
+  overlayRadius() {
+    // https://aladin.cds.unistra.fr/AladinLite/doc/API/examples/footprints/
+    console.log("Aladin::Overlay Radius")
+
+    let ra = parseFloat(this.props.ra);
+    let dec = parseFloat(this.props.dec);
+    let radius = parseFloat(this.props.radius.radius);
+    let unit = this.props.radius.unit;
+
+    // Tratar ra negativo
+    if (ra < 0) {
+      ra = ra + 360;
+    }
+
+    const overlay = A.graphicOverlay({
+      color: '#ee2345',
+      lineWidth: 3
+    });
+    this.aladin.addOverlay(overlay);
+
+    // Conversao de unidades
+    // if (unit === 'arcmin') {
+    //   // Se estiver em minutos de arco dividir por 60
+    //   radius = radius / 60;
+    // }
+
+    overlay.add(A.circle(ra, dec, radius));
+
+  }
 
   render() {
     return (
