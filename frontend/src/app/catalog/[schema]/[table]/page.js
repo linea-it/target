@@ -17,6 +17,7 @@ import dayjs from "dayjs";
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
 dayjs.extend(LocalizedFormat)
 
+
 export default function CatalogDetail({ params }) {
   // asynchronous access of `params`.
   const { schema, table } = React.use(params)

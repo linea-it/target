@@ -1,5 +1,5 @@
 import React from 'react';
-import Link from '@mui/material/Link'
+import Link from 'next/link'
 import IconButton from '@mui/material/IconButton'
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box'
