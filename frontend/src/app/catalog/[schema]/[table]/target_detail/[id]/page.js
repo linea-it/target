@@ -11,6 +11,8 @@ import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import ShareIcon from '@mui/icons-material/Share';
 import { getTargetById } from "@/data/targets";
 import TargetDetailContainer from "@/containers/TargetDetail";
+
+
 export default function SingleTargetDetail({ params }) {
   // asynchronous access of `params.id`.
   const { schema, table, id } = React.use(params)

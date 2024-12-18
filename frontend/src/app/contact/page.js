@@ -3,7 +3,7 @@ import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
 import Grid from '@mui/material/Grid2';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
-import Link from '@mui/material/Link'
+import Link from 'next/link'
 import Box from '@mui/material/Box'
 import Footer from '@/components/Footer';
 

@@ -13,8 +13,8 @@ const roboto = Roboto({
 });
 
 export const metadata = {
-  title: "CANVAS",
-  description: "CANVAS by linea",
+  title: "TARGET",
+  description: "TARGET by linea",
 };
 
 export default function RootLayout(props) {
