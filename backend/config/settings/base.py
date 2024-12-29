@@ -1,13 +1,14 @@
 # ruff: noqa: ERA001, E501
 """Base settings to build other settings files upon."""
 
+import ssl
 from pathlib import Path
 
 import environ
 
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
-# canvas/
-APPS_DIR = BASE_DIR / "canvas"
+# target/
+APPS_DIR = BASE_DIR / "target"
 env = environ.Env()
 
 READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)
@@ -85,7 +86,7 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
-    "canvas.users",
+    "target.users",
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
@@ -94,7 +95,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # MIGRATIONS
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#migration-modules
-MIGRATION_MODULES = {"sites": "canvas.contrib.sites.migrations"}
+MIGRATION_MODULES = {"sites": "target.contrib.sites.migrations"}
 
 # AUTHENTICATION
 # ------------------------------------------------------------------------------
@@ -190,7 +191,7 @@ TEMPLATES = [
                 "django.template.context_processors.static",
                 "django.template.context_processors.tz",
                 "django.contrib.messages.context_processors.messages",
-                "canvas.users.context_processors.allauth_settings",
+                "target.users.context_processors.allauth_settings",
             ],
         },
     },
@@ -262,16 +263,22 @@ LOGGING = {
     "root": {"level": "INFO", "handlers": ["console"]},
 }
 
+REDIS_URL = env("REDIS_URL", default="redis://redis:6379/0")
+REDIS_SSL = REDIS_URL.startswith("rediss://")
+
 # Celery
 # ------------------------------------------------------------------------------
 if USE_TZ:
     # https://docs.celeryq.dev/en/stable/userguide/configuration.html#std:setting-timezone
     CELERY_TIMEZONE = TIME_ZONE
 # https://docs.celeryq.dev/en/stable/userguide/configuration.html#std:setting-broker_url
-CELERY_BROKER_URL = env("DJANGO_CELERY_BROKER_URL")
-CELERY_WORKER_CONCURRENCY = env("DJANGO_CELERY_WORKER_CONCURRENCY")
+CELERY_BROKER_URL = REDIS_URL
+# https://docs.celeryq.dev/en/stable/userguide/configuration.html#redis-backend-use-ssl
+CELERY_BROKER_USE_SSL = {"ssl_cert_reqs": ssl.CERT_NONE} if REDIS_SSL else None
 # https://docs.celeryq.dev/en/stable/userguide/configuration.html#std:setting-result_backend
-CELERY_RESULT_BACKEND = "django-db"
+CELERY_RESULT_BACKEND = REDIS_URL
+# https://docs.celeryq.dev/en/stable/userguide/configuration.html#redis-backend-use-ssl
+CELERY_REDIS_BACKEND_USE_SSL = CELERY_BROKER_USE_SSL
 # https://docs.celeryq.dev/en/stable/userguide/configuration.html#result-extended
 CELERY_RESULT_EXTENDED = True
 # https://docs.celeryq.dev/en/stable/userguide/configuration.html#result-backend-always-retry
@@ -307,13 +314,13 @@ ACCOUNT_EMAIL_REQUIRED = True
 # https://docs.allauth.org/en/latest/account/configuration.html
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 # https://docs.allauth.org/en/latest/account/configuration.html
-ACCOUNT_ADAPTER = "canvas.users.adapters.AccountAdapter"
+ACCOUNT_ADAPTER = "target.users.adapters.AccountAdapter"
 # https://docs.allauth.org/en/latest/account/forms.html
-ACCOUNT_FORMS = {"signup": "canvas.users.forms.UserSignupForm"}
+ACCOUNT_FORMS = {"signup": "target.users.forms.UserSignupForm"}
 # https://docs.allauth.org/en/latest/socialaccount/configuration.html
-SOCIALACCOUNT_ADAPTER = "canvas.users.adapters.SocialAccountAdapter"
+SOCIALACCOUNT_ADAPTER = "target.users.adapters.SocialAccountAdapter"
 # https://docs.allauth.org/en/latest/socialaccount/configuration.html
-SOCIALACCOUNT_FORMS = {"signup": "canvas.users.forms.UserSocialSignupForm"}
+SOCIALACCOUNT_FORMS = {"signup": "target.users.forms.UserSocialSignupForm"}
 
 # django-rest-framework
 # -------------------------------------------------------------------------------
@@ -333,10 +340,11 @@ CORS_URLS_REGEX = r"^/api/.*$"
 # By Default swagger ui is available only to admin user(s). You can change permission classes to change that
 # See more configuration options at https://drf-spectacular.readthedocs.io/en/latest/settings.html#settings
 SPECTACULAR_SETTINGS = {
-    "TITLE": "CANVAS API",
-    "DESCRIPTION": "Documentation of API endpoints of CANVAS",
+    "TITLE": "target API",
+    "DESCRIPTION": "Documentation of API endpoints of target",
     "VERSION": "1.0.0",
     "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAdminUser"],
+    "SCHEMA_PATH_PREFIX": "/api/",
 }
 # Your stuff...
 # ------------------------------------------------------------------------------

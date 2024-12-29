@@ -2,10 +2,11 @@
 # ------------------------------------------------------------------------------
 # DJANGO_READ_DOT_ENV_FILE=True
 DJANGO_SETTINGS_MODULE=config.settings.production
-DJANGO_SECRET_KEY=dDy0sqAU6uNGaGY2befsNpl4m4XyH8Lf2hQBafI4vWbGas4DDvbgH2A1eLn2HUpl
-DJANGO_ADMIN_URL=C3F8MGfqF0FVQh89pK2om3GAouxfaaus/
-DJANGO_ALLOWED_HOSTS=.canvas.linea.org.br
-
+DJANGO_SECRET_KEY=MDaRD4xT4tUmqETKbvNTp1tP7HbrimLXDIeEvztImXKkCrAXLyGQ7zspiH5vHANH
+DJANGO_ADMIN_URL=C7xdaKRED2bneR1GR1ifzVeqcuAQdj8z/
+DJANGO_ALLOWED_HOSTS=.targetviewer.linea.org.br
+DJANGO_UWSGI_WORKER_PROCESSES=4
+DJANGO_UWSGI_WORKER_THREADS=2
 # Security
 # ------------------------------------------------------------------------------
 # TIP: better off using DNS, however, redirect is OK too
@@ -39,3 +40,4 @@ REDIS_URL=redis://redis:6379/0
 # Flower
 CELERY_FLOWER_USER=debug
 CELERY_FLOWER_PASSWORD=debug
+

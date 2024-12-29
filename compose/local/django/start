@@ -10,8 +10,6 @@ python manage.py migrate
 echo "Running Collect Statics"
 python manage.py collectstatic --clear --noinput --verbosity 0
 
-# exec uvicorn config.asgi:application --host 0.0.0.0 --reload --reload-include '*.html'
-
 # uWSGI para servir o app e ter compatibilidade com Shibboleth
 # https://uwsgi-docs.readthedocs.io/en/latest/WSGIquickstart.html
 echo "Running Django with uWSGI"
@@ -26,3 +24,4 @@ uwsgi \
     --http-timeout=180 \
     --static-map /django_static=/app/staticfiles \
     --py-autoreload=1
+

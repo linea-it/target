@@ -1,9 +1,9 @@
-.. CANVAS documentation master file, created by
+.. target documentation master file, created by
    sphinx-quickstart.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to CANVAS's documentation!
+Welcome to target's documentation!
 ======================================================================
 
 .. toctree::
