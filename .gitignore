@@ -57,7 +57,7 @@ staticfiles/
 docs/_build/
 
 # PyBuilder
-target/
+# target/
 
 # pyenv
 .python-version
@@ -272,7 +272,7 @@ tags
 dump.rdb
 
 ### Project template
-target/media/
+backend/target/media/
 
 .pytest_cache/
 .ipython/
@@ -282,4 +282,3 @@ target/media/
 
 data/
 log/
-
