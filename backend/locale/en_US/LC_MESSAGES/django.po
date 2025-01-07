@@ -1,4 +1,4 @@
-# Translations for the CANVAS project
+# Translations for the target project
 # Copyright (C) 2024 LIneA Team
 # LIneA Team <helpdesk@linea.org.br>, 2024.
 #

@@ -1,6 +1,6 @@
 # ruff: noqa
 """
-ASGI config for CANVAS project.
+ASGI config for target project.
 
 It exposes the ASGI callable as a module-level variable named ``application``.
 
@@ -16,9 +16,9 @@ from pathlib import Path
 from django.core.asgi import get_asgi_application
 
 # This allows easy placement of apps within the interior
-# canvas directory.
+# target directory.
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
-sys.path.append(str(BASE_DIR / "canvas"))
+sys.path.append(str(BASE_DIR / "target"))
 
 # If DJANGO_SETTINGS_MODULE is unset, default to the local settings
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")

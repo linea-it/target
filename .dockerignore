@@ -10,4 +10,3 @@
 venv
 .git
 .envs/
-frontend/node_modules

@@ -1,5 +1,5 @@
 # Config for Dependabot updates. See Documentation here:
-# https://help.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 
 version: 2
 updates:
@@ -77,6 +77,13 @@ updates:
   - package-ecosystem: 'docker'
     # Look for a `Dockerfile` in the `compose/production/traefik` directory
     directory: 'compose/production/traefik/'
+    # Every weekday
+    schedule:
+      interval: 'daily'
+
+  - package-ecosystem: 'docker'
+    # Look for a `Dockerfile` in the `compose/production/nginx` directory
+    directory: 'compose/production/nginx/'
     # Every weekday
     schedule:
       interval: 'daily'
