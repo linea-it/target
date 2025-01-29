@@ -35,6 +35,14 @@ class Schema(models.Model):
 
 
 class Table(models.Model):
+    CATALOG_TYPE_TARGET = "target"
+    CATALOG_TYPE_CLUSTER = "cluster"
+
+    CATALOG_TYPE_CHOICES = (
+        (CATALOG_TYPE_TARGET, _("target")),
+        (CATALOG_TYPE_CLUSTER, _("cluster")),
+    )
+
     schema = models.ForeignKey(
         Schema,
         related_name="tables",
@@ -79,6 +87,15 @@ class Table(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    catalog_type = models.CharField(
+        max_length=10,
+        choices=CATALOG_TYPE_CHOICES,
+        default=CATALOG_TYPE_TARGET,
+        verbose_name=_("Type of table"),
+        help_text=_(
+            "Identifies whether the table represents a list of targets or clusters",
+        ),
+    )
 
     class Meta:
         ordering = ("schema__order", "order", "name")
@@ -136,6 +153,13 @@ class Column(models.Model):
         max_length=255,
         verbose_name=_("Type"),
         help_text=_("Data type of the column."),
+    )
+    pythontype = models.CharField(
+        max_length=255,
+        verbose_name=_("Python Type"),
+        help_text=_("Data type of the column in python."),
+        blank=True,
+        default="",
     )
     order = models.IntegerField(
         default=0,

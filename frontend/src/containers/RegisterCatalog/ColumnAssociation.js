@@ -2,19 +2,57 @@ import React, { useState, useEffect } from "react";
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
+import Typography from "@mui/material/Typography";
+import LinearProgress from '@mui/material/LinearProgress';
 import RegisterCatalogToolbar from "./Toolbar";
 import { useRegisterCatalog } from "@/contexts/RegisterCatalogContext";
-import { Typography } from "@mui/material";
 import ColumnInputReadOnly from "@/components/ColumnInputReadOnly";
 import ColumnInputUcd from "@/components/ColumnInputUcd";
 import { ucds } from "@/data/ucds";
+import { useMutation } from '@tanstack/react-query'
+import { getTableColumn, updateTableColumn } from "@/services/Metadata";
+
 export default function RegisterCatalogColumnAssociation() {
 
   const { setActiveStep, catalog } = useRegisterCatalog();
 
   const [usedUcds, setUsedUcds] = useState([])
 
-  const columns = catalog.columns;
+  const [columns, setColumns] = useState(catalog.columns)
+
+  const [isLoading, setIsLoading] = useState(false)
+
+  const loadColumns = React.useCallback(async () => {
+    setIsLoading(true)
+    getTableColumn(catalog.id).then((response) => {
+      setColumns(response.data)
+    }).catch((error) => {
+      console.log('error', error)
+    }).finally(() => {
+
+      console.log('Finally');
+      setIsLoading(false)
+    })
+  }, [])
+
+  const mutation = useMutation({
+    mutationFn: updateTableColumn,
+    onSuccess: (data, variables, context) => {
+      console.log('onSuccess', data)
+      // TODO: Reload Columns
+      loadColumns()
+    },
+    onError: (error, variables, context) => {
+      console.log('onError', error)
+      // An error happened!
+      console.log(`rolling back optimistic update with id ${context.id}`)
+    },
+    // onSettled: (data, error, variables, context) => {
+    //   // Error or success... doesn't matter!
+    //   console.log('onSettled', data)
+    // },
+  })
+
 
   useEffect(() => {
     const useducds = []
@@ -41,12 +79,17 @@ export default function RegisterCatalogColumnAssociation() {
   const changeColumn = (column, ucd, value) => {
     console.log("changeColumn", column, ucd, value)
 
-    columns.forEach(row => {
-      if (row.name === column.name) {
-        row.ucd = ucd
-        row.value = value
-      }
+    mutation.mutate({
+      ...column,
+      ucd: ucd
     })
+
+    // columns.forEach(row => {
+    //   if (row.name === column.name) {
+    //     row.ucd = ucd
+    //     row.value = value
+    //   }
+    // })
   }
 
   const onSelectUcd = (column, ucd) => {
@@ -120,6 +163,7 @@ export default function RegisterCatalogColumnAssociation() {
         )
       }
       )}
+      {isLoading ? <LinearProgress /> : null}
       <RegisterCatalogToolbar onNext={handleNext} onPrev={handlePrev} />
     </Box>
   );

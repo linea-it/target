@@ -17,6 +17,7 @@ class ColumnSerializer(serializers.ModelSerializer[Column]):
             "unit",
             "ucd",
             "datatype",
+            "pythontype",
             "order",
             "created_at",
             "updated_at",
@@ -34,6 +35,7 @@ class ResumedColumnSerializer(serializers.ModelSerializer[Column]):
             "unit",
             "ucd",
             "datatype",
+            "pythontype",
             "order",
         ]
 
@@ -51,6 +53,7 @@ class TableSerializer(serializers.ModelSerializer[Table]):
             "order",
             "nrows",
             "size",
+            "catalog_type",
             "created_at",
             "updated_at",
         ]
@@ -83,6 +86,7 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
             "order",
             "nrows",
             "size",
+            "catalog_type",
             "created_at",
             "updated_at",
             "columns",

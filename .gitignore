@@ -280,5 +280,6 @@ backend/target/media/
 .envs/*
 !.envs/.local/
 
+pg_data/
 data/
 log/

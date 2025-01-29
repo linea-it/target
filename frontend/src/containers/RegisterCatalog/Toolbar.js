@@ -9,7 +9,7 @@ export default function RegisterCatalogToolbar(props) {
       {!props.onPrev && <Button variant="contained" color="secondary" disabled>Prev</Button>}
       {props.onPrev && <Button variant="contained" color="secondary" onClick={() => props.onPrev()}>Prev</Button>}
       <Box sx={{ flexGrow: 1 }} />
-
+      {!props.onNext && <Button variant="contained" color="primary" disabled>Next</Button>}
       {props.onNext && <Button variant="contained" color="primary" onClick={() => props.onNext()}>Next</Button>}
       {props.onSubmit && <Button variant="contained" color="primary" onClick={() => props.onSubmit()}>Finish</Button>}
     </Toolbar>

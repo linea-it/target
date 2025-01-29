@@ -13,16 +13,33 @@ import ShareIcon from '@mui/icons-material/Share';
 import CatalogDetailContainer from "@/containers/CatalogDetail";
 import { getCatalogBySchemaTable } from "@/data/catalogs";
 
+import { getMetadataBySchemaTable } from "@/services/Metadata";
+
 import dayjs from "dayjs";
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
 dayjs.extend(LocalizedFormat)
-
+import { useQuery } from '@tanstack/react-query'
 
 export default function CatalogDetail({ params }) {
-  // asynchronous access of `params`.
+  // asynchronous access of url `params`.
   const { schema, table } = React.use(params)
 
-  const record = getCatalogBySchemaTable(schema, table)
+  // const record = getCatalogBySchemaTable(schema, table)
+
+  const { status, isLoading, data } = useQuery({
+    queryKey: ['metadataBySchemaTable', { schema, table }],
+    queryFn: getMetadataBySchemaTable
+  })
+
+  if (isLoading) {
+    return <div>Loading...</div>
+  }
+
+  const record = data.data.results[0]
+
+  if (record === undefined) {
+    return <div>Not found</div>
+  }
 
   return (
     <Box sx={{
@@ -49,7 +66,7 @@ export default function CatalogDetail({ params }) {
             <ArrowBackIosIcon />
           </IconButton>
           <Typography variant="h5" mt={2}>
-            {record.name}
+            {record.title}
           </Typography>
           <IconButton>
             <SettingsIcon />

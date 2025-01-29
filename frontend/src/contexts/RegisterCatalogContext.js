@@ -6,19 +6,19 @@ export const RegisterCatalogProvider = ({ children }) => {
 
   const emptyCatalog = {
     id: undefined,
-    name: undefined,
-    type: undefined,
-    schema: undefined,
-    table: undefined,
-    description: undefined,
+    title: '',
+    catalog_type: 'target',
+    schema: '',
+    table: '',
+    description: '',
     columns: [],
   }
 
   const sampleCatalog = {
     id: 5,
     internal_name: 'sample_catalog',
-    name: 'Sample Catalog',
-    type: 'target',
+    title: 'Sample Catalog',
+    catalog_type: 'target',
     schema: 'mydb_glauber_costa',
     table: 'estrelas_brilhantes',
     description: 'A catalog of bright stars',
@@ -125,7 +125,7 @@ export const RegisterCatalogProvider = ({ children }) => {
     ]
   }
 
-  const [catalog, setCatalog] = useState(sampleCatalog)
+  const [catalog, setCatalog] = useState(emptyCatalog)
 
   const [activeStep, setActiveStep] = useState(0);
 

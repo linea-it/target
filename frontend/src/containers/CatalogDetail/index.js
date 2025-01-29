@@ -25,7 +25,6 @@ export default function CatalogDetailContainer({ record }) {
 
   }
 
-
   return (
     <Grid container spacing={2} sx={{ height: '100%' }}>
       <Grid size={{ md: 8 }}>
@@ -45,7 +44,7 @@ export default function CatalogDetailContainer({ record }) {
             </Button>
           </Toolbar>
           <Box>
-            <TargetDataGrid type={record.type} onChangeSelection={onChangeSelection} />
+            <TargetDataGrid type={record.catalog_type} tableColumns={record.columns} onChangeSelection={onChangeSelection} />
           </Box>
         </Paper>
       </Grid>
@@ -55,8 +54,8 @@ export default function CatalogDetailContainer({ record }) {
           display: 'flex'
         }}
         >
-          {record.type === 'cluster' && (<ClusterDetail schema={record.schema} table={record.table} record={selectedRecord} />)}
-          {record.type === 'single' && (<TargetDetail schema={record.schema} table={record.table} record={selectedRecord} />)}
+          {record.catalog_type === 'target' && (<TargetDetail schema={record.schema} table={record.table} record={selectedRecord} />)}
+          {record.catalog_type === 'cluster' && (<ClusterDetail schema={record.schema} table={record.table} record={selectedRecord} />)}
         </Paper>
       </Grid>
     </Grid>
