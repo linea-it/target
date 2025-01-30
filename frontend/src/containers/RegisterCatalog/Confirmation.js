@@ -1,20 +1,34 @@
 import React from "react";
 import Box from '@mui/material/Box';
-import TextField from '@mui/material/TextField';
+import { useMutation } from '@tanstack/react-query'
 import RegisterCatalogToolbar from "./Toolbar";
 import { useRegisterCatalog } from "@/contexts/RegisterCatalogContext";
-export default function RegisterCatalogColumnAssociation() {
+import { updateUserTable } from "@/services/Metadata";
+import { useRouter } from 'next/navigation'
 
-  const { setActiveStep } = useRegisterCatalog();
+export default function RegisterCatalogColumnAssociation() {
+  const router = useRouter()
+  const { catalog, setActiveStep } = useRegisterCatalog();
+
+  const mutation = useMutation({
+    mutationFn: updateUserTable,
+    onSuccess: (data, variables, context) => {
+      // Redireciona para a Home.
+      router.push('/')
+    },
+    onError: (error, variables, context) => {
+      // TODO: handle Error
+      console.log('onError', error)
+      // An error happened!
+      console.log(`rolling back optimistic update with id ${context.id}`)
+    },
+  })
 
   const handleSubmit = () => {
-    //  TODO: Save data
-    console.log("Submit");
+    mutation.mutate({ id: catalog.id, is_completed: true })
   }
 
   const handlePrev = () => {
-    //  TODO: Save data
-    console.log("Prev");
     setActiveStep(prevActiveStep => prevActiveStep - 1);
   }
 

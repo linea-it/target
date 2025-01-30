@@ -47,14 +47,24 @@ class UserTableViewSet(ModelViewSet):
     serializer_class = NestedTableSerializer
     queryset = Table.objects.all()
     filterset_fields = ["id", "schema__name", "name"]
+    ordering_fields = ["id", "name", "schema__name", "created_at", "updated_at"]
+    ordering = ["-created_at"]
 
-    def get_queryset(self):
-        user = self.request.user
-        return Table.objects.filter(schema__owner=user)
+    def list(self, request):
+        # https://www.cdrf.co/3.9/rest_framework.viewsets/ReadOnlyModelViewSet.html#list
+        queryset = self.get_queryset()
+        queryset = queryset.filter(schema__owner=self.request.user, is_completed=True)
+        queryset = self.filter_queryset(queryset)
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def create(self, request):
-        print("PRODUCT -> ", request.data)
-
         try:
             data = {
                 "schema": request.data.get("schema"),
@@ -100,9 +110,6 @@ class UserTableViewSet(ModelViewSet):
                 name=data.get("schema"),
             )[0]
 
-            # TODO: Remover antes de fazer commit
-            schema.tables.all().delete()
-
             table = Table.objects.create(
                 schema=schema,
                 name=data.get("name"),
@@ -141,3 +148,13 @@ class UserTableViewSet(ModelViewSet):
         results = [{"table": table, "schema": db.schema} for table in tables]
 
         return Response(results, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["get"])
+    def pending_registration(self, request):
+        user = request.user
+        table = Table.objects.filter(schema__owner=user, is_completed=False).first()
+        if table:
+            data = self.get_serializer(instance=table).data
+            return Response(data, status=status.HTTP_200_OK)
+
+        return Response({}, status=status.HTTP_200_OK)

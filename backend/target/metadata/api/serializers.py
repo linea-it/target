@@ -55,6 +55,7 @@ class TableSerializer(serializers.ModelSerializer[Table]):
             "size",
             "catalog_type",
             "created_at",
+            "is_completed",
             "updated_at",
         ]
 
@@ -89,6 +90,7 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
             "catalog_type",
             "created_at",
             "updated_at",
+            "is_completed",
             "columns",
         ]
 

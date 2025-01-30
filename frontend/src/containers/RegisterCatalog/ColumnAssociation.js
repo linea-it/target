@@ -27,10 +27,9 @@ export default function RegisterCatalogColumnAssociation() {
     getTableColumn(catalog.id).then((response) => {
       setColumns(response.data)
     }).catch((error) => {
+      // TODO: handle Error
       console.log('error', error)
     }).finally(() => {
-
-      console.log('Finally');
       setIsLoading(false)
     })
   }, [])
@@ -38,19 +37,14 @@ export default function RegisterCatalogColumnAssociation() {
   const mutation = useMutation({
     mutationFn: updateTableColumn,
     onSuccess: (data, variables, context) => {
-      console.log('onSuccess', data)
-      // TODO: Reload Columns
       loadColumns()
     },
     onError: (error, variables, context) => {
+      // TODO: Handle Error
       console.log('onError', error)
       // An error happened!
       console.log(`rolling back optimistic update with id ${context.id}`)
     },
-    // onSettled: (data, error, variables, context) => {
-    //   // Error or success... doesn't matter!
-    //   console.log('onSettled', data)
-    // },
   })
 
 
@@ -65,40 +59,26 @@ export default function RegisterCatalogColumnAssociation() {
   }, [columns])
 
   const handleNext = () => {
-    //  TODO: Save data
-    console.log("Next");
     setActiveStep(prevActiveStep => prevActiveStep + 1);
   }
 
   const handlePrev = () => {
-    //  TODO: Save data
-    console.log("Prev");
     setActiveStep(prevActiveStep => prevActiveStep - 1);
   }
 
   const changeColumn = (column, ucd, value) => {
-    console.log("changeColumn", column, ucd, value)
-
+    // console.log("changeColumn", column, ucd, value)
     mutation.mutate({
       ...column,
       ucd: ucd
     })
-
-    // columns.forEach(row => {
-    //   if (row.name === column.name) {
-    //     row.ucd = ucd
-    //     row.value = value
-    //   }
-    // })
   }
 
   const onSelectUcd = (column, ucd) => {
-    console.log("onSelectUcd", column, ucd)
     changeColumn(column, ucd, null)
   }
 
   const onClear = (column) => {
-    console.log("onClear", column)
     changeColumn(column, null, null)
   }
 
@@ -111,8 +91,6 @@ export default function RegisterCatalogColumnAssociation() {
     })
     return availvableUcds
   }
-
-  console.log('usedUcds', usedUcds)
 
   const createField = (column) => {
     if (column.ucd) {

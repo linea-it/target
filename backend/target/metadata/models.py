@@ -96,6 +96,11 @@ class Table(models.Model):
             "Identifies whether the table represents a list of targets or clusters",
         ),
     )
+    is_completed = models.BooleanField(
+        verbose_name=_("Completed"),
+        help_text=_("Indicates whether the record is completed or not."),
+        default=False,
+    )
 
     class Meta:
         ordering = ("schema__order", "order", "name")

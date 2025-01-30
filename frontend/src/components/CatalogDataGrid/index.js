@@ -61,7 +61,6 @@ export default function CatalogDataGrid() {
       type: 'dateTime',
       width: 300,
       valueGetter: (value, row) => {
-        console.log(row)
         return new Date(value)
       }
     },

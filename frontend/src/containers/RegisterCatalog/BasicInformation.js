@@ -8,7 +8,7 @@ import RegisterCatalogToolbar from "./Toolbar";
 import { useRegisterCatalog } from "@/contexts/RegisterCatalogContext";
 import UserTableSelect from "@/components/UserTableSelect";
 import { useMutation } from '@tanstack/react-query'
-import { registerUserTable } from "@/services/Metadata";
+import { registerUserTable, updateUserTable } from "@/services/Metadata";
 
 
 
@@ -17,9 +17,14 @@ export default function RegisterCatalogBasicInformation() {
   const { catalog, setCatalog, setActiveStep } = useRegisterCatalog();
 
   const mutation = useMutation({
-    mutationFn: registerUserTable,
+    mutationFn: (data) => {
+      if (data.id) {
+        return updateUserTable(data)
+      } else {
+        return registerUserTable(data)
+      }
+    },
     onSuccess: (data, variables, context) => {
-      // console.log('onSuccess', data)
       setCatalog(data.data)
       setActiveStep(prevActiveStep => prevActiveStep + 1);
     },
@@ -28,20 +33,11 @@ export default function RegisterCatalogBasicInformation() {
       // An error happened!
       console.log(`rolling back optimistic update with id ${context.id}`)
     },
-    // onSettled: (data, error, variables, context) => {
-    //   // Error or success... doesn't matter!
-    //   console.log('onSettled', data)
-    // },
   })
 
 
   const handleNext = () => {
-    console.log('handleNext')
-    //  TODO: Save data
     mutation.mutate(catalog)
-
-
-    // setActiveStep(prevActiveStep => prevActiveStep + 1);
   }
 
   const onSelectTable = (value) => {
@@ -62,8 +58,6 @@ export default function RegisterCatalogBasicInformation() {
 
   const isValid = catalog.title && catalog.schema && catalog.table ? true : false
 
-  console.log(mutation.error)
-
   return (
     <Box
       component="form"
@@ -83,7 +77,7 @@ export default function RegisterCatalogBasicInformation() {
         label="Type"
         variant="outlined"
         fullWidth
-        name="type"
+        name="catalog_type"
         value={catalog.catalog_type}
         select
         onChange={handleChange}
@@ -106,7 +100,6 @@ export default function RegisterCatalogBasicInformation() {
 
       {!isValid && (<RegisterCatalogToolbar />)}
       {isValid && (<RegisterCatalogToolbar onNext={handleNext} />)}
-
 
     </Box>
   );
