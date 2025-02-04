@@ -33,18 +33,24 @@ export default function CatalogDetailContainer({ record }) {
           height: '100%',
         }}>
           <Toolbar>
-            <Box sx={{ display: 'flex', alignItems: 'flex-end' }}>
+            {/* <Box sx={{ display: 'flex', alignItems: 'flex-end' }}>
               <SearchIcon sx={{ color: 'action.active', mr: 1, my: 0.5 }} />
               <TextField id="input-with-sx" label="Search" variant="standard" sx={{ width: '50ch', mr: 2 }} />
-            </Box>
-            <Button variant="outlined" size="large">Statistics</Button>
+            </Box> */}
             <Box sx={{ flexGrow: 1 }} />
-            <Button endIcon={<FilterListIcon />}>
+            <Button variant="outlined" size="large" disabled>Statistics</Button>
+            <Button disabled endIcon={<FilterListIcon />}>
               Filters
             </Button>
           </Toolbar>
-          <Box>
-            <TargetDataGrid type={record.catalog_type} tableColumns={record.columns} onChangeSelection={onChangeSelection} />
+          <Box maxHeight={500}>
+            <TargetDataGrid
+              type={record.catalog_type}
+              tableId={record.id}
+              schema={record.schema}
+              table={record.table}
+              tableColumns={record.columns}
+              onChangeSelection={onChangeSelection} />
           </Box>
         </Paper>
       </Grid>

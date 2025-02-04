@@ -11,7 +11,7 @@ import Stack from '@mui/material/Stack';
 import ShareIcon from '@mui/icons-material/Share';
 
 import CatalogDetailContainer from "@/containers/CatalogDetail";
-import { getCatalogBySchemaTable } from "@/data/catalogs";
+import Loading from "@/components/Loading";
 
 import { getMetadataBySchemaTable } from "@/services/Metadata";
 
@@ -21,10 +21,7 @@ dayjs.extend(LocalizedFormat)
 import { useQuery } from '@tanstack/react-query'
 
 export default function CatalogDetail({ params }) {
-  // asynchronous access of url `params`.
   const { schema, table } = React.use(params)
-
-  // const record = getCatalogBySchemaTable(schema, table)
 
   const { status, isLoading, data } = useQuery({
     queryKey: ['metadataBySchemaTable', { schema, table }],
@@ -32,7 +29,7 @@ export default function CatalogDetail({ params }) {
   })
 
   if (isLoading) {
-    return <div>Loading...</div>
+    return <Loading isLoading={isLoading} />
   }
 
   const record = data.data.results[0]
@@ -68,10 +65,10 @@ export default function CatalogDetail({ params }) {
           <Typography variant="h5" mt={2}>
             {record.title}
           </Typography>
-          <IconButton>
+          <IconButton disabled>
             <SettingsIcon />
           </IconButton>
-          <IconButton>
+          <IconButton disabled>
             <ShareIcon />
           </IconButton>
         </Stack>

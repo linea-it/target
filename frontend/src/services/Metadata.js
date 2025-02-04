@@ -10,7 +10,11 @@ export const availableUserTables = () => {
 }
 
 export const registerUserTable = (data) => {
-    return api.post("metadata/user_tables/", data);
+    return api.post("metadata/user_tables/", {
+        ...data,
+        schema: data.schema,
+        name: data.table,
+    });
 }
 
 export const updateUserTable = (data) => {
@@ -27,7 +31,7 @@ export const pendingRegistration = () => {
 
 export const getMetadataBySchemaTable = ({ queryKey }) => {
     const params = queryKey[1]
-    return api.get(`metadata/user_tables/`, { params: { ...params } })
+    return api.get(`metadata/user_tables/`, { params: { schema: params.schema, name: params.table } })
 }
 
 export const getTableColumn = (id) => {
@@ -36,4 +40,25 @@ export const getTableColumn = (id) => {
 
 export const updateTableColumn = (data) => {
     return api.patch(`metadata/columns/${data.id}/`, { ...data, ucd: data.ucd === null ? '' : data.ucd });
+}
+
+export const getTableData = ({ queryKey }) => {
+    const params = queryKey[1]
+    let page = params.paginationModel.page + 1
+
+    return api.get(`metadata/user_tables/${params.tableId}/data/`, {
+        params: {
+            pageSize: params.paginationModel.pageSize,
+            page: page,
+        }
+    })
+}
+
+export const getTableRowById = ({ queryKey }) => {
+    const params = queryKey[1]
+    return api.get(`metadata/user_tables/${params.tableId}/data/`, {
+        params: {
+            ...params.filters,
+        }
+    })
 }

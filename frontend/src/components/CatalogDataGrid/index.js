@@ -19,7 +19,7 @@ export default function CatalogDataGrid() {
   const handlePaginationModelChange = React.useCallback((paginationModel) => {
     setQueryOptions({
       ...queryOptions,
-      paginationModel: [...paginationModel]
+      paginationModel: { ...paginationModel }
     });
   }, []);
 
@@ -35,6 +35,15 @@ export default function CatalogDataGrid() {
     queryFn: userTables
   })
 
+
+  const rowCountRef = React.useRef(data?.data.count || 0);
+
+  const rowCount = React.useMemo(() => {
+    if (data?.data.count !== undefined) {
+      rowCountRef.current = data.data.count;
+    }
+    return rowCountRef.current;
+  }, [data?.data.count]);
 
   const columns = [
     {
@@ -80,19 +89,20 @@ export default function CatalogDataGrid() {
     <DataGrid
       loading={isLoading}
       rows={data?.data.results || []}
-      rowCount={data?.data.count || 0}
+      rowCount={rowCount}
       columns={columns}
       paginationMode="server"
       paginationModel={queryOptions.paginationModel}
       onPaginationModelChange={handlePaginationModelChange}
-      pageSizeOptions={[5, 10, 25]}
-      sortingMode="server"
-      onSortModelChange={handleSortModelChange}
+      pageSizeOptions={[10, 25, 50]}
+      // sortingMode="server"
+      // onSortModelChange={handleSortModelChange}
       disableRowSelectionOnClick
       initialState={{
         pagination: {
           paginationModel: {
-            pageSize: 10,
+            pageSize: 25,
+            page: 0,
           },
         },
       }}

@@ -1,5 +1,6 @@
 from django.conf import settings
 from sqlalchemy import desc
+from sqlalchemy.sql import and_
 from sqlalchemy.sql import select
 from sqlalchemy.sql import text
 from sqlalchemy.sql.expression import literal_column
@@ -54,6 +55,7 @@ class MyDB(DBBase):
         mais sempre deve retornar um statement.
         :return: statement
         """
+        values = None
         # self.set_filters(filters)
         # self.set_query_columns(columns)
         # self.set_url_filters(url_filters)
@@ -64,13 +66,15 @@ class MyDB(DBBase):
 
         stm = select(query_columns).select_from(tbl)
 
-        # # Para esta query mais generica nao permitir filtros por condicoes especias "_meta_*"
+        if len(filters) > 0:
+            clauses, values = self.do_filter(tbl, filters)
+            # print(clauses)
+            # print(values)
+            stm = stm.where(and_(*clauses))
         # filters = list()
         # for condition in self.filters:
         #     if condition.get("column").find("_meta_") == -1:
         #         filters.append(condition)
-
-        # stm = stm.where(and_(*self.do_filter(self.table, filters)))
 
         # Ordenacao
         if ordering:
@@ -87,7 +91,7 @@ class MyDB(DBBase):
             if offset:
                 stm = stm.offset(literal_column(str(offset)))
 
-        return stm
+        return stm, values
 
     def query(
         self,
@@ -101,8 +105,15 @@ class MyDB(DBBase):
     ):
         tbl = self.sa_table(schema=self.schema, tablename=tablename)
 
+        if filters is None:
+            filters = []
+
+        if url_filters is not None:
+            url_filters = self.parse_url_filters(tbl, url_filters)
+            filters.extend(url_filters)
+
         # Cria o Statement para a query
-        stm = self.create_stm(
+        stm, values = self.create_stm(
             tbl=tbl,
             columns=columns,
             filters=filters,
@@ -112,18 +123,59 @@ class MyDB(DBBase):
             url_filters=url_filters,
         )
 
-        print(stm)
         # executa o statement
-        result = self.fetchall_dict(stm)
+        rows = []
+        with self.get_engine().connect() as con:
+            self._debug_query(stm, with_parameters=False, values=values)
+            queryset = con.execute(stm, values)
+            for row in queryset:
+                rows.append(self.to_dict(row))
 
+        # TODO: Implementar o count
         # executa um metodo da DBbase para trazer o count sem levar em conta o limit e o start
         # count = self.stm_count(stm)
 
-        count = 0
-        return result, count
+        count = len(rows)
+        return rows, count
 
     def get_count(self, tablename):
         return super().get_count(tablename, schema=self.schema)
 
     def get_table_status(self, tablename):
         return super().get_table_status(tablename, schema=self.schema)
+
+    def parse_url_filters(self, tbl, url_filters):
+        # types = {
+        #     int: [
+        #         sqlalchemy.sql.sqltypes.INTEGER,
+        #         sqlalchemy.sql.sqltypes.BIGINT,
+        #         sqlalchemy.sql.sqltypes.SMALLINT,
+        #         sqlalchemy.sql.sqltypes.Integer,
+        #         sqlalchemy.sql.sqltypes.SmallInteger,
+        #         sqlalchemy.sql.sqltypes.BigInteger,
+        #     ],
+        # }
+
+        filters = []
+        for key, value in url_filters.items():
+            # Parse value type to match the column type
+            tbl_col = tbl.c.get(key)
+            print(tbl_col.type)
+
+            # if isinstance(tbl_col.type, sqlalchemy.sql.sqltypes.BIGINT):
+            #     parsed_value = int(value)
+            #     print("passou aqui")
+            # elif isinstance(tbl_col.type.python_type, float):
+            #     parsed_value = float(value)
+            # elif isinstance(tbl_col.type.python_type, bool):
+            #     parsed_value = value == "true"
+            # elif isinstance(tbl_col.type.python_type, str):
+            #     parsed_value = str(value)
+            # else:
+            #     error_message = f"Unsupported column type: {tbl_col.type}"
+            #     raise TypeError(error_message)
+
+            filters.append({"column": key, "operator": "=", "value": value})
+
+        print(filters)
+        return filters

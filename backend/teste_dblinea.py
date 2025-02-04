@@ -1,38 +1,39 @@
-# import os
+import os
 
-# from dblinea import MyDB
+from dblinea import MyDB
 
-# os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")
 
 
-# print("------------ Teste ------------ ")
-# db = MyDB(username="glauber_costa")
+print("------------ Teste ------------ ")
+db = MyDB(username="glauber_costa")
 
-# # print("List Tables in mydb schema")
-# # # tables = db.get_tables(schema="mydb_glauber_costa")
-# # tables = db.get_user_tables()
-# # print(tables)
+# print("List Tables in mydb schema")
+# # tables = db.get_tables(schema="mydb_glauber_costa")
+# tables = db.get_user_tables()
+# print(tables)
 
-# # columns = db.get_table_columns(tablename="estrelas_brilhantes")
-# # print(columns)
+# columns = db.get_table_columns(tablename="estrelas_brilhantes")
+# print(columns)
 
 # describe = db.describe_table(tablename="estrelas_brilhantes")
 # print(describe)
 
-# # print("----------------------------")
-# # col = describe[1]
-# # print(col.get("type"))
-# # print(col.get("type").__repr__())
+# print("----------------------------")
+# col = describe[1]
+# print(col.get("type"))
+# print(col.get("type").__repr__())
 
-# # print(col.get("python_type"))
-# # print(col.get("python_type").__name__)
+# print(col.get("python_type"))
+# print(col.get("python_type").__name__)
 
-# # rows, count = db.query(
-# #     tablename="estrelas_brilhantes",
-# #     limit=5,
-# #     offset=8,
-# #     ordering="coadd_object_id",
-# # )
+rows, count = db.query(
+    tablename="estrelas_brilhantes",
+    # limit=5,
+    # offset=8,
+    url_filters={"coadd_object_id": "1063286835"},
+    ordering="coadd_object_id",
+)
 
 # # print(len(rows))
 

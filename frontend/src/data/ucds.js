@@ -24,3 +24,9 @@ export const ucds = [
     value: 'meta.curation'
   }
 ]
+
+export const mandatoryUcds = [
+  'meta.id;meta.main',
+  'pos.eq.ra;meta.main',
+  'pos.eq.dec;meta.main',
+]

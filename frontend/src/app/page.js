@@ -10,15 +10,6 @@ import ListCatalogContainer from '@/containers/ListCatalog';
 import { userTables } from "@/services/Metadata";
 export default function Home() {
 
-  const handleTestApi = (e) => {
-    console.log('handleTestApi')
-    userTables().then((response) => {
-      console.log(response.data)
-    }).catch((error) => {
-      console.log(error)
-    })
-  }
-
   return (
     <Box sx={{
       width: '100%',
@@ -40,7 +31,6 @@ export default function Home() {
             Catalogs
           </Typography>
           <Box sx={{ flexGrow: 1 }} />
-          <Button variant="outlined" size="large" onClick={handleTestApi}>TESTE API</Button>
           <Button variant="outlined" size="large" href={`/catalog/register/`}>New Catalog</Button>
         </Stack>
       </Box>

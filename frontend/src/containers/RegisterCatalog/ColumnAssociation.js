@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from "react";
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import TextField from '@mui/material/TextField';
 import Typography from "@mui/material/Typography";
 import LinearProgress from '@mui/material/LinearProgress';
 import RegisterCatalogToolbar from "./Toolbar";
 import { useRegisterCatalog } from "@/contexts/RegisterCatalogContext";
 import ColumnInputReadOnly from "@/components/ColumnInputReadOnly";
 import ColumnInputUcd from "@/components/ColumnInputUcd";
-import { ucds } from "@/data/ucds";
+import { ucds, mandatoryUcds } from "@/data/ucds";
 import { useMutation } from '@tanstack/react-query'
 import { getTableColumn, updateTableColumn } from "@/services/Metadata";
+
 
 export default function RegisterCatalogColumnAssociation() {
 
@@ -113,6 +113,8 @@ export default function RegisterCatalogColumnAssociation() {
     )
   }
 
+  const isValid = usedUcds.length >= mandatoryUcds.length && usedUcds.every((ucd) => mandatoryUcds.includes(ucd))
+
   return (
     <Box
       component="form"
@@ -141,8 +143,8 @@ export default function RegisterCatalogColumnAssociation() {
         )
       }
       )}
-      {isLoading ? <LinearProgress /> : null}
-      <RegisterCatalogToolbar onNext={handleNext} onPrev={handlePrev} />
+      {isLoading ? <LinearProgress /> : <Box sx={{ height: 4, marginBottom: 2 }} />}
+      <RegisterCatalogToolbar onNext={isValid ? handleNext : undefined} onPrev={handlePrev} />
     </Box>
   );
 }

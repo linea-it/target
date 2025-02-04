@@ -4,6 +4,8 @@ import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import LinearProgress from '@mui/material/LinearProgress';
 import Alert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
+
 import RegisterCatalogToolbar from "./Toolbar";
 import { useRegisterCatalog } from "@/contexts/RegisterCatalogContext";
 import UserTableSelect from "@/components/UserTableSelect";
@@ -65,7 +67,12 @@ export default function RegisterCatalogBasicInformation() {
       noValidate
       autoComplete="off"
     >
-      <UserTableSelect onChange={onSelectTable} value={catalog.schema && catalog.table ? `${catalog.schema}.${catalog.table}` : ''} />
+      {catalog.id ? (
+        <TextField label="Table" variant="outlined" fullWidth value={`${catalog.schema}.${catalog.table}`} disabled />
+      ) : (
+        <UserTableSelect onChange={onSelectTable} value={catalog.schema && catalog.table ? `${catalog.schema}.${catalog.table}` : ''} />
+      )}
+
       <TextField
         label="Name"
         variant="outlined"
@@ -96,7 +103,8 @@ export default function RegisterCatalogBasicInformation() {
         onChange={handleChange} />
 
       {mutation.isLoading ? <LinearProgress /> : null}
-      {mutation.isError ? <Alert severity="error">{mutation.error.message}</Alert> : null}
+      {mutation.isError ? <Alert severity="error">
+        <AlertTitle>{mutation.error.message}</AlertTitle>{mutation.error.response.data.error}</Alert> : null}
 
       {!isValid && (<RegisterCatalogToolbar />)}
       {isValid && (<RegisterCatalogToolbar onNext={handleNext} />)}

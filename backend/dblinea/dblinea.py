@@ -12,10 +12,12 @@ import pandas as pd
 import sqlalchemy
 from sqlalchemy import MetaData
 from sqlalchemy import Table
+from sqlalchemy import bindparam
 from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy.sql import select
 from sqlalchemy.sql import text
+from sqlalchemy.sql.expression import between
 
 from dblinea.db_postgresql import DBPostgresql
 
@@ -464,7 +466,9 @@ class DBBase:
         sql = str(
             stm.compile(
                 dialect=self._database.get_dialect(),
-                compile_kwargs={"literal_binds": with_parameters},
+                compile_kwargs={
+                    "literal_binds": with_parameters,
+                },
             ),
         )
 
@@ -473,9 +477,60 @@ class DBBase:
 
         return sql
 
-    def _debug_query(self, stm):
+    def _debug_query(self, stm, with_parameters: bool = True, values=None):
+        # https://docs.sqlalchemy.org/en/20/faq/sqlexpressions.html#rendering-bound-parameters-inline
         if not isinstance(stm, str):
-            stm = self.stm_to_str(stm)
+            stm = self.stm_to_str(stm, with_parameters)
 
         if self._debug:
-            print(stm)
+            if with_parameters is False and values is not None:
+                print(str(stm) % values)
+            else:
+                print(stm)
+
+    def get_column_obj(self, tbl, column_name):
+        return getattr(tbl.c, column_name)
+
+    def do_filter(self, table, filters):
+        f = []
+        values = {}
+        for _filter in filters:
+            column = self.get_column_obj(table, _filter["column"])
+            op = _filter["operator"]
+            value = _filter["value"]
+            if op == "=":
+                op = "__eq__"
+
+            elif op == "!=":
+                op = "__ne__"
+
+            elif op == "<":
+                op = "__lt__"
+
+            elif op == "<=":
+                op = "__le__"
+
+            elif op == ">":
+                op = "__gt__"
+
+            elif op == ">=":
+                op = "__ge__"
+
+            elif op == "range":
+                # between
+                op = None
+                value = value.split(",")
+                clause = between(column, float(value[0]), float(value[1]))
+            else:
+                op = "__%s__" % op
+
+            if op != None:
+                # Usando bind param para evitar a necessidade de converter os tipos
+                # dos valores com as colunas
+                c = getattr(column, op)(bindparam(column.key))
+                f.append(c)
+                values[_filter["column"]] = value
+            else:
+                f.append(clause)
+
+        return f, values
