@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 
 
 # Requirements are installed here to ensure they will be cached.
-COPY ./requirements .
+COPY ./backend/requirements .
 
 # Create Python Dependency and Sub-Dependency Wheels.
 RUN pip wheel --wheel-dir /usr/src/app/wheels  \
@@ -84,7 +84,7 @@ RUN chmod +x /start-flower
 
 
 # copy application code to WORKDIR
-COPY --chown=django:django . ${APP_HOME}
+COPY --chown=django:django ./backend ${APP_HOME}
 
 # make django owner of the WORKDIR directory as well.
 RUN chown -R django:django ${APP_HOME}
@@ -92,6 +92,7 @@ RUN chown -R django:django ${APP_HOME}
 USER django
 
 RUN DATABASE_URL="" \
+  DATABASE_MYDB_URL="" \
   DJANGO_SETTINGS_MODULE="config.settings.test" \
   python manage.py compilemessages
 

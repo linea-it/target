@@ -7,6 +7,13 @@ Target Viewer by LIneA
 
 License: MIT
 
+## Build docker imagens
+
+```bash
+cd backend && docker build -f compose/production/django/Dockerfile -t linea/target:backend_teste .
+cd frontend && docker build -f compose/production/frontend/Dockerfile -t linea/target:frontend_teste .
+```
+
 ## Settings
 
 Moved to [settings](https://cookiecutter-django.readthedocs.io/en/latest/1-getting-started/settings.html).

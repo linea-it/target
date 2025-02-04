@@ -9,7 +9,7 @@ import Stack from '@mui/material/Stack';
 import IconButton from '@mui/material/IconButton';
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import ShareIcon from '@mui/icons-material/Share';
-import { getClusterById } from "@/data/clusters";
+// import { getClusterById } from "@/data/clusters";
 import ClusterDetailContainer from "@/containers/ClusterDetail";
 
 export default function SingleTargetDetail({ params }) {
@@ -18,7 +18,7 @@ export default function SingleTargetDetail({ params }) {
 
   let record = undefined
   if (id) {
-    record = getClusterById(id)
+    // record = getClusterById(id)
   }
 
   return (
