@@ -19,10 +19,9 @@ from .base import env
 # https://docs.djangoproject.com/en/dev/ref/settings/#secret-key
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
-ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["targetviewer.linea.org.br"])
-
+ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["targetviewer-dev.linea.org.br/"])
 # Complete URL of the production server with protocol and port
-BASE_HOST = env("BASE_HOST", default="https://targetviewer.linea.org.br")
+BASE_HOST = env("BASE_HOST", default="https://targetviewer-dev.linea.org.br/")
 
 # DATABASES
 # ------------------------------------------------------------------------------

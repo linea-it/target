@@ -1,0 +1,31 @@
+# PostgreSQL
+# ------------------------------------------------------------------------------
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=target
+POSTGRES_USER=debug
+POSTGRES_PASSWORD=debug
+
+# General
+# ------------------------------------------------------------------------------
+BASE_HOST = https://targetviewer-dev.linea.org.br/
+DJANGO_DEBUG=True
+DJANGO_SETTINGS_MODULE=config.settings.staging
+DJANGO_SECRET_KEY=MDaRD4xT4tUmqETKbvNTp1tP7HbrimLXDIeEvztImXKkCrAXLyGQ7zspiH5vHANH
+DJANGO_ALLOWED_HOSTS=targetviewer-dev.linea.org.br
+DJANGO_UWSGI_WORKER_PROCESSES=4
+DJANGO_UWSGI_WORKER_THREADS=2
+# Databases
+DATABASE_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB
+DATABASE_MYDB_URL=postgres://<username>:<password>@<db_host>:<db_port>/<db_name>
+MYDB_SCHEMA_PREFIX=mydb_
+# Redis
+# ------------------------------------------------------------------------------
+REDIS_URL=redis://redis:6379/0
+
+# Celery /Flower
+# ------------------------------------------------------------------------------
+CELERY_FLOWER_USER=debug
+CELERY_FLOWER_PASSWORD=debug
+
+

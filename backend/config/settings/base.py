@@ -361,6 +361,8 @@ SPECTACULAR_SETTINGS = {
     "SCHEMA_PATH_PREFIX": "/api/",
 }
 
+# LINEA Settings
+# ------------------------------------------------------------------------------
 # LINEA MYDB
 # ------------------------------------------------------------------------------
-USER_SCHEMA_PREFIX = "mydb_"
+USER_SCHEMA_PREFIX = env("MYDB_SCHEMA_PREFIX", default="mydb_")
