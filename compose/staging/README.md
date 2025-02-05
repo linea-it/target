@@ -89,7 +89,7 @@ docker exec -it $(docker ps -q -f name=nginx) nginx -s reload
 
 Build Manual das imagens docker
 ```bash
-cd api && docker build -f compose/production/django/Dockerfile -t linea/target:backend_$(git describe --always) .
+docker build -f compose/production/django/Dockerfile -t linea/target:backend_$(git describe --always) .
 
-cd frontend && build -f compose/production/django/Dockerfile -t linea/target:frontend_$(git describe --always) .
+docker build -f compose/production/frontend/Dockerfile -t linea/target:frontend_$(git describe --always) .
 ```

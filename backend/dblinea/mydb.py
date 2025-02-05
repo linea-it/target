@@ -16,7 +16,7 @@ class MyDB(DBBase):
             dbname=db_settings["NAME"],
             dbuser=db_settings["USER"],
             dbpass=db_settings["PASSWORD"],
-            dbport=3307,
+            dbport=db_settings["PORT"],
             dbengine="postgresql_psycopg3",
             debug=True,
         )
