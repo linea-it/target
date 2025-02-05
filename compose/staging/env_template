@@ -9,6 +9,7 @@ POSTGRES_PASSWORD=debug
 # General
 # ------------------------------------------------------------------------------
 BASE_HOST=https://targetviewer-dev.linea.org.br/
+DOMAIN=targetviewer-dev.linea.org.br
 DJANGO_DEBUG=True
 DJANGO_SETTINGS_MODULE=config.settings.production
 DJANGO_SECRET_KEY=MDaRD4xT4tUmqETKbvNTp1tP7HbrimLXDIeEvztImXKkCrAXLyGQ7zspiH5vHANH
@@ -28,4 +29,11 @@ REDIS_URL=redis://redis:6379/0
 CELERY_FLOWER_USER=debug
 CELERY_FLOWER_PASSWORD=debug
 
+# SAML2
+AUTH_SAML2_LOGIN_URL_CILOGON=$BASE_HOST/saml2/login/?idp=https://satosa.linea.org.br/linea/proxy/aHR0cHM6Ly9jaWxvZ29uLm9yZw==
 
+# COmanage Autorization
+COMANAGE_SERVER_URL=https://register.linea.org.br
+COMANAGE_USER=co_2.linea.apps
+COMANAGE_PASSWORD=<password>
+COMANAGE_COID=2
