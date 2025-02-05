@@ -10,8 +10,9 @@ License: MIT
 ## Build docker imagens
 
 ```bash
-cd backend && docker build -f compose/production/django/Dockerfile -t linea/target:backend_teste .
-cd frontend && docker build -f compose/production/frontend/Dockerfile -t linea/target:frontend_teste .
+docker build -f compose/production/django/Dockerfile -t linea/target:backend_$(git describe --always) .
+
+docker build -f compose/production/frontend/Dockerfile -t linea/target:frontend_$(git describe --always) .
 ```
 
 ## Settings
