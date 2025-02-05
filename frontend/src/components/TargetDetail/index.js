@@ -22,18 +22,20 @@ export default function TargetDetail(props) {
       <Box>
         <Toolbar>
           <Button variant="outlined" size="large"
-            href={`${pathname}/target_detail/${record?.id}`}
+            href={`${pathname}/target_detail/${record?.meta_id}`}
             disabled={!record}
           >
             Object Detail</Button>
         </Toolbar>
       </Box>
       <Box sx={{ flexGrow: 1 }}>
-        <Aladin position={record && {
-          ra: record.ra,
-          dec: record.dec,
-          fov: 0.5
-        }} />
+        {record && (
+          <Aladin position={record && {
+            ra: record.meta_ra,
+            dec: record.meta_dec,
+            fov: 0.01
+          }} />
+        )}
       </Box>
     </Stack>
 

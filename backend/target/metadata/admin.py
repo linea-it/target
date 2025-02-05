@@ -8,13 +8,14 @@ from .models import Table
 @admin.register(Schema)
 class SchemaAdmin(admin.ModelAdmin):
     search_fields = ["name"]
-    list_display = ["name", "owner", "order", "created_at", "updated_at"]
+    list_display = ["id", "name", "owner", "order", "created_at", "updated_at"]
 
 
 @admin.register(Table)
 class TableAdmin(admin.ModelAdmin):
     search_fields = ["name"]
     list_display = [
+        "id",
         "name",
         "schema",
         "title",

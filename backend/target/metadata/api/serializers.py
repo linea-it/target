@@ -17,6 +17,7 @@ class ColumnSerializer(serializers.ModelSerializer[Column]):
             "unit",
             "ucd",
             "datatype",
+            "pythontype",
             "order",
             "created_at",
             "updated_at",
@@ -34,6 +35,7 @@ class ResumedColumnSerializer(serializers.ModelSerializer[Column]):
             "unit",
             "ucd",
             "datatype",
+            "pythontype",
             "order",
         ]
 
@@ -51,7 +53,9 @@ class TableSerializer(serializers.ModelSerializer[Table]):
             "order",
             "nrows",
             "size",
+            "catalog_type",
             "created_at",
+            "is_completed",
             "updated_at",
         ]
 
@@ -69,6 +73,9 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
     owner = serializers.SerializerMethodField()
     schema = serializers.SerializerMethodField()
     table = serializers.SerializerMethodField()
+    property_id = serializers.SerializerMethodField()
+    property_ra = serializers.SerializerMethodField()
+    property_dec = serializers.SerializerMethodField()
 
     class Meta:
         model = Table
@@ -83,8 +90,13 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
             "order",
             "nrows",
             "size",
+            "catalog_type",
             "created_at",
             "updated_at",
+            "is_completed",
+            "property_id",
+            "property_ra",
+            "property_dec",
             "columns",
         ]
 
@@ -96,3 +108,21 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
 
     def get_table(self, obj):
         return obj.name
+
+    def get_property_id(self, obj):
+        col = obj.columns.filter(ucd="meta.id;meta.main").first()
+        if col:
+            return col.name
+        return None
+
+    def get_property_ra(self, obj):
+        col = obj.columns.filter(ucd="pos.eq.ra;meta.main").first()
+        if col:
+            return col.name
+        return None
+
+    def get_property_dec(self, obj):
+        col = obj.columns.filter(ucd="pos.eq.dec;meta.main").first()
+        if col:
+            return col.name
+        return None

@@ -23,7 +23,7 @@ export default function TargetDetailContainer({ record }) {
           <Aladin position={record && {
             ra: record.ra,
             dec: record.dec,
-            fov: 0.05
+            fov: 0.01
           }} />
         </Paper>
       </Grid>

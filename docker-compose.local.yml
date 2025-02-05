@@ -25,6 +25,8 @@ services:
     # ports:
     #   - '8000:8000'
     command: /start
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   postgres:
     build:
@@ -32,9 +34,11 @@ services:
       dockerfile: ./compose/production/postgres/Dockerfile
     # image: target_production_postgres
     # container_name: target_local_postgres
+    ports:
+      - "5432:5432"
     volumes:
-      - ./data/pg_data:/var/lib/postgresql/data
-      - ./data/pg_data:/backups
+      - ./pg_data:/var/lib/postgresql/data
+      - ./pg_data:/backups
     env_file:
       - .envs/.local/.postgres
   # -------------- FOR FUTURE USE --------------

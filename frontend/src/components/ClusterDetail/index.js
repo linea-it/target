@@ -27,7 +27,7 @@ export default function ClusterDetail(props) {
       <Box>
         <Toolbar>
           <Button variant="outlined" size="large"
-            href={`${pathname}/cluster_detail/${record?.id}`}
+            href={`${pathname}/cluster_detail/${record?.meta_id}`}
             disabled={!record}
           >
             Cluster Detail</Button>
@@ -41,8 +41,8 @@ export default function ClusterDetail(props) {
       </Box>
       <Box sx={{ flexGrow: 1 }}>
         <Aladin position={record && {
-          ra: record.ra,
-          dec: record.dec,
+          ra: record.meta_ra,
+          dec: record.meta_dec,
           fov: 0.5
         }} />
       </Box>

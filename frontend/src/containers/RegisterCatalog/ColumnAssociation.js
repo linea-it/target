@@ -1,20 +1,52 @@
 import React, { useState, useEffect } from "react";
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import TextField from '@mui/material/TextField';
+import Typography from "@mui/material/Typography";
+import LinearProgress from '@mui/material/LinearProgress';
 import RegisterCatalogToolbar from "./Toolbar";
 import { useRegisterCatalog } from "@/contexts/RegisterCatalogContext";
-import { Typography } from "@mui/material";
 import ColumnInputReadOnly from "@/components/ColumnInputReadOnly";
 import ColumnInputUcd from "@/components/ColumnInputUcd";
-import { ucds } from "@/data/ucds";
+import { ucds, mandatoryUcds } from "@/data/ucds";
+import { useMutation } from '@tanstack/react-query'
+import { getTableColumn, updateTableColumn } from "@/services/Metadata";
+
+
 export default function RegisterCatalogColumnAssociation() {
 
   const { setActiveStep, catalog } = useRegisterCatalog();
 
   const [usedUcds, setUsedUcds] = useState([])
 
-  const columns = catalog.columns;
+  const [columns, setColumns] = useState(catalog.columns)
+
+  const [isLoading, setIsLoading] = useState(false)
+
+  const loadColumns = React.useCallback(async () => {
+    setIsLoading(true)
+    getTableColumn(catalog.id).then((response) => {
+      setColumns(response.data)
+    }).catch((error) => {
+      // TODO: handle Error
+      console.log('error', error)
+    }).finally(() => {
+      setIsLoading(false)
+    })
+  }, [])
+
+  const mutation = useMutation({
+    mutationFn: updateTableColumn,
+    onSuccess: (data, variables, context) => {
+      loadColumns()
+    },
+    onError: (error, variables, context) => {
+      // TODO: Handle Error
+      console.log('onError', error)
+      // An error happened!
+      console.log(`rolling back optimistic update with id ${context.id}`)
+    },
+  })
+
 
   useEffect(() => {
     const useducds = []
@@ -27,35 +59,26 @@ export default function RegisterCatalogColumnAssociation() {
   }, [columns])
 
   const handleNext = () => {
-    //  TODO: Save data
-    console.log("Next");
     setActiveStep(prevActiveStep => prevActiveStep + 1);
   }
 
   const handlePrev = () => {
-    //  TODO: Save data
-    console.log("Prev");
     setActiveStep(prevActiveStep => prevActiveStep - 1);
   }
 
   const changeColumn = (column, ucd, value) => {
-    console.log("changeColumn", column, ucd, value)
-
-    columns.forEach(row => {
-      if (row.name === column.name) {
-        row.ucd = ucd
-        row.value = value
-      }
+    // console.log("changeColumn", column, ucd, value)
+    mutation.mutate({
+      ...column,
+      ucd: ucd
     })
   }
 
   const onSelectUcd = (column, ucd) => {
-    console.log("onSelectUcd", column, ucd)
     changeColumn(column, ucd, null)
   }
 
   const onClear = (column) => {
-    console.log("onClear", column)
     changeColumn(column, null, null)
   }
 
@@ -68,8 +91,6 @@ export default function RegisterCatalogColumnAssociation() {
     })
     return availvableUcds
   }
-
-  console.log('usedUcds', usedUcds)
 
   const createField = (column) => {
     if (column.ucd) {
@@ -91,6 +112,8 @@ export default function RegisterCatalogColumnAssociation() {
 
     )
   }
+
+  const isValid = usedUcds.length >= mandatoryUcds.length && usedUcds.every((ucd) => mandatoryUcds.includes(ucd))
 
   return (
     <Box
@@ -120,7 +143,8 @@ export default function RegisterCatalogColumnAssociation() {
         )
       }
       )}
-      <RegisterCatalogToolbar onNext={handleNext} onPrev={handlePrev} />
+      {isLoading ? <LinearProgress /> : <Box sx={{ height: 4, marginBottom: 2 }} />}
+      <RegisterCatalogToolbar onNext={isValid ? handleNext : undefined} onPrev={handlePrev} />
     </Box>
   );
 }

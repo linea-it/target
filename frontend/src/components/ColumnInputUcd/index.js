@@ -34,12 +34,12 @@ export default function ColumnInputUcd({ column, options, onChange }) {
             ))}
           </TextField>
         )}
-        {type === 'text' && (
+        {/* {type === 'text' && (
           <TextField value={value} onChange={handleChange}></TextField>
         )}
         <IconButton onClick={handleChangeType}>
           <EditIcon />
-        </IconButton>
+        </IconButton> */}
       </Stack>
     </FormControl>
   )

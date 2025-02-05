@@ -1,3 +1,4 @@
+'use client';
 import React from "react";
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -6,6 +7,7 @@ import Link from '@mui/material/Link'
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import ListCatalogContainer from '@/containers/ListCatalog';
+import { userTables } from "@/services/Metadata";
 export default function Home() {
 
   return (

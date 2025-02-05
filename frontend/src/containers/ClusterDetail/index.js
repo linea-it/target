@@ -4,13 +4,13 @@ import Grid from '@mui/material/Grid2';
 import Aladin from "@/components/Aladin";
 import TargetProperties from "@/components/TargetProperties";
 import ClusterMembersDataGrid from "@/components/ClusterMembersDataGrid";
-import { getMemebersByClusterId } from "@/data/clustersMembers";
+// import { getMemebersByClusterId } from "@/data/clustersMembers";
 
 export default function ClusterDetailContainer({ record }) {
 
   let members = []
   if (record.id) {
-    members = getMemebersByClusterId(record.id)
+    // members = getMemebersByClusterId(record.id)
   }
 
   const [selectedRecord, setSelectedRecord] = React.useState(undefined);

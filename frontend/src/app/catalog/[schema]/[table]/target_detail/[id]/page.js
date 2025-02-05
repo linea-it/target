@@ -9,15 +9,38 @@ import Stack from '@mui/material/Stack';
 import IconButton from '@mui/material/IconButton';
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import ShareIcon from '@mui/icons-material/Share';
-import { getTargetById } from "@/data/targets";
+import { getMetadataBySchemaTable, getTableRowById } from "@/services/Metadata";
 import TargetDetailContainer from "@/containers/TargetDetail";
+import Loading from "@/components/Loading";
+import { useQuery } from '@tanstack/react-query'
 
 
 export default function SingleTargetDetail({ params }) {
   // asynchronous access of `params.id`.
   const { schema, table, id } = React.use(params)
 
-  const record = getTargetById(id)
+  const { isLoading: isLoadingTable, data: tableRecord } = useQuery({
+    queryKey: ['metadataBySchemaTable', { schema, table }],
+    queryFn: getMetadataBySchemaTable,
+    select: (data) => data?.data.results[0],
+    staleTime: 5 * 10000
+  })
+
+  const { isLoading: isLoadingRow, data: record } = useQuery({
+    queryKey: ['tableRowById', { tableId: tableRecord?.id, filters: { [tableRecord?.property_id]: parseInt(id) } }],
+    queryFn: getTableRowById,
+    enabled: tableRecord !== undefined,
+    select: (data) => data?.data.results[0],
+    staleTime: 5 * 10000
+  })
+
+  if (isLoadingTable || isLoadingRow) {
+    return <Loading isLoading={isLoadingTable || isLoadingRow} />
+  }
+
+  if (record === undefined) {
+    return <div>Not found</div>
+  }
 
   return (
     <Box sx={{
@@ -36,10 +59,10 @@ export default function SingleTargetDetail({ params }) {
             Home
           </Link>
           <Link color="inherit" href="/">
-            {schema}
+            {tableRecord?.schema}
           </Link>
           <Link color="inherit" href={`/catalog/${schema}/${table}`}>
-            {table}
+            {tableRecord?.table}
           </Link>
           <Typography> {id} </Typography>
         </Breadcrumbs>
@@ -50,13 +73,13 @@ export default function SingleTargetDetail({ params }) {
             <ArrowBackIosIcon />
           </IconButton>
           <Typography variant="h5">
-            Target {record.id} - {record.ra}, {record.dec}
+            Target {record?.id} - {record?.ra}, {record?.dec}
           </Typography>
-          <IconButton>
+          <IconButton disabled>
             <ShareIcon />
           </IconButton>
           <Box sx={{ flexGrow: 1 }} />
-          <Button variant="outlined" size="large">Statistics</Button>
+          <Button variant="outlined" size="large" disabled>Statistics</Button>
         </Stack>
       </Box>
       <TargetDetailContainer record={record} />
