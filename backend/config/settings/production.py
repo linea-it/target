@@ -194,23 +194,32 @@ LOGGING = {
 SPECTACULAR_SETTINGS["SERVERS"] = [
     {"url": BASE_HOST, "description": "Production server"},
 ]
+
+# ------------------------------------------------------------------------------
 # Your stuff...
 # ------------------------------------------------------------------------------
+
 # COmanage Autorization
-COMANAGE_SERVER_URL = env("COMANAGE_SERVER_URL", "https://register.linea.org.br")
-COMANAGE_USER = env("COMANAGE_USER")
-COMANAGE_PASSWORD = env("COMANAGE_PASSWORD")
-COMANAGE_COID = env("COMANAGE_COID", 2)
+# ------------------------------------------------------------------------------
+COMANAGE_SERVER_URL = os.environ.get(
+    "COMANAGE_SERVER_URL", "https://register.linea.org.br"
+)
+COMANAGE_USER = os.environ.get("COMANAGE_USER", "co_2.linea.apps")
+COMANAGE_PASSWORD = os.environ.get("COMANAGE_PASSWORD")
+COMANAGE_COID = os.environ.get("COMANAGE_COID")
 
 # Django SAML2
-
+# ------------------------------------------------------------------------------
 # Declarado no inicio do arquivo.
 # DOMAIN = env("DOMAIN", default="targetviewer.linea.org.br")
+
+CONFIG_DIR = Path(BASE_DIR).joinpath("config")
 
 # FQDN Exemplo:https://targetviewer.linea.org.br
 FQDN = BASE_HOST
 
-CERT_DIR = "certificates"
+CERT_DIR = CONFIG_DIR.joinpath("certificates")
+ATTR_DIR = CONFIG_DIR.joinpath("attribute-maps")
 
 # Including SAML2 Backend Authentication
 # AUTHENTICATION_BACKENDS += ("djangosaml2.backends.Saml2Backend", )
@@ -257,14 +266,14 @@ SAML_CONFIG = {
     "xmlsec_binary": "/usr/bin/xmlsec1",
     "entityid": FQDN + "/saml2/metadata/",
     # Diretório contendo os esquemas de mapeamento de atributo
-    "attribute_map_dir": os.path.join(BASE_DIR, "attribute-maps"),
-    "description": "SP Science Server",
+    "attribute_map_dir": ATTR_DIR,
+    "description": "SP Target Viewer",
     "service": {
         "sp": {
-            "name": "SP Science Server",
+            "name": "SP Target Viewer",
             "ui_info": {
-                "display_name": {"text": "SP Science Server", "lang": "en"},
-                "description": {"text": "SP Science Server", "lang": "en"},
+                "display_name": {"text": "SP Target Viewer", "lang": "en"},
+                "description": {"text": "SP Target Viewer", "lang": "en"},
                 "information_url": {"text": FQDN, "lang": "en"},
                 "privacy_statement_url": {"text": FQDN, "lang": "en"},
             },
@@ -304,22 +313,22 @@ SAML_CONFIG = {
                 "url": "https://identity.linea.org.br/metadata/satosa-prod-frontend-cilogon.xml",
                 "cert": None,
             },
-            {
-                "url": "https://identity.linea.org.br/metadata/satosa-prod-frontend-cafe.xml",
-                "cert": None,
-            },
-        ]
+            # {
+            #     "url": "https://identity.linea.org.br/metadata/satosa-prod-frontend-cafe.xml",
+            #     "cert": None,
+            # },
+        ],
     },
     # Configurado como 1 para fornecer informações de debug
     "debug": 1,
     # Signature
-    "key_file": os.path.join(BASE_DIR, CERT_DIR, "mykey.pem"),  # private part
-    "cert_file": os.path.join(BASE_DIR, CERT_DIR, "mycert.pem"),  # public part
+    "key_file": CERT_DIR.joinpath("mykey.pem"),  # private part
+    "cert_file": CERT_DIR.joinpath("mycert.pem"),  # public part
     # Encriptation
     "encryption_keypairs": [
         {
-            "key_file": os.path.join(BASE_DIR, CERT_DIR, "mykey.pem"),  # private part
-            "cert_file": os.path.join(BASE_DIR, CERT_DIR, "mycert.pem"),  # public part
+            "key_file": CERT_DIR.joinpath("mykey.pem"),  # private part
+            "cert_file": CERT_DIR.joinpath("mycert.pem"),  # public part
         }
     ],
     "contact_person": [
