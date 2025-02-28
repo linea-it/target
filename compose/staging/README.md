@@ -22,6 +22,9 @@ cd certificates \
 && cd ..
 ```
 
+Para a autenticação com SATOSA funcionar é necessário estabelecera relação de confiança entre as aplicações.
+
+
 Editar o arquivo .env com as variaveis de acesso ao banco de dados, Secrets, usernames e passwords
 
 ```bash

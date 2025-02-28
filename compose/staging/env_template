@@ -40,4 +40,4 @@ COMANAGE_USER=co_2.linea.apps
 COMANAGE_PASSWORD=<password>
 COMANAGE_COID=2
 
-https://targetviewer-dev.linea.org.br/saml2/login/?idp=https://satosa.linea.org.br/linea/proxy/aHR0cHM6Ly9jaWxvZ29uLm9yZw==
+# https://targetviewer-dev.linea.org.br/saml2/login/?idp=https://satosa.linea.org.br/linea/proxy/aHR0cHM6Ly9jaWxvZ29uLm9yZw==

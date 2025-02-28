@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   # dependencies for building Python packages
   build-essential \
   # psycopg dependencies
-  libpq-dev
+  libpq-dev 
+  
 
 
 # Requirements are installed here to ensure they will be cached.
@@ -45,6 +46,19 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   libpq-dev \
   # Translations dependencies
   gettext \
+  # SAML dependencies
+  libaio-dev \
+  libsasl2-dev \
+  libldap2-dev \
+  libssl-dev \
+  xmlsec1 \
+  # other dependencies
+  unzip \
+  git \
+  zsh \
+  wget \
+  curl \
+  vim \
   # entrypoint
   wait-for-it \
   # cleaning up unused files

@@ -266,7 +266,7 @@ SAML_CONFIG = {
     "xmlsec_binary": "/usr/bin/xmlsec1",
     "entityid": FQDN + "/saml2/metadata/",
     # Diretório contendo os esquemas de mapeamento de atributo
-    "attribute_map_dir": ATTR_DIR,
+    "attribute_map_dir": str(ATTR_DIR),
     "description": "SP Target Viewer",
     "service": {
         "sp": {
@@ -310,25 +310,21 @@ SAML_CONFIG = {
     "metadata": {
         "remote": [
             {
-                "url": "https://identity.linea.org.br/metadata/satosa-prod-frontend-cilogon.xml",
+                "url": "https://www.linea.org.br/static/metadata/satosa-prod-frontend-cilogon.xml",
                 "cert": None,
             },
-            # {
-            #     "url": "https://identity.linea.org.br/metadata/satosa-prod-frontend-cafe.xml",
-            #     "cert": None,
-            # },
         ],
     },
     # Configurado como 1 para fornecer informações de debug
     "debug": 1,
     # Signature
-    "key_file": CERT_DIR.joinpath("mykey.pem"),  # private part
-    "cert_file": CERT_DIR.joinpath("mycert.pem"),  # public part
+    "key_file": str(CERT_DIR.joinpath("mykey.pem")),  # private part
+    "cert_file": str(CERT_DIR.joinpath("mycert.pem")),  # public part
     # Encriptation
     "encryption_keypairs": [
         {
-            "key_file": CERT_DIR.joinpath("mykey.pem"),  # private part
-            "cert_file": CERT_DIR.joinpath("mycert.pem"),  # public part
+            "key_file": str(CERT_DIR.joinpath("mykey.pem")),  # private part
+            "cert_file": str(CERT_DIR.joinpath("mycert.pem")),  # public part
         }
     ],
     "contact_person": [
