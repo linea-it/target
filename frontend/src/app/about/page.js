@@ -6,6 +6,7 @@ import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Link from 'next/link'
 import Box from '@mui/material/Box'
 import Footer from '@/components/Footer';
+import { useTheme } from '@mui/material/styles';
 
 export default function About() {
   return (
@@ -16,7 +17,7 @@ export default function About() {
           display: 'flex',
           flexDirection: 'column',
           minHeight: 'calc(100vh - 64px - 496px)',
-          padding: 2
+          padding: 2,
         }}
       >
         <Grid container spacing={2}>
