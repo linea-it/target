@@ -6,9 +6,24 @@ git clone https://github.com/linea-it/target.git target_temp \
 && cp -r target_temp/compose/staging/ target-dev \
 && rm -rf target_temp \
 && cd target-dev/ \
-&& mkdir -p data data/tmp data/redis logs \
+&& mkdir -p data data/tmp data/redis logs certificates \
 && mv env_template .env \
 ```
+
+Generate SAML2 Certificates
+
+```bash
+cd certificates \
+&& openssl genrsa -out mykey.key 2048 \
+&& openssl req -new -key mykey.key -out mycert.csr \
+&& openssl x509 -req -days 365 -in mycert.csr -signkey mykey.key -out mycert.crt \
+&& cp mykey.key mykey.pem \
+&& cp mycert.crt mycert.pem \
+&& cd ..
+```
+
+Para a autenticação com SATOSA funcionar é necessário estabelecera relação de confiança entre as aplicações.
+
 
 Editar o arquivo .env com as variaveis de acesso ao banco de dados, Secrets, usernames e passwords
 

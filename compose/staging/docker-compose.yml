@@ -4,16 +4,20 @@ services:
     volumes:
       - ./data/tmp:/data
       - .logs:/logs
+      # Django SAML
+      - ./certificates:/app/config/certificates
     depends_on:
       - postgres
       - redis
     env_file:
       - .env
     command: /start
+
   frontend:
     image: linea/target:frontend_teste
     depends_on:
       - backend
+
   postgres:
     image: docker.io/postgres:14
     volumes:
