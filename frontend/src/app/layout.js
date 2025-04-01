@@ -2,7 +2,6 @@ import "./globals.css";
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
 import { Roboto } from 'next/font/google';
 import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from "@material-ui/core/CssBaseline";
 import theme from '../theme';
 import MainContainer from "@/containers/MainContainer";
 
@@ -25,7 +24,7 @@ export default function RootLayout(props) {
       <body className={roboto.variable}>
         <AppRouterCacheProvider options={{ enableCssLayer: true }}>
           <ThemeProvider theme={theme}>
-            <CssBaseline />
+            {/* <CssBaseline /> */}
             <MainContainer>
               {children}
             </MainContainer>
