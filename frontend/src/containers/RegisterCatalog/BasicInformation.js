@@ -16,7 +16,7 @@ import { registerUserTable, updateUserTable } from "@/services/Metadata";
 
 export default function RegisterCatalogBasicInformation() {
 
-  const { catalog, setCatalog, setActiveStep } = useRegisterCatalog();
+  const { catalog, setCatalog, setActiveStep, emptyCatalog } = useRegisterCatalog();
 
   const mutation = useMutation({
     mutationFn: (data) => {
@@ -40,6 +40,10 @@ export default function RegisterCatalogBasicInformation() {
 
   const handleNext = () => {
     mutation.mutate(catalog)
+  }
+
+  const handleClear = () => {
+    setCatalog(emptyCatalog)
   }
 
   const onSelectTable = (value) => {
@@ -106,9 +110,7 @@ export default function RegisterCatalogBasicInformation() {
       {mutation.isError ? <Alert severity="error">
         <AlertTitle>{mutation.error.message}</AlertTitle>{mutation.error.response.data.error}</Alert> : null}
 
-      {!isValid && (<RegisterCatalogToolbar />)}
-      {isValid && (<RegisterCatalogToolbar onNext={handleNext} />)}
-
+      <RegisterCatalogToolbar onClear={handleClear} onNext={isValid ? handleNext : null} />
     </Box>
   );
 }
