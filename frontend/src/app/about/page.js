@@ -37,7 +37,7 @@ export default function About() {
 
               Step-by-step:
 
-              Create a new target list as a table in the user's MyDB space on {' '}
+              Create a new target list as a table in the user&apos;s MyDB space on {' '}
               <Link
                 href="https://userquery.linea.org.br/"
                 target="_blank"
@@ -46,7 +46,7 @@ export default function About() {
                 User Query
               </Link>.
               For the Target Viewer to be able to find the target images, the table must contain the columns objectId, ra, and dec.
-              Click the "NEW CATALOG" button on the Target Viewer's HOME page and fill in the 3-step form to register the table as a target list. After submitting the form, the target list will appear in the menu on the HOME page.
+              Click the &quot;NEW CATALOG&quot; button on the Target Viewer&apos;s HOME page and fill in the 3-step form to register the table as a target list. After submitting the form, the target list will appear in the menu on the HOME page.
             </Typography>
             <Divider sx={{ mt: 4, mb: 4 }} />
             <Typography variant="h6" sx={{ mb: 2 }}>
@@ -79,7 +79,7 @@ export default function About() {
               Acknowledgements
             </Typography>
             <Typography variant="body1" component="blockquote" >
-              This application has made use of "Aladin sky atlas" developed at CDS, Strasbourg Observatory, France
+              This application has made use of &quot;Aladin sky atlas&quot; developed at CDS, Strasbourg Observatory, France
               →
               {' '}<Link
                 href="https://ui.adsabs.harvard.edu/abs/2000A%26AS..143...33B/abstract"
