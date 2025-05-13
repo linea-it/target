@@ -38,6 +38,7 @@ if settings.DEBUG:
 urlpatterns += [
     # API base url
     path("api/", include("config.api_router")),
+    path("api/logout/", CommonViews.teste, name="logout_user"),
     path("api/common/teste/", CommonViews.teste, name="teste"),
     # DRF auth token
     path("api/auth-token/", obtain_auth_token),

@@ -20,13 +20,6 @@ export function getAPIClient(ctx) {
     }
   })
 
-  // api.defaults.xsrfCookieName = 'target.csrftoken';
-  // api.defaults.xsrfHeaderName = 'X-CSRFToken';
-  // api.defaults.withCredentials = true;
-  // api.defaults.withXSRFToken = true;
-  // api.defaults.headers.post['Content-Type'] = 'application/json';
-
-
   // Add a request interceptor
   //   api.interceptors.request.use(
   //     function (config) {

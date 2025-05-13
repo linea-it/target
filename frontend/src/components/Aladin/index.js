@@ -38,9 +38,13 @@ export default class Aladin extends React.Component {
       this.aladin.setImageSurvey(this.aladin.createImageSurvey(
         "DES_DR2_IRG_LIneA",
         "DES DR2 IRG at LIneA",
-        "https://scienceserver-dev.linea.org.br/secondary/images/coadd/hips_rgb/",
+        "https://datasets.linea.org.br/data/releases/des/dr2/images/hips/",
         "equatorial",
-      ), { imgFormat: 'hips' })
+      ), {
+        imgFormat: 'hips',
+        requestMode: 'cors',
+        requestCredentials: 'include'
+      })
 
 
       // DES DR2 Catalog HIPScat/HATS

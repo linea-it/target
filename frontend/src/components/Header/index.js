@@ -10,10 +10,15 @@ import IconButton from '@mui/material/IconButton';
 import MenuIcon from '@mui/icons-material/Menu';
 import Drawer from '@mui/material/Drawer';
 import ListItemText from '@mui/material/ListItemText';
+import { useAuth } from "@/contexts/AuthContext";
+import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
+import LoggedUser from '@/components/LoggedUser';
 
 export default function Header() {
-  const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const { user } = useAuth();
 
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
   const navItems = [
     {
       description: 'Home',
@@ -88,6 +93,16 @@ export default function Header() {
               </ListItem>
             ))}
           </List>
+          <Box sx={{ flexGrow: 1 }} />
+
+          {user && (
+            <LoggedUser username={user?.username} />
+          )}
+          {!user && (
+            <Button href="/admin/login/?next=/" color="inherit" sx={{ display: { xs: 'none', md: 'block' } }}>
+              Sign In
+            </Button>
+          )}
         </Toolbar>
         <Drawer anchor="left" open={drawerOpen} onClose={toggleDrawer(false)}>
           {drawerList()}
