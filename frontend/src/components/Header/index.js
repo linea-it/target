@@ -16,7 +16,7 @@ import Box from '@mui/material/Box';
 import LoggedUser from '@/components/LoggedUser';
 
 export default function Header() {
-  const { user } = useAuth();
+  const { user, settings } = useAuth();
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const navItems = [
@@ -99,7 +99,7 @@ export default function Header() {
             <LoggedUser username={user?.username} />
           )}
           {!user && (
-            <Button href="/admin/login/?next=/" color="inherit" sx={{ display: { xs: 'none', md: 'block' } }}>
+            <Button href={settings.login_url} color="inherit" sx={{ display: { xs: 'none', md: 'block' } }}>
               Sign In
             </Button>
           )}

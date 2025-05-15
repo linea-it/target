@@ -366,3 +366,7 @@ SPECTACULAR_SETTINGS = {
 # LINEA MYDB
 # ------------------------------------------------------------------------------
 USER_SCHEMA_PREFIX = env("MYDB_SCHEMA_PREFIX", default="mydb_")
+
+ENVIRONMENT_NAME = env("ENVIRONMENT_NAME", default="development").lower()
+
+LINEA_LOGIN_URL = env("LINEA_LOGIN_URL", default="/admin/login/?next=/")

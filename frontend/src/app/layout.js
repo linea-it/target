@@ -26,7 +26,6 @@ export default function RootLayout(props) {
         <AppRouterCacheProvider options={{ enableCssLayer: true }}>
           <ThemeProvider theme={theme}>
             <AuthProvider>
-              {/* <CssBaseline /> */}
               <MainContainer>
                 {children}
               </MainContainer>

@@ -121,3 +121,7 @@ export const parseQueryOptions = (queryOptions) => {
 
   return { params: { page, pageSize, ordering, search } }
 }
+
+export const getEnvironmentSettings = () => {
+  return api.get("environment_settings/");
+}

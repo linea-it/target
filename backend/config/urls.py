@@ -13,17 +13,17 @@ from rest_framework.authtoken.views import obtain_auth_token
 from target.common.api import views as CommonViews
 
 urlpatterns = [
-    path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
-    path(
-        "about/",
-        TemplateView.as_view(template_name="pages/about.html"),
-        name="about",
-    ),
+    # path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
+    # path(
+    #     "about/",
+    #     TemplateView.as_view(template_name="pages/about.html"),
+    #     name="about",
+    # ),
     # Django Admin, use {% url 'admin:index' %}
     path(settings.ADMIN_URL, admin.site.urls),
     # User management
-    path("users/", include("target.users.urls", namespace="users")),
-    path("accounts/", include("allauth.urls")),
+    # path("users/", include("target.users.urls", namespace="users")),
+    # path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
     # Auth SAML2
     path("saml2/", include("djangosaml2.urls")),
@@ -39,6 +39,11 @@ urlpatterns += [
     # API base url
     path("api/", include("config.api_router")),
     path("api/logout/", CommonViews.teste, name="logout_user"),
+    path(
+        "api/environment_settings/",
+        CommonViews.environment_settings,
+        name="environment_settings",
+    ),
     path("api/common/teste/", CommonViews.teste, name="teste"),
     # DRF auth token
     path("api/auth-token/", obtain_auth_token),

@@ -2,41 +2,44 @@
 import { createContext, useEffect, useState, useContext } from 'react'
 import { setCookie, parseCookies, destroyCookie } from 'nookies'
 import { getLoggedUser, LogoutUser } from '@/services/User'
-import { useRouter } from 'next/navigation'
-import { api } from "@/services/Api";
+// import { useRouter } from 'next/navigation'
+import { api, getEnvironmentSettings } from "@/services/Api";
 export const AuthContext = createContext({})
 
 export function AuthProvider({ children }) {
-  const router = useRouter()
+  // const router = useRouter()
   const [user, setUser] = useState()
-
-  const isAuthenticated = !!user
-
+  const [settings, setSettings] = useState({})
 
   useEffect(() => {
     const { 'target.csrftoken': access_token } = parseCookies()
 
-    if (access_token) {
-      console.log('Tem access token')
-      getLoggedUser().then(res => {
-        console.log("Usuario Logado:", res.data)
-        setUser(res.data)
+    // Recupera as variaveis de ambiente a partir do backend
+    if (Object.keys(settings).length === 0) {
+      getEnvironmentSettings().then(res => {
+        const tempSettings = res.data
+        setSettings(tempSettings)
+        // Verifica se o usuario ja esta logado
+        // Se o usuario ja estiver logado, recupera os dados do usuario
+        if (access_token && !user) {
+          getLoggedUser().then(res => {
+            setUser(res.data)
+          }).catch(err => {
+            // Se o token estiver expirado, remove o cookie
+            destroyCookie(null, 'target.csrftoken')
+            // Redireciona para a pagina de login
+            // window.location.href = '/admin/login/?next=/'
+            window.location.href = tempSettings.login_url
+          })
+        } else {
+          // window.location.href = '/admin/login/?next=/'
+          window.location.href = tempSettings.login_url
+        }
       }).catch(err => {
-        console.log('Erro ao recuperar usuario', err)
-        // Se o token estiver expirado, remove o cookie
-        destroyCookie(null, 'target.csrftoken')
-        // Redireciona para a pagina de login
-        window.location.href = '/admin/login/?next=/'
+        console.log('Erro ao recuperar settings', err)
       })
-    } else {
-      console.log('Não tem access token')
-      window.location.href = '/admin/login/?next=/'
     }
   }, [])
-
-
-  // console.log('user', user)
-  // console.log('isAuthenticated', isAuthenticated)
 
   function logout() {
     const { 'target.csrftoken': csrftoken } = parseCookies()
@@ -62,7 +65,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, logout }}>
+    <AuthContext.Provider value={{ user, logout, settings }}>
       {children}
     </AuthContext.Provider>
   )
