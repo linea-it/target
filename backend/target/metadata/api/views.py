@@ -81,7 +81,6 @@ class UserTableViewSet(ModelViewSet):
 
             # Instancia do MyDB
             db = MyDB(username=request.user.username)
-            print("MyDB instance created")
             # TODO: Verificar a permissão do usuario sobre a tabela
 
             # TODO: Verficar se a tabela não foi registrada.
@@ -112,7 +111,9 @@ class UserTableViewSet(ModelViewSet):
             # Tenta usar o total de linhas estimado pelo postgres
             # para evitar a query count que pode ser demorada em tabelas grandes.
             nrows = stats.get("row_estimate")
-            if nrows in (0, None):
+            # print("Estimated rows: ", nrows)
+            if nrows in (0, None, -1):
+                # print("Estimated rows not found, using count query")
                 # Total de linhas na tabela.
                 nrows = db.get_count(
                     tablename=data.get("name"),
