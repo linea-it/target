@@ -1,4 +1,4 @@
-import { api, parseQueryOptions } from "./Api";
+import { api } from "./Api";
 
 export const getLoggedUser = () => {
     return api.get("users/me/");

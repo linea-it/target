@@ -14,7 +14,6 @@ python manage.py collectstatic --clear --noinput --verbosity 0
 # uWSGI para servir o app e ter compatibilidade com Shibboleth
 # https://uwsgi-docs.readthedocs.io/en/latest/WSGIquickstart.html
 echo "Running Django with uWSGI"
-# --module config.asgi:application \
 uwsgi \
     --socket 0.0.0.0:8000 \
     --wsgi-file /app/config/wsgi.py \

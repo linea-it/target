@@ -54,7 +54,7 @@ AUTH_SAML2_LOGIN_URL_CILOGON=$BASE_HOST/saml2/login/?idp=https://satosa.linea.or
 # ------------------------------------------------------------------------------
 COMANAGE_SERVER_URL=https://register.linea.org.br
 COMANAGE_USER=co_2.linea.apps
-COMANAGE_PASSWORD=qfuh-sji2-8sjj-hgwx
+COMANAGE_PASSWORD=<COMANAGE_API_PASSWORD>
 COMANAGE_COID=2
 
 # Url de login utilizada pelo frontend
