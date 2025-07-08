@@ -38,13 +38,13 @@ if settings.DEBUG:
 urlpatterns += [
     # API base url
     path("api/", include("config.api_router")),
-    path("api/logout/", CommonViews.teste, name="logout_user"),
+    path("api/logout/", CommonViews.logout_user, name="logout_user"),
     path(
         "api/environment_settings/",
         CommonViews.environment_settings,
         name="environment_settings",
     ),
-    path("api/common/teste/", CommonViews.teste, name="teste"),
+    path("api/teste/", CommonViews.teste, name="teste"),
     # DRF auth token
     path("api/auth-token/", obtain_auth_token),
     path("api/schema/", SpectacularAPIView.as_view(), name="api-schema"),
