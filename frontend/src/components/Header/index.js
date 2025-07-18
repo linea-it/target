@@ -8,6 +8,7 @@ import Link from '@mui/material/Link';
 import Image from 'next/image'
 import IconButton from '@mui/material/IconButton';
 import MenuIcon from '@mui/icons-material/Menu';
+import Chip from '@mui/material/Chip';
 import Drawer from '@mui/material/Drawer';
 import ListItemText from '@mui/material/ListItemText';
 import { useAuth } from "@/contexts/AuthContext";
@@ -93,6 +94,7 @@ export default function Header() {
               </ListItem>
             ))}
           </List>
+          <Chip label="Beta" variant="outlined" color="warning" size="small" />
           <Box sx={{ flexGrow: 1 }} />
 
           {user && (
