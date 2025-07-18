@@ -27,5 +27,5 @@ RUN mkdir -p /app/.next/cache && chmod -R 777 /app/.next/cache
 RUN yarn global add serve
 
 EXPOSE 3000
-# CMD ["yarn", "start"]
-CMD ["yarn", "serve", "-s", "build"]
+CMD ["yarn", "start"]
+
