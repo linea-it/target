@@ -1,6 +1,10 @@
 services:
   backend: &django
     image: linea/target:backend_${IMAGE_TAG:-latest}
+    group_add:
+      - "10000"
+      - "39215"
+      - "10006"    
     volumes:
       - ./data/tmp:/data
       - ./logs:/logs
