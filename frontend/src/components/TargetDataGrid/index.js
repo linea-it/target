@@ -15,7 +15,8 @@ export default function TargetDataGrid(props) {
       pageSize: 25,
       page: 0,
     },
-    sortModel: []
+    sortModel: [],
+    columnVisibilityModel: {}
   });
 
   const handlePaginationModelChange = React.useCallback((paginationModel) => {
@@ -29,6 +30,13 @@ export default function TargetDataGrid(props) {
     setQueryOptions({
       ...queryOptions,
       sortModel: [...sortModel]
+    });
+  }, []);
+
+  const handleColumnVisibilityModelChange = React.useCallback((columnVisibilityModel) => {
+    setQueryOptions({
+      ...queryOptions,
+      columnVisibilityModel: { ...columnVisibilityModel }
     });
   }, []);
 
@@ -87,6 +95,8 @@ export default function TargetDataGrid(props) {
         const selectedRows = details.api.getSelectedRows()
         props.onChangeSelection(selectedRows)
       }}
+      columnVisibilityModel={queryOptions.columnVisibilityModel}
+      onColumnVisibilityModelChange={handleColumnVisibilityModelChange}
       initialState={{
         pagination: {
           paginationModel: {
@@ -96,6 +106,16 @@ export default function TargetDataGrid(props) {
         },
       }}
       disableMultipleRowSelection
+      showToolbar
+      disableColumnFilter
+      slotProps={{
+        toolbar: {
+          showQuickFilter: false,
+          printOptions: { disableToolbarButton: true },
+          csvOptions: { disableToolbarButton: true },
+          excelOptions: { disableToolbarButton: true },
+        }
+      }}
     />
   );
 }

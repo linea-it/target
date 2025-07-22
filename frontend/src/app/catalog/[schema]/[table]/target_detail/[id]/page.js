@@ -4,11 +4,11 @@ import Box from '@mui/material/Box';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link'
-import Button from '@mui/material/Button';
+// import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import IconButton from '@mui/material/IconButton';
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
-import ShareIcon from '@mui/icons-material/Share';
+// import ShareIcon from '@mui/icons-material/Share';
 import { getMetadataBySchemaTable, getTableRowById } from "@/services/Metadata";
 import TargetDetailContainer from "@/containers/TargetDetail";
 import Loading from "@/components/Loading";
@@ -75,11 +75,11 @@ export default function SingleTargetDetail({ params }) {
           <Typography variant="h5">
             Target {record?.id} - {record?.ra}, {record?.dec}
           </Typography>
-          <IconButton disabled>
+          {/* <IconButton disabled>
             <ShareIcon />
           </IconButton>
           <Box sx={{ flexGrow: 1 }} />
-          <Button variant="outlined" size="large" disabled>Statistics</Button>
+          <Button variant="outlined" size="large" disabled>Statistics</Button> */}
         </Stack>
       </Box>
       <TargetDetailContainer record={record} />

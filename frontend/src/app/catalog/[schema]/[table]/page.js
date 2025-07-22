@@ -8,7 +8,7 @@ import IconButton from '@mui/material/IconButton';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import Stack from '@mui/material/Stack';
-import ShareIcon from '@mui/icons-material/Share';
+// import ShareIcon from '@mui/icons-material/Share';
 
 import CatalogDetailContainer from "@/containers/CatalogDetail";
 import Loading from "@/components/Loading";
@@ -68,9 +68,9 @@ export default function CatalogDetail({ params }) {
           <IconButton disabled>
             <SettingsIcon />
           </IconButton>
-          <IconButton disabled>
+          {/* <IconButton disabled>
             <ShareIcon />
-          </IconButton>
+          </IconButton> */}
         </Stack>
         <Typography ml={6} variant="caption">{dayjs(record.created_at).format('L')} by {record.owner}</Typography>
       </Box>

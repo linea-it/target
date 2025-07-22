@@ -12,8 +12,8 @@ services:
     # container_name: target_local_django
     depends_on:
       - postgres
-      # - redis
-      # - mailpit
+    # - redis
+    # - mailpit
     volumes:
       - ..:/workspaces
       - ./backend/:/app:z
@@ -87,7 +87,7 @@ services:
   #   command: /start-flower
 
   frontend:
-    image: node:22.11.0-bookworm-slim
+    image: node:22.12.0-bookworm-slim
     user: 1000:1000
     working_dir: /app
     volumes:
