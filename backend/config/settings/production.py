@@ -144,24 +144,48 @@ LOGGING = {
     },
     "handlers": {
         "console": {
-            "level": "DEBUG",
+            "level": LOG_LEVEL,
             "class": "logging.StreamHandler",
             "formatter": "verbose",
         },
+        "default": {
+            "level": LOG_LEVEL,
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOG_DIR, "django.log"),
+            "formatter": "verbose",
+        },
+        "djangosaml2": {
+            "level": LOG_LEVEL,
+            "class": "logging.handlers.RotatingFileHandler",
+            "maxBytes": 1024 * 1024 * 5,  # 5 MB
+            "backupCount": 5,
+            "filename": os.path.join(LOG_DIR, "djangosaml2.log"),
+            "formatter": "verbose",
+        },         
     },
-    "root": {"level": "INFO", "handlers": ["console"]},
+    "root": {"level": LOG_LEVEL, "handlers": ["console"]},
     "loggers": {
+        "django": {
+            "level": LOG_LEVEL, 
+            "handlers": ["default", "console"], 
+            "propagate": True
+        },
         "django.db.backends": {
-            "level": "ERROR",
+            "level": LOG_LEVEL,
             "handlers": ["console"],
             "propagate": False,
         },
         # Errors logged by the SDK itself
-        "sentry_sdk": {"level": "ERROR", "handlers": ["console"], "propagate": False},
+        "sentry_sdk": {"level": LOG_LEVEL, "handlers": ["console"], "propagate": False},
         "django.security.DisallowedHost": {
-            "level": "ERROR",
+            "level": LOG_LEVEL,
             "handlers": ["console"],
             "propagate": False,
+        },
+        "djangosaml2": {
+            "level": LOG_LEVEL, 
+            "handlers": ["djangosaml2"], 
+            "propagate": True
         },
     },
 }
