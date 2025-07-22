@@ -1,4 +1,4 @@
-FROM node:22.11.0-bookworm-slim AS base
+FROM node:22.12.0-bookworm-slim AS base
 ENV GENERATE_SOURCEMAP=false
 ENV NODE_OPTIONS=--max_old_space_size=8192
 ENV NODE_ENV=production

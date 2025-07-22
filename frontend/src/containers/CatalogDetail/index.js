@@ -5,9 +5,6 @@ import Paper from '@mui/material/Paper';
 import Button from '@mui/material/Button';
 import TargetDataGrid from "@/components/TargetDataGrid";
 import Toolbar from '@mui/material/Toolbar';
-import FilterListIcon from '@mui/icons-material/FilterList';
-import TextField from '@mui/material/TextField';
-import SearchIcon from '@mui/icons-material/Search';
 import TargetDetail from "@/components/TargetDetail";
 import ClusterDetail from "@/components/ClusterDetail";
 export default function CatalogDetailContainer({ record }) {
@@ -32,17 +29,10 @@ export default function CatalogDetailContainer({ record }) {
           // backgroundColor: 'red',
           height: '100%',
         }}>
-          <Toolbar>
-            {/* <Box sx={{ display: 'flex', alignItems: 'flex-end' }}>
-              <SearchIcon sx={{ color: 'action.active', mr: 1, my: 0.5 }} />
-              <TextField id="input-with-sx" label="Search" variant="standard" sx={{ width: '50ch', mr: 2 }} />
-            </Box> */}
+          {/* <Toolbar>
             <Box sx={{ flexGrow: 1 }} />
             <Button variant="outlined" size="large" disabled>Statistics</Button>
-            <Button disabled endIcon={<FilterListIcon />}>
-              Filters
-            </Button>
-          </Toolbar>
+          </Toolbar> */}
           <Box maxHeight={500}>
             <TargetDataGrid
               type={record.catalog_type}
