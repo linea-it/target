@@ -16,7 +16,9 @@ export default function TargetDetail(props) {
       sx={{
         justifyContent: "center",
         alignItems: "stretch",
-        flexGrow: 1
+        flexGrow: 1,
+        flex: 1,
+        height: '100%'
       }}
     >
       <Box>

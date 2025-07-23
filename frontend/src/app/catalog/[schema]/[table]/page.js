@@ -41,9 +41,10 @@ export default function CatalogDetail({ params }) {
   return (
     <Box sx={{
       width: '100%',
-      height: '100%',
+      // height: '100%',
       display: 'flex',
       flexDirection: 'column',
+      alignItems: "stretch",
     }}
       p={4}
       pt={2}
@@ -78,3 +79,5 @@ export default function CatalogDetail({ params }) {
     </Box>
   );
 }
+
+// calc(100vh - 64px);

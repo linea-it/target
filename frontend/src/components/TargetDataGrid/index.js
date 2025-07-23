@@ -77,9 +77,6 @@ export default function TargetDataGrid(props) {
 
   return (
     <DataGrid
-      sx={{
-        maxHeight: 500
-      }}
       loading={isLoading}
       columns={columns}
       rows={data?.data.results || []}

@@ -108,16 +108,13 @@ export const parseQueryOptions = (queryOptions) => {
 
   // Parse Sort options
   let sortFields = []
-  if (sortModel !== undefined && sortModel.length > 0) {
+  if (sortModel && Array.isArray(sortModel)) {
     sortModel.forEach((e) => {
-      if (e.sort === 'asc') {
-        sortFields.push(e.field)
-      } else {
-        sortFields.push(`-${e.field}`)
-      }
+      let direction = e.sort === 'asc' ? '' : '-'
+      sortFields.push(`${direction}${e.field}`)
     })
   }
-  let ordering = sortFields.length !== 0 ? sortFields.join(',') : null
+  let ordering = sortFields.length !== 0 ? sortFields.join(',') : undefined
 
   return { params: { page, pageSize, ordering, search } }
 }
