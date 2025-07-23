@@ -182,7 +182,7 @@ class UserTableViewSet(ModelViewSet):
         return {c.ucd: c.name for c in columns}
 
     def parse_filters(self, query_params):
-        reserved_keys = ["page", "pageSize", "columns"]
+        reserved_keys = ["page", "pageSize", "columns", "ordering"]
         filters = {
             key: value
             for key, value in query_params.items()
@@ -226,12 +226,15 @@ class UserTableViewSet(ModelViewSet):
         url_filters = self.parse_filters(request.query_params)
         # print("Filters: ", url_filters)
 
+        ordering = request.query_params.get("ordering", None)
+
         db = MyDB(username=request.user.username)
         rows, queryset_count = db.query(
             tablename=table.name,
             limit=limit,
             offset=offset,
             url_filters=url_filters,
+            ordering=ordering,
         )
 
         # match the column names with the table columns ucd

@@ -44,14 +44,9 @@ export const updateTableColumn = (data) => {
 
 export const getTableData = ({ queryKey }) => {
     const params = queryKey[1]
-    let page = params.paginationModel.page + 1
+    const queryParams = parseQueryOptions(params)
 
-    return api.get(`metadata/user_tables/${params.tableId}/data/`, {
-        params: {
-            pageSize: params.paginationModel.pageSize,
-            page: page,
-        }
-    })
+    return api.get(`metadata/user_tables/${params.tableId}/data/`, queryParams)
 }
 
 export const getTableRowById = ({ queryKey }) => {
