@@ -1,5 +1,6 @@
 from django.conf import settings
 from sqlalchemy import desc
+from sqlalchemy import func
 from sqlalchemy.sql import and_
 from sqlalchemy.sql import select
 from sqlalchemy.sql import text
@@ -40,6 +41,22 @@ class MyDB(DBBase):
             return ordering[1:], "desc"
         return ordering, "asc"
 
+    def create_total_count_stm(self, tbl, filters=None):
+        """
+        Cria o Statement para o count total de linhas da tabela.
+        :param tbl: tabela
+        :param filters: filtros
+        :return: statement
+        """
+        values = None
+        stm = select(func.count()).select_from(tbl)
+
+        if filters:
+            clauses, values = self.do_filter(tbl, filters)
+            stm = stm.where(and_(*clauses))
+
+        return stm, values
+
     def create_stm(
         self,
         tbl,
@@ -48,7 +65,6 @@ class MyDB(DBBase):
         ordering=None,
         limit=None,
         offset=None,
-        url_filters=None,
     ):
         """
         Cria a SqlAlchemy Statement, este metdo pode ser sobrescrito para criar querys diferentes.
@@ -56,9 +72,6 @@ class MyDB(DBBase):
         :return: statement
         """
         values = None
-        # self.set_filters(filters)
-        # self.set_query_columns(columns)
-        # self.set_url_filters(url_filters)
 
         query_columns = tbl.c
         if columns and len(columns) > 0:
@@ -71,10 +84,6 @@ class MyDB(DBBase):
             # print(clauses)
             # print(values)
             stm = stm.where(and_(*clauses))
-        # filters = list()
-        # for condition in self.filters:
-        #     if condition.get("column").find("_meta_") == -1:
-        #         filters.append(condition)
 
         # Ordenacao
         if ordering:
@@ -112,6 +121,8 @@ class MyDB(DBBase):
             url_filters = self.parse_url_filters(tbl, url_filters)
             filters.extend(url_filters)
 
+        print(filters)
+
         # Cria o Statement para a query
         stm, values = self.create_stm(
             tbl=tbl,
@@ -120,22 +131,29 @@ class MyDB(DBBase):
             ordering=ordering,
             limit=limit,
             offset=offset,
-            url_filters=url_filters,
         )
+
+        # print("Statement:", stm)
+        # print("Values:", values)
+
+        # Cria o Statement para o count total de linhas da tabela.
+        stm_count, _ = self.create_total_count_stm(tbl, filters)
 
         # executa o statement
         rows = []
+        count = 0
         with self.get_engine().connect() as con:
+            # Run  total count statement
+            self._debug_query(stm_count, with_parameters=False, values=values)
+            count = con.execute(stm_count, values).scalar()
+
+            # Run main query statement
             self._debug_query(stm, with_parameters=False, values=values)
             queryset = con.execute(stm, values)
             for row in queryset:
                 rows.append(self.to_dict(row))
 
-        # TODO: Implementar o count
-        # executa um metodo da DBbase para trazer o count sem levar em conta o limit e o start
-        # count = self.stm_count(stm)
-
-        count = len(rows)
+        print("=" * 40)
         return rows, count
 
     def get_count(self, tablename):
@@ -145,37 +163,25 @@ class MyDB(DBBase):
         return super().get_table_status(tablename, schema=self.schema)
 
     def parse_url_filters(self, tbl, url_filters):
-        # types = {
-        #     int: [
-        #         sqlalchemy.sql.sqltypes.INTEGER,
-        #         sqlalchemy.sql.sqltypes.BIGINT,
-        #         sqlalchemy.sql.sqltypes.SMALLINT,
-        #         sqlalchemy.sql.sqltypes.Integer,
-        #         sqlalchemy.sql.sqltypes.SmallInteger,
-        #         sqlalchemy.sql.sqltypes.BigInteger,
-        #     ],
-        # }
-
         filters = []
-        for key, value in url_filters.items():
-            # Parse value type to match the column type
-            tbl_col = tbl.c.get(key)
-            print(tbl_col.type)
 
-            # if isinstance(tbl_col.type, sqlalchemy.sql.sqltypes.BIGINT):
-            #     parsed_value = int(value)
-            #     print("passou aqui")
-            # elif isinstance(tbl_col.type.python_type, float):
-            #     parsed_value = float(value)
-            # elif isinstance(tbl_col.type.python_type, bool):
-            #     parsed_value = value == "true"
-            # elif isinstance(tbl_col.type.python_type, str):
-            #     parsed_value = str(value)
-            # else:
-            #     error_message = f"Unsupported column type: {tbl_col.type}"
-            #     raise TypeError(error_message)
+        for filter_key, value in url_filters.items():
+            # Separar field_name e operator
+            if "__" in filter_key:
+                field_name, operator = filter_key.rsplit("__", 1)
+                operator = f"__{operator}"
+            else:
+                field_name = filter_key
+                operator = "__eq"
 
-            filters.append({"column": key, "operator": "=", "value": value})
+            # Recupera a coluna sqlalchemy
+            tbl_col = tbl.c.get(field_name)
+            print(f"Column: {tbl_col}")
 
-        print(filters)
+            print(f"Operator: {operator}")
+
+            filters.append(
+                {"column": tbl_col, "operator": operator, "value": value},
+            )
+
         return filters

@@ -5,7 +5,23 @@ from target.metadata.models import Schema
 from target.metadata.models import Table
 
 
+# https://mui.com/x/react-data-grid/column-definition/#column-types
+def python_type_to_mui_column_type(pythontype):
+    if pythontype in ["int", "float"]:
+        return "number"
+    if pythontype == "bool":
+        return "boolean"
+
+    # TODO: Handle other types like datetime, etc.
+
+    # Default to string for all other types
+    return "string"
+
+
 class ColumnSerializer(serializers.ModelSerializer[Column]):
+    # Represents the column type in a format suitable for MUI DataGrid
+    mui_column_type = serializers.SerializerMethodField()
+
     class Meta:
         model = Column
         fields = [
@@ -18,13 +34,21 @@ class ColumnSerializer(serializers.ModelSerializer[Column]):
             "ucd",
             "datatype",
             "pythontype",
+            "mui_column_type",
             "order",
             "created_at",
             "updated_at",
         ]
 
+    # Convert the Python type to a MUI DataGrid column type
+    def get_mui_column_type(self, obj):
+        return python_type_to_mui_column_type(obj.pythontype)
+
 
 class ResumedColumnSerializer(serializers.ModelSerializer[Column]):
+    # Represents the column type in a format suitable for MUI DataGrid
+    muicolumntype = serializers.SerializerMethodField()
+
     class Meta:
         model = Column
         fields = [
@@ -36,8 +60,13 @@ class ResumedColumnSerializer(serializers.ModelSerializer[Column]):
             "ucd",
             "datatype",
             "pythontype",
+            "muicolumntype",
             "order",
         ]
+
+    # Convert the Python type to a MUI DataGrid column type
+    def get_muicolumntype(self, obj):
+        return python_type_to_mui_column_type(obj.pythontype)
 
 
 class TableSerializer(serializers.ModelSerializer[Table]):

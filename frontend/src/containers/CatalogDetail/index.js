@@ -51,6 +51,7 @@ export default function CatalogDetailContainer({ record }) {
             <Box sx={{
               display: 'flex',
               flexDirection: 'column',
+              width: '100%',
               minHeight: 'calc(100vh - 250px)',
               maxHeight: 'calc(100vh - 250px)'
             }}>

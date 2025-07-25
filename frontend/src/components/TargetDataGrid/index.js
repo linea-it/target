@@ -16,7 +16,8 @@ export default function TargetDataGrid(props) {
       page: 0,
     },
     sortModel: [],
-    columnVisibilityModel: {}
+    columnVisibilityModel: {},
+    filterModel: { items: [] }
   });
 
   const handlePaginationModelChange = React.useCallback((paginationModel) => {
@@ -40,18 +41,24 @@ export default function TargetDataGrid(props) {
     });
   }, []);
 
+  const handleFilterModelChange = React.useCallback((filterModel) => {
+    setQueryOptions({
+      ...queryOptions,
+      filterModel: { ...filterModel }
+    });
+  }, []);
+
 
   const makeColumns = () => {
     const mainUcds = ['meta.id;meta.main;meta.ref', 'pos.eq.ra;meta.main', 'pos.eq.dec;meta.main']
     return props.tableColumns.map((column) => {
 
       const width = mainUcds.includes(column.ucd) ? 150 : undefined;
-      // const flex = column.ucd in mainUcds ? undefined : 1;
-      // console.log(column)
       return {
         field: column.name,
         headerName: column.title || column.name,
         width: width,
+        type: column.muicolumntype || 'string',
         // flex: flex
       }
     })
@@ -94,6 +101,8 @@ export default function TargetDataGrid(props) {
       }}
       columnVisibilityModel={queryOptions.columnVisibilityModel}
       onColumnVisibilityModelChange={handleColumnVisibilityModelChange}
+      filterModel={queryOptions.filterModel}
+      onFilterModelChange={handleFilterModelChange}
       initialState={{
         pagination: {
           paginationModel: {
@@ -104,7 +113,7 @@ export default function TargetDataGrid(props) {
       }}
       disableMultipleRowSelection
       showToolbar
-      disableColumnFilter
+      // disableColumnFilter
       slotProps={{
         toolbar: {
           showQuickFilter: false,

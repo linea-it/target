@@ -42,6 +42,7 @@ class TableViewSet(ModelViewSet):
 class ColumnViewSet(ModelViewSet):
     serializer_class = ColumnSerializer
     queryset = Column.objects.all()
+    filterset_fields = ["id", "table", "table__name", "name"]
 
 
 class UserTableViewSet(ModelViewSet):
@@ -229,7 +230,7 @@ class UserTableViewSet(ModelViewSet):
         ordering = request.query_params.get("ordering", None)
 
         db = MyDB(username=request.user.username)
-        rows, queryset_count = db.query(
+        rows, count = db.query(
             tablename=table.name,
             limit=limit,
             offset=offset,
@@ -247,12 +248,10 @@ class UserTableViewSet(ModelViewSet):
                 },
             )
 
-        if url_filters:
-            count = queryset_count
-
         results = {
             "results": rows,
             "count": count,
+            "has_more": (offset + limit) < count,
         }
 
         return Response(results, status=status.HTTP_200_OK)
