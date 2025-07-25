@@ -1,6 +1,3 @@
-from xmlrpc.client import Boolean
-
-
 class TableNotFoundError(Exception):
     def __init__(self, tablename, schema):
         self.tablename = tablename
@@ -12,14 +9,13 @@ import pandas as pd
 import sqlalchemy
 from sqlalchemy import MetaData
 from sqlalchemy import Table
-from sqlalchemy import bindparam
 from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy.sql import select
 from sqlalchemy.sql import text
-from sqlalchemy.sql.expression import between
 
 from dblinea.db_postgresql import DBPostgresql
+from dblinea.operator_mapper import OperatorMapper
 
 
 class DBBase:
@@ -50,9 +46,11 @@ class DBBase:
         dbpass=None,
         dbport=None,
         dbengine="postgresql_psycopg2",
-        debug: Boolean = False,
+        debug: bool = False,
     ):
         self._debug = debug
+
+        self.operator_mapper = OperatorMapper()
 
         # Se todas as variaveis de configuração forem None
         # Vai criar a conexão usando um dos _available_databases.
@@ -79,7 +77,7 @@ class DBBase:
 
             self._database = DBPostgresql(db_settings)
 
-    def _setdebug(self, debug: Boolean):
+    def _setdebug(self, debug: bool):
         self._debug = debug
 
     def __set_database(self, database):
@@ -492,45 +490,23 @@ class DBBase:
         return getattr(tbl.c, column_name)
 
     def do_filter(self, table, filters):
-        f = []
-        values = {}
+        conditions = []
+        all_values = {}
+
         for _filter in filters:
-            column = self.get_column_obj(table, _filter["column"])
-            op = _filter["operator"]
-            value = _filter["value"]
-            if op == "=":
-                op = "__eq__"
+            field = _filter["column"]
 
-            elif op == "!=":
-                op = "__ne__"
+            if isinstance(_filter["column"], str):
+                # Recupera a coluna sqlalchemy
+                field = self.get_column_obj(table, _filter["column"])
 
-            elif op == "<":
-                op = "__lt__"
+            condition, values = self.operator_mapper.apply_filter(
+                field=field,
+                operator=_filter["operator"],
+                value=_filter["value"],
+            )
 
-            elif op == "<=":
-                op = "__le__"
+            conditions.append(condition)
+            all_values.update(values)
 
-            elif op == ">":
-                op = "__gt__"
-
-            elif op == ">=":
-                op = "__ge__"
-
-            elif op == "range":
-                # between
-                op = None
-                value = value.split(",")
-                clause = between(column, float(value[0]), float(value[1]))
-            else:
-                op = "__%s__" % op
-
-            if op != None:
-                # Usando bind param para evitar a necessidade de converter os tipos
-                # dos valores com as colunas
-                c = getattr(column, op)(bindparam(column.key))
-                f.append(c)
-                values[_filter["column"]] = value
-            else:
-                f.append(clause)
-
-        return f, values
+        return conditions, all_values

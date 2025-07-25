@@ -23,61 +23,80 @@ export default function CatalogDetailContainer({ record }) {
   }
 
   return (
-    <Box sx={{
-      flex: 1,
-      // height: '100%', // Garante que o Box ocupe toda altura disponível
-      display: 'flex',
-      flexDirection: 'column',
-      maxHeight: 'calc(100vh - 250px)'
-    }}>
-      <Grid container spacing={2} sx={{
-        justifyContent: "center",
-        alignItems: "stretch",
-        // height: '100%', // Grid ocupa toda altura do Box
-        flex: 1 // Permite que o Grid cresça
-      }}>
-        <Grid size={{ md: 8 }} sx={{
+    <Box
+      sx={{
+        flex: 1,
+        width: '100%',
+      }}
+    >
+      <Box
+        sx={{
           display: 'flex',
-          // height: '100%',
-        }}>
-          <Paper elevation={3} sx={{
-            flex: 1,
-            // height: '100%',
-          }}>
-            {/* <Toolbar>
-              <Box sx={{ flexGrow: 1 }} />
-              <Button variant="outlined" size="large" disabled>Statistics</Button>
-            </Toolbar> */}
-            <Box sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              minHeight: 'calc(100vh - 250px)',
-              maxHeight: 'calc(100vh - 250px)'
-            }}>
+          minWidth: '1200px', // largura mínima para os dois painéis
+          maxHeight: 'calc(100vh - 250px)',
+          minHeight: 'calc(100vh - 250px)',
+        }}
+      >
+        {/* Painel esquerdo */}
+        <Box
+          sx={{
+            flex: 2,
+            display: 'flex',
+            padding: 1,
+            minWidth: '400px', // largura mínima para o painel direito            
+          }}
+        >
+          <Paper elevation={3} sx={{ flex: 1, width: '100%' }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                width: '100%',
+                height: '100%',
+                // minHeight: 'calc(100vh - 250px)',
+                // maxHeight: 'calc(100vh - 250px)',
+              }}
+            >
               <TargetDataGrid
                 type={record.catalog_type}
                 tableId={record.id}
                 schema={record.schema}
                 table={record.table}
                 tableColumns={record.columns}
-                onChangeSelection={onChangeSelection} />
+                onChangeSelection={onChangeSelection}
+              />
             </Box>
           </Paper>
-        </Grid>
-        <Grid size={{ md: 4 }} sx={{
-          display: 'flex',
-          // height: '100%',
-        }}>
-          <Paper elevation={3} sx={{
+        </Box>
+
+        {/* Painel direito */}
+        <Box
+          sx={{
             flex: 1,
-            // height: '100%',
-          }}>
-            {record.catalog_type === 'target' && (<TargetDetail schema={record.schema} table={record.table} record={selectedRecord} />)}
-            {record.catalog_type === 'cluster' && (<ClusterDetail schema={record.schema} table={record.table} record={selectedRecord} />)}
+            display: 'flex',
+            padding: 1,
+            minWidth: '300px', // largura mínima para o painel direito
+          }}
+        >
+          <Paper elevation={3} sx={{ flex: 1, width: '100%' }}>
+            {record.catalog_type === 'target' && (
+              <TargetDetail
+                schema={record.schema}
+                table={record.table}
+                record={selectedRecord}
+              />
+            )}
+            {record.catalog_type === 'cluster' && (
+              <ClusterDetail
+                schema={record.schema}
+                table={record.table}
+                record={selectedRecord}
+              />
+            )}
           </Paper>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Box>
-  )
+  );
 
 }

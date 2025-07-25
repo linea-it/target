@@ -99,8 +99,113 @@ export function getAPIClient(ctx) {
 
 export const api = getAPIClient()
 
+export const parseFilterClause = (clause) => {
+
+  let field = clause.field
+  let operator = clause.operator
+
+  let newClause = {}
+  switch (operator) {
+    // Operadores de comparação
+    case '=':
+      newClause[field] = clause.value
+      break
+    case '!=':
+      newClause[`${field}__ne`] = clause.value
+      break
+    case '>':
+      newClause[`${field}__gt`] = clause.value
+      break
+    case '>=':
+      newClause[`${field}__gte`] = clause.value
+      break
+    case '<':
+      newClause[`${field}__lt`] = clause.value
+      break
+    case '<=':
+      newClause[`${field}__lte`] = clause.value
+      break
+
+    // Operadores de texto
+    case 'equals':
+      newClause[`${field}__equals`] = clause.value
+      break
+    case 'doesNotEqual':
+      newClause[`${field}__notequal`] = clause.value
+      break
+    case 'contains':
+      newClause[`${field}__contains`] = clause.value
+      break
+    case 'doesNotContain':
+      newClause[`${field}__notcontains`] = clause.value
+      break
+    case 'startsWith':
+      newClause[`${field}__startswith`] = clause.value
+      break
+    case 'endsWith':
+      newClause[`${field}__endswith`] = clause.value
+      break
+
+    // Operadores de lista/conjunto
+    case 'isAnyOf':
+      newClause[`${field}__in`] = clause.value.join(',')
+      break
+    // TODO: not in já está implementado no backend
+
+    // Operadores booleanos
+    case 'is':
+      newClause[`${field}__is`] = clause.value
+      break
+
+    // Operadores de nulo
+    case 'isEmpty':
+      newClause[`${field}__isnull`] = true
+      break
+    case 'isNotEmpty':
+      newClause[`${field}__isnotnull`] = true
+      break
+
+    //  Operadores de intervalo
+    // TODO: between já está implementado no backend
+  }
+
+  return newClause
+}
+
+const parseFilterModel = (filterModel) => {
+  let clauses = []
+
+  if (!filterModel) {
+    return {}
+  }
+
+  if (filterModel.hasOwnProperty('items') && Array.isArray(filterModel.items)) {
+    filterModel.items.forEach((item) => {
+      if (item.field && item.operator) {
+        // Exception for operators Without value
+        if (["isEmpty", "isNotEmpty"].includes(item.operator)) {
+          item.value = true
+        }
+        // Evita cláusulas sem valor e
+        // requisições desnecessárias enquanto o usuario ainda seleciona os filtros.
+        if (item.value !== undefined) {
+          clauses.push(parseFilterClause(item))
+        }
+      }
+    })
+  }
+
+  let filters = {}
+  clauses.forEach((clause) => {
+    filters = { ...filters, ...clause }
+  })
+
+  return filters
+}
+
+
 export const parseQueryOptions = (queryOptions) => {
-  const { paginationModel, sortModel, search } = queryOptions
+  const { paginationModel, sortModel, search, filterModel } = queryOptions
   const { pageSize } = paginationModel
 
   // Fix Current page
@@ -116,7 +221,10 @@ export const parseQueryOptions = (queryOptions) => {
   }
   let ordering = sortFields.length !== 0 ? sortFields.join(',') : undefined
 
-  return { params: { page, pageSize, ordering, search } }
+  // Parse Filters
+  let filters = parseFilterModel(filterModel)
+
+  return { params: { page, pageSize, ordering, search, ...filters } }
 }
 
 export const getEnvironmentSettings = () => {
