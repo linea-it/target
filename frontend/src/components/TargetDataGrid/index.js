@@ -84,25 +84,41 @@ export default function TargetDataGrid(props) {
 
   return (
     <DataGrid
+      showToolbar
       loading={isLoading}
       columns={columns}
       rows={data?.data.results || []}
       rowCount={rowCount}
       getRowId={(row) => row.meta_id}
+
+      // Pagination
       paginationMode="server"
-      paginationModel={queryOptions.paginationModel}
+      // paginationModel={queryOptions.paginationModel}
       onPaginationModelChange={handlePaginationModelChange}
       pageSizeOptions={[25, 50, 100]}
+
+      // Filtering
+      filterMode="server"
+      // filterModel={queryOptions.filterModel}
+      onFilterModelChange={handleFilterModelChange}
+      // disableColumnFilter
+      ignoreDiacritics
+
+      // Sorting
       sortingMode="server"
+      // sortModel={queryOptions.sortModel}
       onSortModelChange={handleSortModelChange}
+
+      // Column visibility
+      columnVisibilityModel={queryOptions.columnVisibilityModel}
+      onColumnVisibilityModelChange={handleColumnVisibilityModelChange}
+
+      // Selection
       onRowSelectionModelChange={(newRowSelectionModel, details) => {
         const selectedRows = details.api.getSelectedRows()
         props.onChangeSelection(selectedRows)
       }}
-      columnVisibilityModel={queryOptions.columnVisibilityModel}
-      onColumnVisibilityModelChange={handleColumnVisibilityModelChange}
-      filterModel={queryOptions.filterModel}
-      onFilterModelChange={handleFilterModelChange}
+      disableMultipleRowSelection
       initialState={{
         pagination: {
           paginationModel: {
@@ -111,9 +127,7 @@ export default function TargetDataGrid(props) {
           },
         },
       }}
-      disableMultipleRowSelection
-      showToolbar
-      // disableColumnFilter
+
       slotProps={{
         toolbar: {
           showQuickFilter: false,

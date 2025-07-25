@@ -2,48 +2,8 @@
 import React from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import Link from 'next/link'
-import { catalogs } from '../../data/catalogs'
-import { useQuery } from '@tanstack/react-query'
 import { userTables } from '@/services/Metadata';
-import { useEffect } from 'react';
 export default function CatalogDataGrid() {
-
-  const [queryOptions, setQueryOptions] = React.useState({
-    paginationModel: {
-      pageSize: 25,
-      page: 0,
-    },
-    sortModel: []
-  });
-
-  const handlePaginationModelChange = React.useCallback((paginationModel) => {
-    setQueryOptions({
-      ...queryOptions,
-      paginationModel: { ...paginationModel }
-    });
-  }, []);
-
-  const handleSortModelChange = React.useCallback((sortModel) => {
-    setQueryOptions({
-      ...queryOptions,
-      sortModel: [...sortModel]
-    });
-  }, []);
-
-  const { status, isLoading, data } = useQuery({
-    queryKey: ['userTables', queryOptions],
-    queryFn: userTables
-  })
-
-
-  const rowCountRef = React.useRef(data?.data.count || 0);
-
-  const rowCount = React.useMemo(() => {
-    if (data?.data.count !== undefined) {
-      rowCountRef.current = data.data.count;
-    }
-    return rowCountRef.current;
-  }, [data?.data.count]);
 
   const columns = [
     {
@@ -62,7 +22,8 @@ export default function CatalogDataGrid() {
       headerName: 'Tablename',
       width: 300,
       flex: 1,
-      valueGetter: (value, row) => (`${row.schema}.${row.table}`)
+      valueGetter: (value, row) => (`${row.schema}.${row.table}`),
+      sortable: false
     },
     {
       field: 'created_at',
@@ -77,34 +38,50 @@ export default function CatalogDataGrid() {
       field: 'owner',
       headerName: 'Owner',
       width: 300,
+      sortable: false
     },
     {
       field: 'nrows',
       headerName: 'Rows',
+      type: 'number',
     },
 
   ];
 
+
+  const dataSource = React.useMemo(
+    () => ({
+      getRows: async (params) => {
+        try {
+          const res = await userTables(params);
+          return {
+            rows: res.data.results,
+            rowCount: res.data.count,
+          };
+        } catch (error) {
+          console.error('Erro ao carregar os dados', error);
+          throw error; // isso é importante para acionar o `onDataSourceError`
+        }
+      },
+    }),
+    [],
+  );
+
   return (
     <DataGrid
-      loading={isLoading}
-      rows={data?.data.results || []}
-      rowCount={rowCount}
+      // Disable datasouce Cache for tests
+      // dataSourceCache={null}
       columns={columns}
-      paginationMode="server"
-      paginationModel={queryOptions.paginationModel}
-      onPaginationModelChange={handlePaginationModelChange}
-      pageSizeOptions={[10, 25, 50]}
-      // sortingMode="server"
-      // onSortModelChange={handleSortModelChange}
+      dataSource={dataSource}
+      pagination
+      pageSizeOptions={[10, 50, 100]}
       disableRowSelectionOnClick
+      onDataSourceError={(error) => {
+        console.log('Data source error:', error);
+      }}
       initialState={{
-        pagination: {
-          paginationModel: {
-            pageSize: 25,
-            page: 0,
-          },
-        },
+        pagination: { paginationModel: { pageSize: 10, page: 0 }, rowCount: 0 },
+        sorting: { sortModel: [{ field: 'created_at', sort: 'desc' }], },
       }}
     />
   );

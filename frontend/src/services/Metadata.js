@@ -1,8 +1,8 @@
 import { api, parseQueryOptions } from "./Api";
 
-export const userTables = ({ queryKey }) => {
-    const params = parseQueryOptions(queryKey[1])
-    return api.get("metadata/user_tables/", params);
+export const userTables = (params) => {
+    const queryParams = parseQueryOptions(params)
+    return api.get("metadata/user_tables/", queryParams);
 }
 
 export const availableUserTables = () => {

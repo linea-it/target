@@ -49,7 +49,15 @@ class UserTableViewSet(ModelViewSet):
     serializer_class = NestedTableSerializer
     queryset = Table.objects.all()
     filterset_fields = ["id", "schema__name", "name"]
-    ordering_fields = ["id", "name", "schema__name", "created_at", "updated_at"]
+    ordering_fields = [
+        "id",
+        "title",
+        "name",
+        "schema__name",
+        "created_at",
+        "updated_at",
+        "nrows",
+    ]
     ordering = ["-created_at"]
 
     def list(self, request):
