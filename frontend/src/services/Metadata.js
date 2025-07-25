@@ -42,10 +42,8 @@ export const updateTableColumn = (data) => {
     return api.patch(`metadata/columns/${data.id}/`, { ...data, ucd: data.ucd === null ? '' : data.ucd });
 }
 
-export const getTableData = ({ queryKey }) => {
-    const params = queryKey[1]
+export const getTableData = (params) => {
     const queryParams = parseQueryOptions(params)
-
     return api.get(`metadata/user_tables/${params.tableId}/data/`, queryParams)
 }
 

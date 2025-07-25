@@ -33,12 +33,18 @@ export default function MainContainer({ children }) {
           {user && (
             <Box
               component='main'
-              sx={{
+              sx={(theme) => ({
                 paddingLeft: 0,
                 paddingRight: 0,
                 display: 'flex',
                 height: 'calc(100vh - 64px)',
-              }}>
+                overflowX: 'auto', // permite scroll horizontal
+                minWidth: {
+                  xs: '100%',   // para telas pequenas
+                  lg: theme.breakpoints.values.lg, // aplica minWidth de 1200px quando viewport ≥ "lg"
+                },
+              })}
+            >
               {children}
             </Box>
           )}
