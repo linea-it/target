@@ -22,11 +22,20 @@ import { useQuery } from '@tanstack/react-query'
 
 export default function CatalogDetail({ params }) {
   const { schema, table } = React.use(params)
+  const [isClient, setIsClient] = React.useState(false)
 
   const { status, isLoading, data } = useQuery({
     queryKey: ['metadataBySchemaTable', { schema, table }],
     queryFn: getMetadataBySchemaTable
   })
+
+  React.useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  if (!isClient) {
+    return <Loading isLoading={true} />
+  }
 
   if (isLoading) {
     return <Loading isLoading={isLoading} />
