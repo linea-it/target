@@ -1,12 +1,11 @@
 'use client';
 import React from 'react';
 import Box from '@mui/material/Box';
-import { useState, useEffect } from 'react'
-import Aladin from "@/components/Aladin";
+import { useEffect } from 'react'
 import Button from '@mui/material/Button';
 import Toolbar from '@mui/material/Toolbar';
 import Stack from '@mui/material/Stack';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useAuth } from "@/contexts/AuthContext";
 import { useAladinContext } from '@/components/Aladin/AladinContext';
 import { useCatalog } from '@/contexts/CatalogContext';
@@ -16,15 +15,12 @@ import theme from '@/theme';
 
 export default function TargetDetail(props) {
 
-
   const pathname = usePathname()
-  const { user } = useAuth();
-  const { record } = props
   const { isReady, setTarget, aladinRef } = useAladinContext();
   const { selectedRecord } = useCatalog();
 
   useEffect(() => {
-    console.log(selectedRecord, isReady, aladinRef.current);
+
     if (!selectedRecord || !isReady || !aladinRef.current) return;
     // console.log('Setting target in Aladin:', selectedRecord);
     setTarget(selectedRecord);
@@ -45,27 +41,17 @@ export default function TargetDetail(props) {
     >
       <Box>
         <Toolbar>
-          <Button variant="outlined" size="large"
-            href={`${pathname}/target_detail/${record?.meta_id}`}
-            disabled={!record}
+          <Button
+            href={`${pathname}/target_detail/${selectedRecord?.meta_id}`}
+            variant="outlined"
+            size="large"
+            disabled={!selectedRecord}
           >
             Object Detail</Button>
-
-          <Button variant="outlined" size="large"
-            onClick={() => {
-              // aladinRef.current.gotoRaDec(286.924667, 70.1892269)
-              aladinRef.current.gotoPosition(286.924667, 70.1892, 'gal');
-            }}
-          >
-            Teste</Button>
         </Toolbar>
       </Box>
       <Box sx={{ position: 'relative', flexGrow: 1 }}>
         <AladinViewer />
-        {/* <Aladin userGroups={user?.groups || []} /> */}
-        {/* {record && (
-          <Aladin userGroups={user?.groups || []} />
-        )} */}
 
         {!selectedRecord && (
           //  Overlay para previnir que o Aladin fique visivel
@@ -82,7 +68,6 @@ export default function TargetDetail(props) {
               pointerEvents: 'auto', // bloqueia interações no viewer abaixo
             })}
           >
-
           </Box>
         )}
       </Box>

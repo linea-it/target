@@ -50,7 +50,11 @@ export function useAladin(aladinParams = {}, userGroups = []) {
       // cooFrame: "equatorial",
       cooFrame: "ICRSd",
       options: {},
-    }]
+
+    }
+
+  ]
+
 
   // catálogos HiPScat
   const catalogs = [
@@ -94,9 +98,9 @@ export function useAladin(aladinParams = {}, userGroups = []) {
 
   const defaultTargets = {
     // "DES_DR2_IRG_LIneA": "02 32 44.09 -35 57 39.5",
-    "DES_DR2_IRG_LIneA": "230.453503 -71.1660400",
+    "DES_DR2_IRG_LIneA": "45.5695474 -19.0760449",
     // "RUBIN_FIRST_LOOK_UGRI": "12 26 53.27 +08 56 49.0",
-    "RUBIN_FIRST_LOOK_UGRI": "284.086925 +70.9150240",
+    "RUBIN_FIRST_LOOK_UGRI": "184.940790 +5.51919840",
     // "LSST_DP02_IRG_LIneA": "04 08 29.07 -37 02 47.9"
     "LSST_DP02_IRG_LIneA": "239.215847 -47.5856227"
   }
@@ -119,13 +123,8 @@ export function useAladin(aladinParams = {}, userGroups = []) {
         return;
       }
 
-      // if (isReady) {
-      //   console.warn('Aladin is already initialized');
-      //   return;
-      // }
-
       aladinRef.current = A.aladin(containerRef.current, aladinParams);
-      setIsReady(true);
+      // setIsReady(true);
 
       // aladinRef.current.addListener('AL:zoom.changed', function (e) { console.log('Zoom changed', e); });
       // aladinRef.current.addListener('AL:HiPSLayer.added', function (e) { console.log('Hips added', e); });
@@ -142,6 +141,9 @@ export function useAladin(aladinParams = {}, userGroups = []) {
           if (target) {
             // Goto the target of the current survey
             aladinRef.current.gotoObject(target);
+
+            // Indica que o Aladin e a Layer estão prontos
+            setIsReady(true);
           }
         }
       });
@@ -181,7 +183,6 @@ export function useAladin(aladinParams = {}, userGroups = []) {
         catalogsRef.current[cat.id] = hips_cat;
         // console.log(`${cat.name} HiPS catalog added`);
       })
-
     });
 
     return () => {
@@ -202,7 +203,7 @@ export function useAladin(aladinParams = {}, userGroups = []) {
     aladinRef.current?.setFov(fov);
   }, []);
 
-  const setTarget = useCallback((target, fov = 1.5, radius = 0.05) => {
+  const setTarget = useCallback((target, fov = 1.5, radius = 0.001) => {
     // console.log('Setting target:', target, aladinRef.current);
     if (!target || !aladinRef.current) return;
     // console.log('Setting target in Aladin:', target);
@@ -210,7 +211,7 @@ export function useAladin(aladinParams = {}, userGroups = []) {
 
     // Goto the target position
     aladinRef.current.gotoRaDec(parseFloat(target.meta_ra), parseFloat(target.meta_dec));
-    console.log('Target seted to:', target);
+    // console.log('Target seted to:', target);
 
     // Set the field of view
     aladinRef.current.setFoV(fov);

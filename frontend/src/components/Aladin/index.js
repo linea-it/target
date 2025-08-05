@@ -14,6 +14,7 @@ export default function Aladin({ userGroups = [] }) {
         // target: "04 08 35.53 -37 06 27.6", // Coordenadas DES. 
         // target: "12 26 53.27 +08 56 49.0",
         projection: "AIT",
+        cooFrame: "ICRSd",
         showGotoControl: true,
         showFullscreenControl: true,
         showSimbadPointerControl: true,
