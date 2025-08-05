@@ -13,7 +13,10 @@ import Stack from '@mui/material/Stack';
 import CatalogDetailContainer from "@/containers/CatalogDetail";
 import Loading from "@/components/Loading";
 
+import { useAuth } from "@/contexts/AuthContext";
 import { getMetadataBySchemaTable } from "@/services/Metadata";
+
+import { AladinProvider } from "@/components/Aladin/AladinProvider";
 
 import dayjs from "dayjs";
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
@@ -22,11 +25,21 @@ import { useQuery } from '@tanstack/react-query'
 
 export default function CatalogDetail({ params }) {
   const { schema, table } = React.use(params)
+  const [isClient, setIsClient] = React.useState(false)
+  const { user } = useAuth();
 
   const { status, isLoading, data } = useQuery({
     queryKey: ['metadataBySchemaTable', { schema, table }],
     queryFn: getMetadataBySchemaTable
   })
+
+  React.useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  if (!isClient) {
+    return <Loading isLoading={true} />
+  }
 
   if (isLoading) {
     return <Loading isLoading={isLoading} />
@@ -75,7 +88,36 @@ export default function CatalogDetail({ params }) {
         </Stack>
         <Typography ml={6} variant="caption">{dayjs(record.created_at).format('L')} by {record.owner}</Typography>
       </Box>
-      <CatalogDetailContainer record={record} />
+
+      <AladinProvider
+        // Aladin Lite options
+        // See available options at:
+        // https://cds-astro.github.io/aladin-lite/global.html#AladinOptions
+        aladinParams={{
+          fov: 1.5,
+          // target: "04 08 35.53 -37 06 27.6", // Coordenadas DES. 
+          // target: "12 26 53.27 +08 56 49.0",
+          projection: "AIT",
+          // cooFrame: "gal",
+          cooFrame: "ICRSd",
+          showGotoControl: true,
+          showFullscreenControl: true,
+          showSimbadPointerControl: true,
+          realFullscreen: true,
+          showCooGridControl: true,
+          showContextMenu: true,
+          showSettingsControl: true,
+          reticleColor: '#00ff04',
+          selector: {
+            color: '#00ff04' // Cor do campo de busca, OBS não funcionou por parametro a cor está hardcoded no css .aladin-input-text.search.
+          }
+        }}
+        userGroups={user?.groups || []}
+      >
+
+        <CatalogDetailContainer record={record} />
+
+      </AladinProvider>
     </Box>
   );
 }

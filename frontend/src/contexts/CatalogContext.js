@@ -4,10 +4,11 @@ export const CatalogContext = createContext({})
 
 export const CatalogProvider = ({ children }) => {
   const [catalog, setCatalog] = useState({})
+  const [selectedRecord, setSelectedRecord] = useState(undefined)
 
 
   return (
-    <CatalogContext.Provider value={{ catalog, setCatalog }}>
+    <CatalogContext.Provider value={{ catalog, setCatalog, selectedRecord, setSelectedRecord }}>
       {children}
     </CatalogContext.Provider>
   )

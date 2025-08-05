@@ -6,8 +6,10 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Header from "@/components/Header";
 import { useAuth } from "@/contexts/AuthContext";
 import { CatalogProvider } from "@/contexts/CatalogContext";
+
 import CssBaseline from '@mui/material/CssBaseline';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
 const queryClient = new QueryClient()
 
 export default function MainContainer({ children }) {

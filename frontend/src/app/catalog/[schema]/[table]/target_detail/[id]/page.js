@@ -12,12 +12,18 @@ import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import { getMetadataBySchemaTable, getTableRowById } from "@/services/Metadata";
 import TargetDetailContainer from "@/containers/TargetDetail";
 import Loading from "@/components/Loading";
+
+
 import { useQuery } from '@tanstack/react-query'
+import { useAuth } from "@/contexts/AuthContext";
+import { AladinProvider } from "@/components/Aladin/AladinProvider";
 
 
 export default function SingleTargetDetail({ params }) {
   // asynchronous access of `params.id`.
   const { schema, table, id } = React.use(params)
+  const { user } = useAuth();
+
 
   const { isLoading: isLoadingTable, data: tableRecord } = useQuery({
     queryKey: ['metadataBySchemaTable', { schema, table }],
@@ -82,7 +88,32 @@ export default function SingleTargetDetail({ params }) {
           <Button variant="outlined" size="large" disabled>Statistics</Button> */}
         </Stack>
       </Box>
-      <TargetDetailContainer record={record} />
+      <AladinProvider
+        // Aladin Lite options
+        // See available options at:
+        // https://cds-astro.github.io/aladin-lite/global.html#AladinOptions
+        aladinParams={{
+          fov: 1.5,
+          // target: "12 26 53.27 +08 56 49.0",
+          projection: "AIT",
+          // cooFrame: "gal",
+          cooFrame: "ICRSd",
+          showGotoControl: true,
+          showFullscreenControl: true,
+          showSimbadPointerControl: true,
+          realFullscreen: true,
+          showCooGridControl: true,
+          showContextMenu: true,
+          showSettingsControl: true,
+          reticleColor: '#00ff04',
+          selector: {
+            color: '#00ff04' // Cor do campo de busca, OBS não funcionou por parametro a cor está hardcoded no css .aladin-input-text.search.
+          }
+        }}
+        userGroups={user?.groups || []}
+      >
+        <TargetDetailContainer record={record} />
+      </AladinProvider>
     </Box>
   );
 }

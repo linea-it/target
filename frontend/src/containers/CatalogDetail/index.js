@@ -1,3 +1,4 @@
+'use client';
 import React from "react";
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
@@ -6,19 +7,26 @@ import Paper from '@mui/material/Paper';
 // import Toolbar from '@mui/material/Toolbar';
 import TargetDataGrid from "@/components/TargetDataGrid";
 import TargetDetail from "@/components/TargetDetail";
-import ClusterDetail from "@/components/ClusterDetail";
+// import ClusterDetail from "@/components/ClusterDetail";
+import { useCatalog } from '@/contexts/CatalogContext';
+
+
 export default function CatalogDetailContainer({ record }) {
 
-  const [selectedRecord, setSelectedRecord] = React.useState(undefined);
-
+  const { setSelectedRecord } = useCatalog();
 
   const onChangeSelection = (selectedRows) => {
-    if (selectedRows.size > 0) {
-      setSelectedRecord(selectedRows.values().next().value)
+    if (!selectedRows || selectedRows.length === 0) {
+      setSelectedRecord(undefined);
+      return;
     }
-    else {
-      setSelectedRecord(undefined)
-    }
+
+    // Atualiza o registro selecionado no contexto do catálogo
+
+    // Usando o primeiro registro selecionado
+    // Caso multiselect esteja habilitado, aqui deve ser alterado, 
+    // mas é necessário atenção com o comportamento do Aladin.
+    setSelectedRecord(selectedRows[0]);
 
   }
 
@@ -80,23 +88,19 @@ export default function CatalogDetailContainer({ record }) {
         >
           <Paper elevation={3} sx={{ flex: 1, width: '100%' }}>
             {record.catalog_type === 'target' && (
-              <TargetDetail
-                schema={record.schema}
-                table={record.table}
-                record={selectedRecord}
-              />
+              <TargetDetail />
             )}
-            {record.catalog_type === 'cluster' && (
-              <ClusterDetail
-                schema={record.schema}
-                table={record.table}
-                record={selectedRecord}
-              />
-            )}
+            {/* {record.catalog_type === 'cluster' && (
+                <ClusterDetail
+                  schema={record.schema}
+                  table={record.table}
+                  record={selectedRecord}
+                />
+              )} */}
           </Paper>
         </Box>
       </Box>
-    </Box>
+    </Box >
   );
 
 }

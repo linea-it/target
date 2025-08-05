@@ -63,10 +63,27 @@ export default function TargetDataGrid(props) {
       ignoreDiacritics
       // Selection
       onRowSelectionModelChange={(newRowSelectionModel, details) => {
-        const selectedRows = details.api.getSelectedRows()
+        // console.log('Selection Model Change:', newRowSelectionModel);
+        // console.log('details:', details);
+        // console.log('IDS Set:', newRowSelectionModel.ids);
+        // console.log('IDS values:', newRowSelectionModel.ids.values());
+
+        const selectedRows = []
+
+        newRowSelectionModel.ids.values().forEach((value) => {
+          selectedRows.push(details.api.getRow(value));
+        });
+
         props.onChangeSelection(selectedRows)
+
+        // getSelectedRows() DEPRECATED
+        // const selectedRows = details.api.getSelectedRows()
+        // props.onChangeSelection(selectedRows);
       }}
       disableMultipleRowSelection
+      keepNonExistentRowsSelected
+
+      // checkboxSelection
 
       initialState={{
         pagination: { paginationModel: { pageSize: 50, page: 0 }, rowCount: 0 },
