@@ -100,6 +100,7 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
     columns = ResumedColumnSerializer(qs_columns, many=True, read_only=True)
 
     owner = serializers.SerializerMethodField()
+    is_owner = serializers.SerializerMethodField()
     schema = serializers.SerializerMethodField()
     table = serializers.SerializerMethodField()
     property_id = serializers.SerializerMethodField()
@@ -111,6 +112,7 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
         fields = [
             "id",
             "owner",
+            "is_owner",
             "schema",
             "table",
             "order",
@@ -131,6 +133,10 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
 
     def get_owner(self, obj):
         return obj.schema.owner.username
+
+    def get_is_owner(self, obj):
+        current_user = self.context["request"].user
+        return obj.schema.owner.pk == current_user.pk
 
     def get_schema(self, obj):
         return obj.schema.name
