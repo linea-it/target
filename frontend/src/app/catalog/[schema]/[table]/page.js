@@ -79,9 +79,11 @@ export default function CatalogDetail({ params }) {
           <Typography variant="h5" mt={2}>
             {record.title}
           </Typography>
-          <IconButton disabled>
-            <SettingsIcon />
-          </IconButton>
+          {record.is_owner && (
+            <IconButton href={`/catalog/${record.schema}/${record.table}/settings`}>
+              <SettingsIcon />
+            </IconButton>
+          )}
           {/* <IconButton disabled>
             <ShareIcon />
           </IconButton> */}
