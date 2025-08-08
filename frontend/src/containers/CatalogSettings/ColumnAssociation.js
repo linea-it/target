@@ -73,13 +73,13 @@ export default function CatalogSettingsColumnAssociation({ catalog }) {
   }
 
   const getAvailableUcds = () => {
-    const availvableUcds = []
+    const availableUcds = []
     ucds.forEach(ucd => {
       if (usedUcds.indexOf(ucd.value) === -1) {
-        availvableUcds.push(ucd)
+        availableUcds.push(ucd)
       }
     })
-    return availvableUcds
+    return availableUcds
   }
 
   const createField = (column) => {
