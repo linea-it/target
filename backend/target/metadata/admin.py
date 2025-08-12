@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from .models import Column
 from .models import Schema
+from .models import Settings
 from .models import Table
 
 
@@ -42,4 +43,14 @@ class ColumnAdmin(admin.ModelAdmin):
         "description",
         "created_at",
         "updated_at",
+    ]
+
+
+@admin.register(Settings)
+class SettingsAdmin(admin.ModelAdmin):
+    list_display = [
+        "table",
+        "default_image",
+        "default_fov",
+        "default_marker_size",
     ]

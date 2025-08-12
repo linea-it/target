@@ -182,3 +182,42 @@ class Column(models.Model):
 
     def __str__(self):
         return f"{self.table.schema.name}.{self.table.name}.{self.name}"
+
+
+class Settings(models.Model):
+    table = models.OneToOneField(
+        Table,
+        related_name="settings",
+        on_delete=models.CASCADE,
+        verbose_name=_("Table"),
+        help_text=_("Table to which the settings belongs."),
+    )
+
+    default_image = models.CharField(
+        verbose_name=_("Default Image"),
+        help_text=_("Default image to be used in target preview."),
+        max_length=255,
+        blank=True,
+        default="DES_DR2_IRG_LIneA",
+    )
+
+    default_fov = models.FloatField(
+        verbose_name=_("Default FOV"),
+        help_text=_("Default field of view to be used in target preview."),
+        blank=True,
+        default=1.5,
+    )
+
+    default_marker_size = models.FloatField(
+        verbose_name=_("Default Marker Size"),
+        help_text=_("Default marker size to be used in target preview."),
+        blank=True,
+        default=0.001,
+    )
+
+    class Meta:
+        verbose_name = _("Settings")
+        verbose_name_plural = _("Settings")
+
+    def __str__(self):
+        return f"{self.table.schema.name}.{self.table.name}.settings"

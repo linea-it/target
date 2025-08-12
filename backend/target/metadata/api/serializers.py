@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from target.metadata.models import Column
 from target.metadata.models import Schema
+from target.metadata.models import Settings
 from target.metadata.models import Table
 
 
@@ -95,9 +96,25 @@ class SchemaSerializer(serializers.ModelSerializer[Schema]):
         fields = ["id", "owner", "name", "order", "created_at", "updated_at"]
 
 
+class SettingsSerializer(serializers.ModelSerializer[Settings]):
+    class Meta:
+        model = Settings
+        fields = [
+            "id",
+            "table",
+            "default_image",
+            "default_fov",
+            "default_marker_size",
+        ]
+        read_only_fields = ["id", "table"]
+
+
 class NestedTableSerializer(serializers.ModelSerializer[Table]):
     qs_columns = Table.objects.prefetch_related("columns")
     columns = ResumedColumnSerializer(qs_columns, many=True, read_only=True)
+
+    qs_settings = Table.objects.prefetch_related("settings")
+    settings = SettingsSerializer(qs_settings, many=False, read_only=True)
 
     owner = serializers.SerializerMethodField()
     is_owner = serializers.SerializerMethodField()
@@ -129,6 +146,7 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
             "property_ra",
             "property_dec",
             "columns",
+            "settings",
         ]
 
     def get_owner(self, obj):

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Box from '@mui/material/Box';
 import MetadataForm from "@/containers/CatalogSettings/MetadataForm";
 import CatalogSettingsColumnAssociation from "@/containers/CatalogSettings/ColumnAssociation";
+import SettingsForm from "@/containers/CatalogSettings/SettingsForm";
 
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Typography from '@mui/material/Typography';
@@ -101,8 +102,11 @@ export default function CatalogSettingsContainer({ schema, table }) {
             alignItems: 'center', // centraliza horizontalmente
           }}
         >
-          <Box sx={(theme) => ({ width: '100%', maxWidth: theme.breakpoints.values.md })}>
+          <Box sx={(theme) => ({ width: '100%', maxWidth: theme.breakpoints.values.md })} mb={2}>
             <MetadataForm />
+          </Box>
+          <Box sx={(theme) => ({ width: '100%', maxWidth: theme.breakpoints.values.md })}>
+            <SettingsForm />
           </Box>
           <Box sx={(theme) => ({ width: '100%', maxWidth: theme.breakpoints.values.md })}>
             <CatalogSettingsColumnAssociation catalog={catalog} />
