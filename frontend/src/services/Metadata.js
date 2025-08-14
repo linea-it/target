@@ -55,3 +55,12 @@ export const getTableRowById = ({ queryKey }) => {
         }
     })
 }
+
+export const createTableSettings = (data) => {
+    return api.post("metadata/settings/", data);
+}
+
+export const updateTableSettings = (data) => {
+    return api.patch(`metadata/settings/${data.id}/`, data);
+}
+

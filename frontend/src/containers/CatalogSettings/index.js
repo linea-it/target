@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Box from '@mui/material/Box';
 import MetadataForm from "@/containers/CatalogSettings/MetadataForm";
 import CatalogSettingsColumnAssociation from "@/containers/CatalogSettings/ColumnAssociation";
+import SettingsForm from "@/containers/CatalogSettings/SettingsForm";
 
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Typography from '@mui/material/Typography';
@@ -19,6 +20,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEditCatalog } from "@/contexts/EditCatalogContext";
 
 import AccessRestricted from "@/components/AccessRestricted";
+
 
 export default function CatalogSettingsContainer({ schema, table }) {
 
@@ -53,6 +55,7 @@ export default function CatalogSettingsContainer({ schema, table }) {
     );
   }
 
+
   return (
 
     <Box sx={(theme) => ({
@@ -71,13 +74,18 @@ export default function CatalogSettingsContainer({ schema, table }) {
           <Link color="inherit" href="/">
             Home
           </Link>
-          <Typography >Catalog</Typography>
+          <Link color="inherit" href={`/catalog/${catalog.schema}/${catalog.table}`}>
+            {catalog.schema}
+          </Link>
+          <Link color="inherit" href={`/catalog/${catalog.schema}/${catalog.table}`}>
+            {catalog.table}
+          </Link>
           <Typography >Settings</Typography>
         </Breadcrumbs>
         <Stack direction="row" mt={2} spacing={1} sx={{
           alignItems: "center",
         }}>
-          <IconButton href={`/`}>
+          <IconButton href={`/catalog/${catalog.schema}/${catalog.table}`}>
             <ArrowBackIosIcon />
           </IconButton>
           <Typography variant="h5" mt={2}>
@@ -101,8 +109,11 @@ export default function CatalogSettingsContainer({ schema, table }) {
             alignItems: 'center', // centraliza horizontalmente
           }}
         >
-          <Box sx={(theme) => ({ width: '100%', maxWidth: theme.breakpoints.values.md })}>
+          <Box sx={(theme) => ({ width: '100%', maxWidth: theme.breakpoints.values.md })} mb={2}>
             <MetadataForm />
+          </Box>
+          <Box sx={(theme) => ({ width: '100%', maxWidth: theme.breakpoints.values.md })}>
+            <SettingsForm />
           </Box>
           <Box sx={(theme) => ({ width: '100%', maxWidth: theme.breakpoints.values.md })}>
             <CatalogSettingsColumnAssociation catalog={catalog} />

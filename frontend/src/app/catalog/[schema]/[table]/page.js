@@ -1,5 +1,6 @@
 'use client'
 import React from "react";
+import { useEffect } from "react";
 import Box from '@mui/material/Box';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Typography from '@mui/material/Typography';
@@ -17,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getMetadataBySchemaTable } from "@/services/Metadata";
 
 import { AladinProvider } from "@/components/Aladin/AladinProvider";
+import { useCatalog } from '@/contexts/CatalogContext';
 
 import dayjs from "dayjs";
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
@@ -27,8 +29,9 @@ export default function CatalogDetail({ params }) {
   const { schema, table } = React.use(params)
   const [isClient, setIsClient] = React.useState(false)
   const { user } = useAuth();
+  const { setCatalog, catalog } = useCatalog();
 
-  const { status, isLoading, data } = useQuery({
+  const { status, isLoading, data, isSuccess } = useQuery({
     queryKey: ['metadataBySchemaTable', { schema, table }],
     queryFn: getMetadataBySchemaTable
   })
@@ -36,6 +39,15 @@ export default function CatalogDetail({ params }) {
   React.useEffect(() => {
     setIsClient(true)
   }, [])
+
+  useEffect(() => {
+    if (isSuccess) {
+      const record = data?.data?.results?.[0];
+      if (record) {
+        setCatalog(record);
+      }
+    }
+  }, [isSuccess, data, setCatalog]);
 
   if (!isClient) {
     return <Loading isLoading={true} />
@@ -45,9 +57,7 @@ export default function CatalogDetail({ params }) {
     return <Loading isLoading={isLoading} />
   }
 
-  const record = data.data.results[0]
-
-  if (record === undefined) {
+  if (catalog?.id === undefined) {
     return <div>Not found</div>
   }
 
@@ -67,8 +77,8 @@ export default function CatalogDetail({ params }) {
           <Link color="inherit" href="/">
             Home
           </Link>
-          <Typography >{record.schema}</Typography>
-          <Typography >{record.table}</Typography>
+          <Typography >{catalog.schema}</Typography>
+          <Typography >{catalog.table}</Typography>
         </Breadcrumbs>
         <Stack direction="row" mt={2} spacing={1} sx={{
           alignItems: "center",
@@ -77,10 +87,10 @@ export default function CatalogDetail({ params }) {
             <ArrowBackIosIcon />
           </IconButton>
           <Typography variant="h5" mt={2}>
-            {record.title}
+            {catalog.title}
           </Typography>
-          {record.is_owner && (
-            <IconButton href={`/catalog/${record.schema}/${record.table}/settings`}>
+          {catalog.is_owner && (
+            <IconButton href={`/catalog/${catalog.schema}/${catalog.table}/settings`}>
               <SettingsIcon />
             </IconButton>
           )}
@@ -88,7 +98,7 @@ export default function CatalogDetail({ params }) {
             <ShareIcon />
           </IconButton> */}
         </Stack>
-        <Typography ml={6} variant="caption">{dayjs(record.created_at).format('L')} by {record.owner}</Typography>
+        <Typography ml={6} variant="caption">{dayjs(catalog.created_at).format('L')} by {catalog.owner}</Typography>
       </Box>
 
       <AladinProvider
@@ -109,15 +119,17 @@ export default function CatalogDetail({ params }) {
           showCooGridControl: true,
           showContextMenu: true,
           showSettingsControl: true,
+          showReticle: false,
           reticleColor: '#00ff04',
           selector: {
             color: '#00ff04' // Cor do campo de busca, OBS não funcionou por parametro a cor está hardcoded no css .aladin-input-text.search.
           }
         }}
         userGroups={user?.groups || []}
+        default_survey={catalog?.settings?.default_image}
       >
 
-        <CatalogDetailContainer record={record} />
+        <CatalogDetailContainer catalog={catalog} />
 
       </AladinProvider>
     </Box>

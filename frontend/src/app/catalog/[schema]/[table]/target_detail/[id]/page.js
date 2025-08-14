@@ -112,7 +112,7 @@ export default function SingleTargetDetail({ params }) {
         }}
         userGroups={user?.groups || []}
       >
-        <TargetDetailContainer record={record} />
+        <TargetDetailContainer catalog={tableRecord} record={record} />
       </AladinProvider>
     </Box>
   );

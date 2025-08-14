@@ -5,28 +5,53 @@ import { useEffect } from 'react'
 import Button from '@mui/material/Button';
 import Toolbar from '@mui/material/Toolbar';
 import Stack from '@mui/material/Stack';
+import IconButton from '@mui/material/IconButton';
+import MyLocationIcon from '@mui/icons-material/MyLocation';
 import { usePathname } from 'next/navigation';
-import { useAuth } from "@/contexts/AuthContext";
 import { useAladinContext } from '@/components/Aladin/AladinContext';
 import { useCatalog } from '@/contexts/CatalogContext';
 
 import AladinViewer from '@/components/Aladin/AladinViewer';
-import theme from '@/theme';
+
 
 export default function TargetDetail(props) {
 
   const pathname = usePathname()
-  const { isReady, setTarget, aladinRef } = useAladinContext();
-  const { selectedRecord } = useCatalog();
+  const { isReady, setTarget, aladinRef, setImageSurvey } = useAladinContext();
+  const { selectedRecord, catalog } = useCatalog();
 
   useEffect(() => {
 
-    if (!selectedRecord || !isReady || !aladinRef.current) return;
-    // console.log('Setting target in Aladin:', selectedRecord);
-    setTarget(selectedRecord);
-    // aladinRef.current.gotoPosition(parseFloat(selectedRecord.meta_ra), parseFloat(selectedRecord.meta_dec), 'gal');
+    // if (!selectedRecord || !isReady || !aladinRef.current) return;
+    // // console.log('Setting target in Aladin:', selectedRecord);
+    // let fov = catalog?.settings?.default_fov || 1.5; // Default FOV if not set
+    // let radius = catalog?.settings?.default_marker_size || 0.001
+
+    // setTarget(selectedRecord, fov, radius);
+
+    centerOnTarget()
+
   }, [selectedRecord, aladinRef.current, isReady]);
 
+  useEffect(() => {
+    // Quando o catalogo tem uma imagem/survey default
+    // Ele é definido apos a instancia do Aladin.
+
+    // console.log("Aladin carregado e pronto para uso");
+    // console.log(catalog, isReady)
+    if (catalog?.settings?.default_image && isReady) {
+      setImageSurvey(catalog?.settings?.default_image)
+    }
+  }, [catalog, isReady])
+
+  const centerOnTarget = () => {
+    if (!selectedRecord || !isReady || !aladinRef.current) return;
+    // console.log('Setting target in Aladin:', selectedRecord);
+    let fov = catalog?.settings?.default_fov || 1.5; // Default FOV if not set
+    let radius = catalog?.settings?.default_marker_size || 0.001
+
+    setTarget(selectedRecord, fov, radius);
+  }
 
   return (
     <Stack
@@ -41,14 +66,21 @@ export default function TargetDetail(props) {
     >
       <Box>
         <Toolbar>
-          <Button
-            href={`${pathname}/target_detail/${selectedRecord?.meta_id}`}
-            variant="outlined"
-            size="large"
-            disabled={!selectedRecord}
-          >
-            Object Detail</Button>
+          <Stack direction="row" spacing={2}>
+            <Button
+              href={`${pathname}/target_detail/${selectedRecord?.meta_id}`}
+              variant="outlined"
+              size="large"
+              disabled={!selectedRecord}
+            >
+              Object Detail
+            </Button>
+            <IconButton aria-label="center" disabled={!selectedRecord} onClick={centerOnTarget}>
+              <MyLocationIcon />
+            </IconButton>
+          </Stack>
         </Toolbar>
+
       </Box>
       <Box sx={{ position: 'relative', flexGrow: 1 }}>
         <AladinViewer />

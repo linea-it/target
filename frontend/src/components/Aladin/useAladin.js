@@ -5,7 +5,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 /**
  * Hook para controlar o Aladin Lite, aguardando a lib A estar disponível.
  */
-export function useAladin(aladinParams = {}, userGroups = []) {
+export function useAladin(aladinParams = {}, userGroups = [], default_survey) {
   const containerRef = useRef(null);
   const aladinRef = useRef(null);
   const [isReady, setIsReady] = useState(false);
@@ -40,7 +40,7 @@ export function useAladin(aladinParams = {}, userGroups = []) {
         requestCredentials: 'include',
         requestMode: 'cors',
       },
-      requireGroup: 'dp02', // Grupo necessário para acesso
+      requireGroup: 'lsst_dp0.2', // Grupo necessário para acesso
     },
     // Rubin First Look (pública)
     {
@@ -137,14 +137,20 @@ export function useAladin(aladinParams = {}, userGroups = []) {
         const currentSurvey = aladinRef.current.getBaseImageLayer();
         if (currentSurvey) {
           setCurrentSurveyId(currentSurvey.id);
-          const target = defaultTargets[currentSurvey.id];
-          if (target) {
-            // Goto the target of the current survey
-            aladinRef.current.gotoObject(target);
 
-            // Indica que o Aladin e a Layer estão prontos
-            setIsReady(true);
+          if (targetOverlayRef.current) {
+            // Já tem um target setado.
+
+          } else {
+            // Não tem nenhum target selecionado, centraliza a imagem no target default.
+            const target = defaultTargets[currentSurvey.id];
+            if (target) {
+              // Goto the target of the current survey
+              aladinRef.current.gotoObject(target);
+            }
           }
+          // Indica que o Aladin e a Layer estão prontos
+          setIsReady(true);
         }
       });
 
@@ -165,6 +171,7 @@ export function useAladin(aladinParams = {}, userGroups = []) {
         surveysRef.current[survey.id] = hips_survey;
         // console.log(`${survey.name} HIPS IMAGE added`);
       })
+
 
       // Adiciona os catálogos HiPScat
       catalogs.forEach(cat => {
