@@ -11,7 +11,7 @@ import TargetDetail from "@/components/TargetDetail";
 import { useCatalog } from '@/contexts/CatalogContext';
 
 
-export default function CatalogDetailContainer({ record }) {
+export default function CatalogDetailContainer({ catalog }) {
 
   const { setSelectedRecord } = useCatalog();
 
@@ -66,11 +66,11 @@ export default function CatalogDetailContainer({ record }) {
               }}
             >
               <TargetDataGrid
-                type={record.catalog_type}
-                tableId={record.id}
-                schema={record.schema}
-                table={record.table}
-                tableColumns={record.columns}
+                type={catalog.catalog_type}
+                tableId={catalog.id}
+                schema={catalog.schema}
+                table={catalog.table}
+                tableColumns={catalog.columns}
                 onChangeSelection={onChangeSelection}
               />
             </Box>
@@ -83,11 +83,11 @@ export default function CatalogDetailContainer({ record }) {
             flex: 1,
             display: 'flex',
             padding: 1,
-            minWidth: '300px', // largura mínima para o painel direito
+            minWidth: '500px', // largura mínima para o painel direito
           }}
         >
           <Paper elevation={3} sx={{ flex: 1, width: '100%' }}>
-            {record.catalog_type === 'target' && (
+            {catalog.catalog_type === 'target' && (
               <TargetDetail />
             )}
             {/* {record.catalog_type === 'cluster' && (

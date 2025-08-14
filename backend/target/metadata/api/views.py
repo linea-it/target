@@ -7,11 +7,13 @@ from rest_framework.viewsets import ModelViewSet
 from dblinea import MyDB
 from target.metadata.models import Column
 from target.metadata.models import Schema
+from target.metadata.models import Settings
 from target.metadata.models import Table
 
 from .serializers import ColumnSerializer
 from .serializers import NestedTableSerializer
 from .serializers import SchemaSerializer
+from .serializers import SettingsSerializer
 from .serializers import TableSerializer
 
 
@@ -43,6 +45,12 @@ class ColumnViewSet(ModelViewSet):
     serializer_class = ColumnSerializer
     queryset = Column.objects.all()
     filterset_fields = ["id", "table", "table__name", "name"]
+
+
+class SettingsViewSet(ModelViewSet):
+    serializer_class = SettingsSerializer
+    queryset = Settings.objects.all()
+    filterset_fields = ["id", "table"]
 
 
 class UserTableViewSet(ModelViewSet):

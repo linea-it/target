@@ -106,7 +106,7 @@ class SettingsSerializer(serializers.ModelSerializer[Settings]):
             "default_fov",
             "default_marker_size",
         ]
-        read_only_fields = ["id", "table"]
+        read_only_fields = ["id"]
 
 
 class NestedTableSerializer(serializers.ModelSerializer[Table]):

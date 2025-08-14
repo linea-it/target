@@ -90,7 +90,7 @@ export default function RegisterCatalogBasicInformation() {
         onChange={handleChange}
       >
         <MenuItem key="target-option" value="target">Target</MenuItem>
-        <MenuItem key="cluster-option" value="cluster">Cluster</MenuItem>
+        {/* <MenuItem key="cluster-option" value="cluster">Cluster</MenuItem> */}
       </TextField>
       <TextField
         label="Description"

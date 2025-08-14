@@ -21,6 +21,7 @@ import { useEditCatalog } from "@/contexts/EditCatalogContext";
 
 import AccessRestricted from "@/components/AccessRestricted";
 
+
 export default function CatalogSettingsContainer({ schema, table }) {
 
   const { catalog, setCatalog } = useEditCatalog();
@@ -54,6 +55,7 @@ export default function CatalogSettingsContainer({ schema, table }) {
     );
   }
 
+
   return (
 
     <Box sx={(theme) => ({
@@ -72,13 +74,18 @@ export default function CatalogSettingsContainer({ schema, table }) {
           <Link color="inherit" href="/">
             Home
           </Link>
-          <Typography >Catalog</Typography>
+          <Link color="inherit" href={`/catalog/${catalog.schema}/${catalog.table}`}>
+            {catalog.schema}
+          </Link>
+          <Link color="inherit" href={`/catalog/${catalog.schema}/${catalog.table}`}>
+            {catalog.table}
+          </Link>
           <Typography >Settings</Typography>
         </Breadcrumbs>
         <Stack direction="row" mt={2} spacing={1} sx={{
           alignItems: "center",
         }}>
-          <IconButton href={`/`}>
+          <IconButton href={`/catalog/${catalog.schema}/${catalog.table}`}>
             <ArrowBackIosIcon />
           </IconButton>
           <Typography variant="h5" mt={2}>
