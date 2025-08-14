@@ -132,7 +132,7 @@ export default function SettingsForm() {
               onChange={handleChange}
             />
           </Stack>
-          {mutation.isLoading ? <LinearProgress /> : <Box sx={{ height: 4, marginBottom: 2 }} />}
+          {mutation.isPending ? <LinearProgress /> : <Box sx={{ height: 4, marginBottom: 2 }} />}
         </Box>
       </CardContent>
     </Card>
