@@ -210,7 +210,7 @@ export function useAladin(aladinParams = {}, userGroups = [], default_survey) {
     aladinRef.current?.setFov(fov);
   }, []);
 
-  const setTarget = useCallback((target, fov = 1.5, radius_arcsec = 4) => {
+  const setTarget = useCallback((target, fov = 1.5, radius_arcsec = 5) => {
     // console.log('Setting target:', target, aladinRef.current);
     if (!target || !aladinRef.current) return;
     // console.log('Setting target in Aladin:', target);
