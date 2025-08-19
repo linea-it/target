@@ -24,7 +24,7 @@ export default function SettingsForm() {
     table: undefined,
     default_image: '',
     default_fov: 1.5,
-    default_marker_size: 0.001,
+    default_marker_size: 5,
   })
 
   const mutation = useMutation({
@@ -56,9 +56,14 @@ export default function SettingsForm() {
     },
   })
 
+
   const handleChange = (event) => {
     const { name, value } = event.target;
 
+    update(name, value);
+  };
+
+  const update = (name, value) => {
     const updated = {
       ...editedSettings,
       table: catalog.id,
@@ -68,7 +73,8 @@ export default function SettingsForm() {
 
     // Salva automaticamente (POST ou PATCH)
     mutation.mutate(updated);
-  };
+  }
+
 
   const surveys = [{
     value: "DES_DR2_IRG_LIneA",
@@ -123,7 +129,7 @@ export default function SettingsForm() {
             />
 
             <TextField
-              label="Default Marker Size"
+              label="Default Marker Radius (arcsec)"
               variant="outlined"
               type="number"
               fullWidth

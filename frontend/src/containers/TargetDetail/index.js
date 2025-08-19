@@ -34,7 +34,7 @@ export default function TargetDetailContainer({ catalog, record }) {
     if (!record || !isReady || !aladinRef.current) return;
     // console.log('Setting target in Aladin:', record);
     let fov = catalog?.settings?.default_fov || 1.5; // Default FOV if not set
-    let radius = catalog?.settings?.default_marker_size || 0.001
+    let radius = catalog?.settings?.default_marker_size || 4
 
     setTarget(record, fov, radius);
   }

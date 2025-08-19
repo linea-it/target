@@ -210,7 +210,7 @@ export function useAladin(aladinParams = {}, userGroups = [], default_survey) {
     aladinRef.current?.setFov(fov);
   }, []);
 
-  const setTarget = useCallback((target, fov = 1.5, radius = 0.001) => {
+  const setTarget = useCallback((target, fov = 1.5, radius_arcsec = 4) => {
     // console.log('Setting target:', target, aladinRef.current);
     if (!target || !aladinRef.current) return;
     // console.log('Setting target in Aladin:', target);
@@ -227,9 +227,12 @@ export function useAladin(aladinParams = {}, userGroups = [], default_survey) {
     if (targetOverlayRef.current) {
       aladinRef.current.removeOverlay(targetOverlayRef.current);
     }
+
+    let radius_deg = (radius_arcsec / 3600).toFixed(4);
+
     targetOverlayRef.current = A.graphicOverlay({ color: '#33ff42', lineWidth: 2 });
     aladinRef.current.addOverlay(targetOverlayRef.current);
-    targetOverlayRef.current.add(A.circle(target.meta_ra, target.meta_dec, radius, { color: '#33ff42' }));
+    targetOverlayRef.current.add(A.circle(target.meta_ra, target.meta_dec, radius_deg, { color: '#33ff42' }));
 
 
   }, []);
