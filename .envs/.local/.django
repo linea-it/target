@@ -26,5 +26,6 @@ CELERY_FLOWER_PASSWORD=debug
 ENVIRONMENT_NAME=development
 BASE_HOST=http://localhost
 
-# Url de login utilizada pelo frontend
-LINEA_LOGIN_URL=/admin/login/?next=/
+# Urls de login SAML/CILogon
+LINEA_LOGIN_URL=$BASE_HOST/saml2/login/?idp=https://satosa.linea.org.br/linea/proxy/aHR0cHM6Ly9jaWxvZ29uLm9yZw==
+RUBIN_LOGIN_URL=$BASE_HOST/saml2/login/?idp=https://satosa-dev.linea.org.br/linea_saml_mirror/proxy/aHR0cHM6Ly9kYXRhLmxzc3QuY2xvdWQ=&next=/

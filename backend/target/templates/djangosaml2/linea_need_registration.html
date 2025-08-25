@@ -20,8 +20,8 @@
 
         body.container {
             /* background-image: url('/django_static/images/background.jpg'); */
-            background-repeat: round;
-            background-attachment: fixed;
+            /* background-repeat: round; */
+            /* background-attachment: fixed; */
             width: 100% !important;
 
             display: flex;
@@ -133,20 +133,14 @@
                 </div>
                 <div class="card-header">
                     <h3 style="margin-bottom: 3rem; margin-top: 0px; align-content: center;">
-                        NOT AUTHORIZED
+                        Unauthorized
                     </h3>
                 </div>
             </div>
 
             <div class="col-md-8" style="font-size: 20px;">
-                <!-- <p class="text" style="margin-top: 0;">
-                    If you have signed in with the wrong account, please
-                    <a href="{{ settings.BASE_HOST }}/{{ settings.LOGOUT_URL }}?return={{ settings.BASE_HOST }}">
-                        sign out and connect with another login.
-                    </a>
-                </p> -->
-                <p class="text">
-                    If you are a new user, please <a href="https://docs.linea.org.br/primeiros_passos.html">register
+                <p class="text" style="margin-top: 0;">
+                    If you are a new user, please <a href="{{ settings.LINEA_REGISTER_URL }}">register
                         here</a>.
                 </p>
                 <p class="text">
