@@ -45,7 +45,9 @@ MYDB_SCHEMA_PREFIX=mydb_
 
 #SAML2
 # ------------------------------------------------------------------------------
-AUTH_SAML2_LOGIN_URL_CILOGON=$BASE_HOST/saml2/login/?idp=https://satosa.linea.org.br/linea/proxy/aHR0cHM6Ly9jaWxvZ29uLm9yZw==
+# SATOSA PRODUCTION
+LINEA_LOGIN_URL=$BASE_HOST/saml2/login/?idp=https://satosa.linea.org.br/linea/proxy/aHR0cHM6Ly9jaWxvZ29uLm9yZw==
+LINEA_REGISTER_URL=https://register.linea.org.br/Shibboleth.sso/Login?SAMLDS=1&target=https://register.linea.org.br/registry/co_petitions/start/coef:155&entityID=https://satosa.linea.org.br/linea/proxy/aHR0cHM6Ly9jaWxvZ29uLm9yZw==
 
-# Url de login utilizada pelo frontend
-LINEA_LOGIN_URL=$AUTH_SAML2_LOGIN_URL_CILOGON
+RUBIN_LOGIN_URL=$BASE_HOST/saml2/login/?idp=https://satosa.linea.org.br/linea/proxy/aHR0cHM6Ly9kYXRhLmxzc3QuY2xvdWQv&next=/
+RUBIN_REGISTER_URL=https://register.linea.org.br/Shibboleth.sso/Login?SAMLDS=1&target=https://register.linea.org.br/registry/co_petitions/start/coef:189&entityID=https://satosa.linea.org.br/linea/proxy/aHR0cHM6Ly9kYXRhLmxzc3QuY2xvdWQv
