@@ -89,7 +89,7 @@ export default function CatalogSettingsContainer({ schema, table }) {
             <ArrowBackIosIcon />
           </IconButton>
           <Typography variant="h5" mt={2}>
-            Edit settings for {catalog.title}
+            Edit {catalog.title}
           </Typography>
         </Stack>
       </Box>

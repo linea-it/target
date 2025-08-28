@@ -23,7 +23,7 @@ export default function SettingsForm() {
     id: undefined,
     table: undefined,
     default_image: '',
-    default_fov: 1.5,
+    default_fov: 5,
     default_marker_size: 5,
   })
 
@@ -119,7 +119,7 @@ export default function SettingsForm() {
               })}
             </TextField>
             <TextField
-              label="Default FOV"
+              label="FOV (arcmin)"
               variant="outlined"
               type="number"
               fullWidth
@@ -129,7 +129,7 @@ export default function SettingsForm() {
             />
 
             <TextField
-              label="Default Marker Radius (arcsec)"
+              label="Marker Radius (arcsec)"
               variant="outlined"
               type="number"
               fullWidth

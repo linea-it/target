@@ -210,7 +210,7 @@ export function useAladin(aladinParams = {}, userGroups = [], default_survey) {
     aladinRef.current?.setFov(fov);
   }, []);
 
-  const setTarget = useCallback((target, fov = 1.5, radius_arcsec = 5) => {
+  const setTarget = useCallback((target, fov_arcmin = 5, radius_arcsec = 5) => {
     // console.log('Setting target:', target, aladinRef.current);
     if (!target || !aladinRef.current) return;
     // console.log('Setting target in Aladin:', target);
@@ -221,7 +221,8 @@ export function useAladin(aladinParams = {}, userGroups = [], default_survey) {
     // console.log('Target seted to:', target);
 
     // Set the field of view
-    aladinRef.current.setFoV(fov);
+    let fov_deg = (fov_arcmin / 60).toFixed(4);
+    aladinRef.current.setFoV(fov_deg);
 
     // Draw marker 
     if (targetOverlayRef.current) {
