@@ -60,7 +60,16 @@ export default function RegisterCatalogColumnAssociation() {
         </Stack>
         {catalog.description && catalog.description.length > 0 && <Typography variant="body1" mt={1}>{catalog.description}</Typography>}
 
-        <Box maxHeight={500} mt={1}>
+        {/* <Box maxHeight={500} mt={1}> */}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            width: '100%',
+            height: '100%',
+            maxHeight: 500,
+          }}
+        >
           <TargetDataGrid
             type={catalog.catalog_type}
             tableId={catalog.id}

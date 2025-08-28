@@ -14,7 +14,7 @@ import Loading from "@/components/Loading";
 dayjs.extend(LocalizedFormat)
 import { useRegisterCatalog } from "@/contexts/RegisterCatalogContext";
 import { pendingRegistration, deleteUserTable } from "@/services/Metadata";
-
+import RequirementsInfo from "@/containers/RegisterCatalog/RequirementsInfo";
 
 export default function RegisterCatalogContainer() {
 
@@ -78,6 +78,7 @@ export default function RegisterCatalogContainer() {
         flexGrow: 1,
       }}>
         <Box mt={2}> <RegisterCatalogStepper /> </Box>
+        {[0, 1].includes(activeStep) && (<RequirementsInfo />)}
         <Box sx={{ flexGrow: 1 }}>
           {activeStep === 0 && (<RegisterCatalogBasicInformation />)}
           {activeStep === 1 && (<RegisterCatalogColumnAssociation />)}
