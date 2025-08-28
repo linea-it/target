@@ -36,7 +36,7 @@ export default function RegisterCatalog({ params }) {
             <ArrowBackIosIcon />
           </IconButton>
           <Typography variant="h5" mt={2}>
-            Register a new catalog
+            Register New Catalog
           </Typography>
         </Stack>
       </Box>
