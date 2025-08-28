@@ -47,8 +47,8 @@ export default function TargetDetail(props) {
   const centerOnTarget = () => {
     if (!selectedRecord || !isReady || !aladinRef.current) return;
     // console.log('Setting target in Aladin:', selectedRecord);
-    let fov = catalog?.settings?.default_fov || 1.5; // Default FOV if not set
-    let radius = catalog?.settings?.default_marker_size || 0.001
+    let fov = catalog?.settings?.default_fov || 5; // Default FOV if not set
+    let radius = catalog?.settings?.default_marker_size || 5
 
     setTarget(selectedRecord, fov, radius);
   }
