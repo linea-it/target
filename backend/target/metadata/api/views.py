@@ -68,11 +68,25 @@ class UserTableViewSet(ModelViewSet):
     ]
     ordering = ["-created_at"]
 
+
     def list(self, request):
         # https://www.cdrf.co/3.9/rest_framework.viewsets/ReadOnlyModelViewSet.html#list
         queryset = self.get_queryset()
-        queryset = queryset.filter(schema__owner=self.request.user, is_completed=True)
+        queryset = queryset.filter(schema__owner=self.request.user, is_completed=True, is_removed=False)
         queryset = self.filter_queryset(queryset)
+
+        # Instancia do MyDB
+        db = MyDB(username=request.user.username)
+        # List of tables in the database that the user has access
+        db_tables = db.get_user_tables()
+
+        # Checks if any registered table has been deleted from the database.
+        to_exclude = [table.name for table in queryset if table.name not in db_tables]
+
+        # Marks the record as removed and removes it from the result.
+        if len(to_exclude) > 0:
+            queryset.filter(name__in=to_exclude).update(is_removed=True)
+            queryset = queryset.exclude(is_removed=True)
 
         page = self.paginate_queryset(queryset)
         if page is not None:

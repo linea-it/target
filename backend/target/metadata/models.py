@@ -97,8 +97,13 @@ class Table(models.Model):
         ),
     )
     is_completed = models.BooleanField(
-        verbose_name=_("Completed"),
+        verbose_name=_("Is Completed"),
         help_text=_("Indicates whether the record is completed or not."),
+        default=False,
+    )
+    is_removed = models.BooleanField(
+        verbose_name=_("Is Removed"),
+        help_text=_("Indicates whether the record is marked as removed or not."),
         default=False,
     )
 
