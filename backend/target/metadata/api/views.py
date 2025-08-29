@@ -77,7 +77,7 @@ class UserTableViewSet(ModelViewSet):
 
         # MyDB instance
         db = MyDB(username=request.user.username)
-        # List of tables in the database that the user has access
+        # List of tables in the database that the user has access to
         db_tables = db.get_user_tables()
 
         # Checks if any registered table has been deleted from the database.
