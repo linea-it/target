@@ -28,7 +28,7 @@ import { useQuery } from '@tanstack/react-query'
 export default function CatalogDetail({ params }) {
   const { schema, table } = React.use(params)
   const [isClient, setIsClient] = React.useState(false)
-  const { user } = useAuth();
+  const { user, settings } = useAuth();
   const { setCatalog, catalog } = useCatalog();
 
   const { status, isLoading, data, isSuccess } = useQuery({
@@ -127,6 +127,7 @@ export default function CatalogDetail({ params }) {
         }}
         userGroups={user?.groups || []}
         default_survey={catalog?.settings?.default_image}
+        baseHost={settings?.base_host}
       >
 
         <CatalogDetailContainer catalog={catalog} />
