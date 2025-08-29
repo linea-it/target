@@ -5,7 +5,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 /**
  * Hook para controlar o Aladin Lite, aguardando a lib A estar disponível.
  */
-export function useAladin(aladinParams = {}, userGroups = [], default_survey) {
+export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
   const containerRef = useRef(null);
   const aladinRef = useRef(null);
   const [isReady, setIsReady] = useState(false);
@@ -13,7 +13,6 @@ export function useAladin(aladinParams = {}, userGroups = [], default_survey) {
   const catalogsRef = useRef({})
   const targetOverlayRef = useRef(null);
   const [currentSurveyId, setCurrentSurveyId] = useState(null);
-
 
   const surveys = [
     // Adiciona imagem do DES DR2 (pública)
@@ -33,7 +32,7 @@ export function useAladin(aladinParams = {}, userGroups = [], default_survey) {
     {
       id: "LSST_DP02_IRG_LIneA",
       name: "LSST DP0.2 IRG at LIneA",
-      url: "https://skyviewer-dev.linea.org.br/data/releases/lsst/dp02/images/hips/",
+      url: `${baseHost}/data/releases/lsst/dp02/images/hips/`,
       // cooFrame: "equatorial",
       cooFrame: "ICRSd",
       options: {

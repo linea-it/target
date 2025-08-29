@@ -22,8 +22,7 @@ import { AladinProvider } from "@/components/Aladin/AladinProvider";
 export default function SingleTargetDetail({ params }) {
   // asynchronous access of `params.id`.
   const { schema, table, id } = React.use(params)
-  const { user } = useAuth();
-
+  const { user, settings } = useAuth();
 
   const { isLoading: isLoadingTable, data: tableRecord } = useQuery({
     queryKey: ['metadataBySchemaTable', { schema, table }],
@@ -111,6 +110,7 @@ export default function SingleTargetDetail({ params }) {
           }
         }}
         userGroups={user?.groups || []}
+        baseHost={settings?.base_host}
       >
         <TargetDetailContainer catalog={tableRecord} record={record} />
       </AladinProvider>

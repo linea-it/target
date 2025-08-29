@@ -34,6 +34,8 @@ services:
       - ./nginx-proxy.conf:/etc/nginx/conf.d/default.conf:ro
       # Diretório onde o backend manipula arquivos, e que deve ficar acessivel ao servidor web.
       - ./data/tmp:/var/www/data
+      # LSST DP02 Hips Images (PRIVATE)
+      - /mnt/cl/lsst/dp02/secondary/images/hips:/var/www/data/releases/lsst/dp02/images/hips      
     depends_on:
       - backend
       - frontend
