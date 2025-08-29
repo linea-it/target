@@ -85,8 +85,7 @@ class UserTableViewSet(ModelViewSet):
 
         # Marks the record as removed and removes it from the result.
         if len(to_exclude) > 0:
-            queryset.filter(name__in=to_exclude).update(is_removed=True)
-            queryset = queryset.exclude(is_removed=True)
+            queryset = queryset.exclude(name__in=to_exclude)
 
         page = self.paginate_queryset(queryset)
         if page is not None:
