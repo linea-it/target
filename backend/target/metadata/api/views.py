@@ -83,7 +83,7 @@ class UserTableViewSet(ModelViewSet):
         # Checks if any registered table has been deleted from the database.
         to_exclude = [table.name for table in queryset if table.name not in db_tables]
 
-        # Marks the record as removed and removes it from the result.
+        # Mark the records as removed and remove them from the result.
         if len(to_exclude) > 0:
             queryset = queryset.exclude(name__in=to_exclude)
 
