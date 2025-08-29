@@ -75,7 +75,7 @@ class UserTableViewSet(ModelViewSet):
         queryset = queryset.filter(schema__owner=self.request.user, is_completed=True, is_removed=False)
         queryset = self.filter_queryset(queryset)
 
-        # Instancia do MyDB
+        # MyDB instance
         db = MyDB(username=request.user.username)
         # List of tables in the database that the user has access
         db_tables = db.get_user_tables()
