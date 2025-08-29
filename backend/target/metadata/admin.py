@@ -20,10 +20,11 @@ class TableAdmin(admin.ModelAdmin):
         "name",
         "schema",
         "title",
-        "description",
+        # "description",
         "order",
         "nrows",
         "size",
+        "is_removed",
         "created_at",
         "updated_at",
     ]
