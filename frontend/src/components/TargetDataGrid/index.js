@@ -21,6 +21,7 @@ export default function TargetDataGrid(props) {
 
     if (!selectedRecord) {
       setRowSelectionModel({ type: 'include', ids: new Set(), })
+      return;
     }
 
     const id = selectedRecord.meta_id;
