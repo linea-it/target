@@ -78,9 +78,11 @@ export default function TargetDataGrid(props) {
     setRowSelectionModel(newSelectionModel)
 
     const selectedRows = []
-    newSelectionModel.ids?.forEach((value) => {
-      selectedRows.push(details.api.getRow(value))
-    })
+    if (newSelectionModel.ids) {
+      for (const value of newSelectionModel.ids) {
+        selectedRows.push(details.api.getRow(value))
+      }
+    }
     props.onChangeSelection(selectedRows)
   }
 
