@@ -2,8 +2,32 @@
 import * as React from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import { getTableData } from '@/services/Metadata';
+import { useCatalog } from '@/contexts/CatalogContext'
 
 export default function TargetDataGrid(props) {
+
+  const { selectedRecord } = useCatalog()
+
+
+  // ids das rows atualmente carregadas/visíveis (atualizado no dataSource.getRows)
+  const [visibleRowIds, setVisibleRowIds] = React.useState(new Set());
+
+  // estado controlado da seleção
+  const [rowSelectionModel, setRowSelectionModel] = React.useState({ type: 'include', ids: new Set(), })
+
+  // quando o contexto mudar (por ex: voltou do detalhe)
+  // reaplica seleção quando o selectedRecord é conhecido e quando as linhas visíveis mudam
+  React.useEffect(() => {
+
+    if (!selectedRecord) {
+      setRowSelectionModel({ type: 'include', ids: new Set(), })
+    }
+
+    const id = selectedRecord.meta_id;
+    setRowSelectionModel({ type: 'include', ids: new Set([id]) });
+
+  }, [selectedRecord, visibleRowIds])
+
 
   const makeColumns = () => {
     const mainUcds = ['meta.id;meta.main;meta.ref', 'pos.eq.ra;meta.main', 'pos.eq.dec;meta.main']
@@ -29,8 +53,13 @@ export default function TargetDataGrid(props) {
 
         try {
           const res = await getTableData(params);
+          const rows = res.data.results || [];
+
+          // atualiza o conjunto de ids visíveis
+          setVisibleRowIds(new Set(rows.map((r) => r.meta_id)));
+
           return {
-            rows: res.data.results,
+            rows,
             rowCount: res.data.count,
           };
         } catch (error) {
@@ -42,7 +71,17 @@ export default function TargetDataGrid(props) {
     [props.tableId],
   );
 
+  // quando usuário seleciona uma linha
+  const handleSelectionChange = (newSelectionModel, details) => {
 
+    setRowSelectionModel(newSelectionModel)
+
+    const selectedRows = []
+    newSelectionModel.ids?.forEach((value) => {
+      selectedRows.push(details.api.getRow(value))
+    })
+    props.onChangeSelection(selectedRows)
+  }
 
   return (
     <DataGrid
@@ -62,27 +101,10 @@ export default function TargetDataGrid(props) {
       // Filtering
       ignoreDiacritics
       // Selection
-      onRowSelectionModelChange={(newRowSelectionModel, details) => {
-        // console.log('Selection Model Change:', newRowSelectionModel);
-        // console.log('details:', details);
-        // console.log('IDS Set:', newRowSelectionModel.ids);
-        // console.log('IDS values:', newRowSelectionModel.ids.values());
-
-        const selectedRows = []
-
-        newRowSelectionModel.ids.values().forEach((value) => {
-          selectedRows.push(details.api.getRow(value));
-        });
-
-        props.onChangeSelection(selectedRows)
-
-        // getSelectedRows() DEPRECATED
-        // const selectedRows = details.api.getSelectedRows()
-        // props.onChangeSelection(selectedRows);
-      }}
+      rowSelectionModel={rowSelectionModel}
+      onRowSelectionModelChange={handleSelectionChange}
       disableMultipleRowSelection
       keepNonExistentRowsSelected
-
       // checkboxSelection
 
       initialState={{

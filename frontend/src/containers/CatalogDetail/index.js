@@ -1,5 +1,6 @@
 'use client';
 import React from "react";
+import { useEffect } from "react";
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
 import Paper from '@mui/material/Paper';
@@ -13,7 +14,11 @@ import { useCatalog } from '@/contexts/CatalogContext';
 
 export default function CatalogDetailContainer({ catalog }) {
 
-  const { setSelectedRecord } = useCatalog();
+  const { selectedRecord, setSelectedRecord } = useCatalog();
+
+  // useEffect(() => {
+  //   console.log("Selected Record: ", selectedRecord);
+  // }, [selectedRecord])
 
   const onChangeSelection = (selectedRows) => {
     if (!selectedRows || selectedRows.length === 0) {
