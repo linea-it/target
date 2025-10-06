@@ -14,7 +14,7 @@ export const CatalogProvider = ({ children }) => {
       try {
         setSelectedRecord(JSON.parse(stored))
       } catch (err) {
-        console.error('Erro ao restaurar selectedRecord do sessionStorage', err)
+        console.error('Error restoring selectedRecord from sessionStorage', err)
         sessionStorage.removeItem('selectedRecord')
       }
     }
