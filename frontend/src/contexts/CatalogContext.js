@@ -7,6 +7,29 @@ export const CatalogProvider = ({ children }) => {
   const [selectedRecord, setSelectedRecord] = useState(undefined)
 
 
+  // Restaura o selectedRecord do sessionStorage
+  useEffect(() => {
+    const stored = sessionStorage.getItem('selectedRecord')
+    if (stored) {
+      try {
+        setSelectedRecord(JSON.parse(stored))
+      } catch (err) {
+        console.error('Error restoring selectedRecord from sessionStorage', err)
+        sessionStorage.removeItem('selectedRecord')
+      }
+    }
+  }, [])
+
+
+  // Salva no sessionStorage toda vez que selectedRecord mudar
+  useEffect(() => {
+    if (selectedRecord) {
+      sessionStorage.setItem('selectedRecord', JSON.stringify(selectedRecord))
+    } else {
+      sessionStorage.removeItem('selectedRecord')
+    }
+  }, [selectedRecord])
+
   return (
     <CatalogContext.Provider value={{ catalog, setCatalog, selectedRecord, setSelectedRecord }}>
       {children}

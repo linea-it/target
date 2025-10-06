@@ -1,5 +1,6 @@
 'use client'
 import React from "react";
+
 import Box from '@mui/material/Box';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Typography from '@mui/material/Typography';
@@ -17,12 +18,14 @@ import Loading from "@/components/Loading";
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from "@/contexts/AuthContext";
 import { AladinProvider } from "@/components/Aladin/AladinProvider";
+import { useCatalog } from "@/contexts/CatalogContext";
 
 
 export default function SingleTargetDetail({ params }) {
   // asynchronous access of `params.id`.
   const { schema, table, id } = React.use(params)
   const { user, settings } = useAuth();
+  const { setSelectedRecord } = useCatalog();
 
   const { isLoading: isLoadingTable, data: tableRecord } = useQuery({
     queryKey: ['metadataBySchemaTable', { schema, table }],
@@ -38,6 +41,14 @@ export default function SingleTargetDetail({ params }) {
     select: (data) => data?.data.results[0],
     staleTime: 5 * 10000
   })
+
+  React.useEffect(() => {
+    // seta no contexto apenas quando houver record carregado
+    if (record) {
+      setSelectedRecord(record);
+    }
+  }, [record, setSelectedRecord]);
+
 
   if (isLoadingTable || isLoadingRow) {
     return <Loading isLoading={isLoadingTable || isLoadingRow} />
