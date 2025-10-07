@@ -95,7 +95,7 @@ export default function TargetDetail(props) {
       <Box sx={{ position: 'relative', flexGrow: 1 }}>
         <AladinViewer />
 
-        {!selectedRecord || selectedRecord.meta_catalog_id !== catalog.id && (
+        {(!selectedRecord || selectedRecord.meta_catalog_id !== catalog.id) && (
           //  Overlay para previnir que o Aladin fique visivel
           // Sem nenhum registro selecionado 
           <Box
