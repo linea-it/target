@@ -5,9 +5,11 @@ import { useEffect } from 'react'
 import Button from '@mui/material/Button';
 import Toolbar from '@mui/material/Toolbar';
 import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import HideSourceIcon from '@mui/icons-material/HideSource';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import { usePathname } from 'next/navigation';
 import { useAladinContext } from '@/components/Aladin/AladinContext';
 import { useCatalog } from '@/contexts/CatalogContext';
@@ -18,7 +20,7 @@ import AladinViewer from '@/components/Aladin/AladinViewer';
 export default function TargetDetail(props) {
 
   const pathname = usePathname()
-  const { isReady, setTarget, aladinRef, setImageSurvey, toggleMarkerVisibility } = useAladinContext();
+  const { isReady, setTarget, aladinRef, setImageSurvey, toggleMarkerVisibility, takeSnapshot } = useAladinContext();
   const { selectedRecord, catalog } = useCatalog();
 
 
@@ -82,12 +84,21 @@ export default function TargetDetail(props) {
             >
               Object Detail
             </Button>
-            <IconButton aria-label="center" disabled={!selectedRecord} onClick={centerOnTarget}>
-              <MyLocationIcon />
-            </IconButton>
-            <IconButton aria-label="show-hide-marker" disabled={!selectedRecord} onClick={toggleMarkerVisibility}>
-              <HideSourceIcon />
-            </IconButton>
+            <Tooltip title="Center on target">
+              <IconButton aria-label="center" disabled={!selectedRecord} onClick={centerOnTarget}>
+                <MyLocationIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Show/Hide marker">
+              <IconButton aria-label="show-hide-marker" disabled={!selectedRecord} onClick={toggleMarkerVisibility}>
+                <HideSourceIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Take snapshot">
+              <IconButton aria-label="take-snapshot" disabled={!selectedRecord} onClick={takeSnapshot}>
+                <CameraAltIcon />
+              </IconButton>
+            </Tooltip>
           </Stack>
         </Toolbar>
 
