@@ -7,6 +7,7 @@ import Toolbar from '@mui/material/Toolbar';
 import Stack from '@mui/material/Stack';
 import IconButton from '@mui/material/IconButton';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
+import HideSourceIcon from '@mui/icons-material/HideSource';
 import { usePathname } from 'next/navigation';
 import { useAladinContext } from '@/components/Aladin/AladinContext';
 import { useCatalog } from '@/contexts/CatalogContext';
@@ -17,8 +18,10 @@ import AladinViewer from '@/components/Aladin/AladinViewer';
 export default function TargetDetail(props) {
 
   const pathname = usePathname()
-  const { isReady, setTarget, aladinRef, setImageSurvey } = useAladinContext();
+  const { isReady, setTarget, aladinRef, setImageSurvey, toggleMarkerVisibility } = useAladinContext();
   const { selectedRecord, catalog } = useCatalog();
+
+
 
   useEffect(() => {
 
@@ -28,10 +31,8 @@ export default function TargetDetail(props) {
     // let radius = catalog?.settings?.default_marker_size || 0.001
 
     // setTarget(selectedRecord, fov, radius);
-
     centerOnTarget()
-
-  }, [selectedRecord, aladinRef.current, isReady]);
+  }, [selectedRecord, catalog, aladinRef.current, isReady]);
 
   useEffect(() => {
     // Quando o catalogo tem uma imagem/survey default
@@ -45,12 +46,18 @@ export default function TargetDetail(props) {
   }, [catalog, isReady])
 
   const centerOnTarget = () => {
-    if (!selectedRecord || !isReady || !aladinRef.current) return;
+    if (!selectedRecord || !isReady || !aladinRef.current || !catalog) return;
     // console.log('Setting target in Aladin:', selectedRecord);
-    let fov = catalog?.settings?.default_fov || 5; // Default FOV if not set
-    let radius = catalog?.settings?.default_marker_size || 5
 
-    setTarget(selectedRecord, fov, radius);
+    let fov = catalog?.settings?.default_fov || 5; // Default FOV if not set
+    let radius = catalog?.settings?.default_marker_size || 5;
+
+    // Previne que um target selecionado em um catalogo diferente seja exibido
+    // O target selecionado fica na sessão, caso o usuario troque de catalogo
+    // esse if garante que o target só será exibido se for do catalogo atual
+    if (selectedRecord.meta_catalog_id === catalog.id) {
+      setTarget(selectedRecord, fov, radius);
+    }
   }
 
   return (
@@ -78,6 +85,9 @@ export default function TargetDetail(props) {
             <IconButton aria-label="center" disabled={!selectedRecord} onClick={centerOnTarget}>
               <MyLocationIcon />
             </IconButton>
+            <IconButton aria-label="show-hide-marker" disabled={!selectedRecord} onClick={toggleMarkerVisibility}>
+              <HideSourceIcon />
+            </IconButton>
           </Stack>
         </Toolbar>
 
@@ -85,7 +95,7 @@ export default function TargetDetail(props) {
       <Box sx={{ position: 'relative', flexGrow: 1 }}>
         <AladinViewer />
 
-        {!selectedRecord && (
+        {(!selectedRecord || selectedRecord.meta_catalog_id !== catalog.id) && (
           //  Overlay para previnir que o Aladin fique visivel
           // Sem nenhum registro selecionado 
           <Box

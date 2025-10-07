@@ -68,11 +68,12 @@ class UserTableViewSet(ModelViewSet):
     ]
     ordering = ["-created_at"]
 
-
     def list(self, request):
         # https://www.cdrf.co/3.9/rest_framework.viewsets/ReadOnlyModelViewSet.html#list
         queryset = self.get_queryset()
-        queryset = queryset.filter(schema__owner=self.request.user, is_completed=True, is_removed=False)
+        queryset = queryset.filter(
+            schema__owner=self.request.user, is_completed=True, is_removed=False
+        )
         queryset = self.filter_queryset(queryset)
 
         # MyDB instance
@@ -271,6 +272,7 @@ class UserTableViewSet(ModelViewSet):
         for row in rows:
             row.update(
                 {
+                    "meta_catalog_id": table.id,
                     "meta_id": row.get(ucds.get("meta.id;meta.main")),
                     "meta_ra": row.get(ucds.get("pos.eq.ra;meta.main")),
                     "meta_dec": row.get(ucds.get("pos.eq.dec;meta.main")),

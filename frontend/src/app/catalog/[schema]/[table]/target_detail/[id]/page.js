@@ -25,7 +25,7 @@ export default function SingleTargetDetail({ params }) {
   // asynchronous access of `params.id`.
   const { schema, table, id } = React.use(params)
   const { user, settings } = useAuth();
-  const { setSelectedRecord } = useCatalog();
+  const { setSelectedRecord, setCatalog } = useCatalog();
 
   const { isLoading: isLoadingTable, data: tableRecord } = useQuery({
     queryKey: ['metadataBySchemaTable', { schema, table }],
@@ -42,8 +42,18 @@ export default function SingleTargetDetail({ params }) {
     staleTime: 5 * 10000
   })
 
+
   React.useEffect(() => {
-    // seta no contexto apenas quando houver record carregado
+    // seta no contexto o catalogo selecionado
+    if (tableRecord) {
+      setCatalog(tableRecord);
+    }
+  }, [tableRecord, setCatalog]);
+
+
+
+  React.useEffect(() => {
+    // seta no contexto se tiver um target selecionado
     if (record) {
       setSelectedRecord(record);
     }

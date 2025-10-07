@@ -114,7 +114,7 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
       if (isCancelled) return;
 
       console.log('Aladin Lite initialized');
-      console.log('aladinRef.current:', aladinRef.current)
+      // console.log('aladinRef.current:', aladinRef.current)
 
       // Verifica se o Aladin já foi inicializado
       if (aladinRef.current) {
@@ -234,9 +234,17 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     aladinRef.current.addOverlay(targetOverlayRef.current);
     targetOverlayRef.current.add(A.circle(target.meta_ra, target.meta_dec, radius_deg, { color: '#33ff42' }));
 
-
   }, []);
 
+  const toggleMarkerVisibility = useCallback(() => {
+    if (targetOverlayRef.current) {
+      if (targetOverlayRef.current.isShowing) {
+        targetOverlayRef.current.hide();
+      } else {
+        targetOverlayRef.current.show();
+      }
+    }
+  }, []);
   const setImageSurvey = useCallback((survey) => {
     aladinRef.current?.setImageSurvey(survey);
   }, []);
@@ -272,5 +280,6 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     setImageSurvey,
     toggleCatalogVisibility,
     addMarker,
+    toggleMarkerVisibility,
   };
 }
