@@ -18,6 +18,7 @@ export const AladinContext = createContext({
   toggleCatalogVisibility: () => { },
   addMarker: () => { },
   toggleMarkerVisibility: () => { },
+  takeSnapshot: () => { },
 });
 
 /**

@@ -268,6 +268,11 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     return null;
   }, []);
 
+  const takeSnapshot = useCallback(() => {
+    if (!aladinRef.current) return null;
+    return aladinRef.current.exportAsPNG();
+  }, []);
+
   return {
     containerRef,
     aladinRef,
@@ -281,5 +286,6 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     toggleCatalogVisibility,
     addMarker,
     toggleMarkerVisibility,
+    takeSnapshot,
   };
 }
