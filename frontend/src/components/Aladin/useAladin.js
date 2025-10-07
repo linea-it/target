@@ -245,8 +245,6 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
       }
     }
   }, []);
-
-
   const setImageSurvey = useCallback((survey) => {
     aladinRef.current?.setImageSurvey(survey);
   }, []);
