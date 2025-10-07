@@ -17,6 +17,7 @@ export const AladinContext = createContext({
   setImageSurvey: () => { },
   toggleCatalogVisibility: () => { },
   addMarker: () => { },
+  toggleMarkerVisibility: () => { },
 });
 
 /**
