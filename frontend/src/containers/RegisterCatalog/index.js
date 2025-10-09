@@ -76,6 +76,7 @@ export default function RegisterCatalogContainer() {
         justifyContent: "flex-start",
         alignItems: "stretch",
         flexGrow: 1,
+        width: '100%',
       }}>
         <Box mt={2}> <RegisterCatalogStepper /> </Box>
         {[0, 1].includes(activeStep) && (<RequirementsInfo />)}

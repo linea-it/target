@@ -8,7 +8,7 @@ import TargetDataGrid from "@/components/TargetDataGrid";
 import Loading from "@/components/Loading";
 import RegisterCatalogToolbar from "./Toolbar";
 import { useRegisterCatalog } from "@/contexts/RegisterCatalogContext";
-import { updateUserTable } from "@/services/Metadata";
+import { completeUserTableRegistration } from "@/services/Metadata";
 import { useRouter } from 'next/navigation'
 import filesize from 'filesize.js' // https://github.com/hustcc/filesize.js/
 
@@ -16,12 +16,12 @@ import dayjs from "dayjs";
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
 dayjs.extend(LocalizedFormat)
 
-export default function RegisterCatalogColumnAssociation() {
+export default function RegisterCatalogConfirmation() {
   const router = useRouter()
   const { catalog, setActiveStep } = useRegisterCatalog();
 
   const mutation = useMutation({
-    mutationFn: updateUserTable,
+    mutationFn: completeUserTableRegistration,
     onSuccess: (data, variables, context) => {
       // Redireciona para a Home.
       router.push('/')
@@ -35,7 +35,7 @@ export default function RegisterCatalogColumnAssociation() {
   })
 
   const handleSubmit = () => {
-    mutation.mutate({ id: catalog.id, is_completed: true })
+    mutation.mutate({ id: catalog.id })
   }
 
   const handlePrev = () => {

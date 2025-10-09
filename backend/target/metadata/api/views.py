@@ -17,6 +17,19 @@ from .serializers import SettingsSerializer
 from .serializers import TableSerializer
 
 
+class TableRegistrationError(Exception):
+    """Raised when table registration fails"""
+
+    pass
+
+
+class TableAlreadyExistsError(TableRegistrationError):
+    """Raised when attempting to register an existing table"""
+
+    def __init__(self, schema, name):
+        super().__init__(f"Table {schema}.{name} already registered")
+
+
 class SchemaViewSet(ModelViewSet):
     serializer_class = SchemaSerializer
     queryset = Schema.objects.all()
@@ -72,7 +85,10 @@ class UserTableViewSet(ModelViewSet):
         # https://www.cdrf.co/3.9/rest_framework.viewsets/ReadOnlyModelViewSet.html#list
         queryset = self.get_queryset()
         queryset = queryset.filter(
-            schema__owner=self.request.user, is_completed=True, is_removed=False
+            schema__owner=self.request.user,
+            is_completed=True,
+            is_removed=False,
+            catalog_type__in=[Table.CATALOG_TYPE_TARGET, Table.CATALOG_TYPE_CLUSTER],
         )
         queryset = self.filter_queryset(queryset)
 
@@ -100,6 +116,71 @@ class UserTableViewSet(ModelViewSet):
         # check if the table is registered
         return Table.objects.filter(name=tablename, schema__name=schema).exists()
 
+    def register_table(self, user, data):
+        # Instancia do MyDB
+        db = MyDB(username=user.username)
+        # TODO: Verificar a permissão do usuario sobre a tabela
+
+        is_registered = self.is_table_registered(
+            data.get("name"),
+            data.get("schema"),
+        )
+        if is_registered:
+            raise TableAlreadyExistsError(data.get("schema"), data.get("name"))
+
+        # Verifica se a tabela existe
+        if not db.table_exists(
+            schema=data.get("schema"),
+            tablename=data.get("name"),
+        ):
+            table_name = f"{data.get('schema')}.{data.get('name')}"
+            raise Exception(f"Table {table_name} already registered")
+
+        # Tamanho da tabela e quantidade de linhas estimadas.
+        stats = db.get_table_status(
+            tablename=data.get("name"),
+        )
+
+        # Tenta usar o total de linhas estimado pelo postgres
+        # para evitar a query count que pode ser demorada em tabelas grandes.
+        nrows = stats.get("row_estimate")
+
+        if nrows in (0, None, -1):
+            # Total de linhas na tabela.
+            nrows = db.get_count(
+                tablename=data.get("name"),
+            )
+
+        schema = Schema.objects.get_or_create(
+            owner=user,
+            name=data.get("schema"),
+        )[0]
+
+        table = Table.objects.create(
+            schema=schema,
+            name=data.get("name"),
+            title=data.get("title"),
+            description=data.get("description"),
+            catalog_type=data.get("catalog_type"),
+            nrows=nrows,
+            size=stats.get("total_bytes"),
+        )
+
+        # Criar o registro das colunas da tabela.
+        columns = db.describe_table(tablename=table.name)
+        for c in columns:
+            Column.objects.create(
+                table=table,
+                name=c.get("name"),
+                datatype=str(c.get("type").__repr__()),
+                pythontype=str(c.get("python_type").__name__),
+                order=c.get("order"),
+            )
+
+        table.refresh_from_db()
+
+        return table
+
     def create(self, request):
         try:
             data = {
@@ -110,71 +191,7 @@ class UserTableViewSet(ModelViewSet):
                 "catalog_type": request.data.get("catalog_type"),
             }
 
-            # Instancia do MyDB
-            db = MyDB(username=request.user.username)
-            # TODO: Verificar a permissão do usuario sobre a tabela
-
-            # TODO: Verficar se a tabela não foi registrada.
-            is_registered = self.is_table_registered(
-                data.get("name"),
-                data.get("schema"),
-            )
-            if is_registered:
-                raise Exception(
-                    f"Table {data.get('schema')}.{data.get('name')} already registered",
-                )
-
-            # Verifica se a tabela existe
-            if not db.table_exists(
-                schema=data.get("schema"),
-                tablename=data.get("name"),
-            ):
-                return Response(
-                    {"message": "Table not found"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Tamanho da tabela e quantidade de linhas estimadas.
-            stats = db.get_table_status(
-                tablename=data.get("name"),
-            )
-
-            # Tenta usar o total de linhas estimado pelo postgres
-            # para evitar a query count que pode ser demorada em tabelas grandes.
-            nrows = stats.get("row_estimate")
-            # print("Estimated rows: ", nrows)
-            if nrows in (0, None, -1):
-                # print("Estimated rows not found, using count query")
-                # Total de linhas na tabela.
-                nrows = db.get_count(
-                    tablename=data.get("name"),
-                )
-
-            schema = Schema.objects.get_or_create(
-                owner=request.user,
-                name=data.get("schema"),
-            )[0]
-
-            table = Table.objects.create(
-                schema=schema,
-                name=data.get("name"),
-                title=data.get("title"),
-                description=data.get("description"),
-                catalog_type=data.get("catalog_type"),
-                nrows=nrows,
-                size=stats.get("total_bytes"),
-            )
-
-            # Criar o registro das colunas da tabela.
-            columns = db.describe_table(tablename=table.name)
-            for c in columns:
-                Column.objects.create(
-                    table=table,
-                    name=c.get("name"),
-                    datatype=str(c.get("type").__repr__()),
-                    pythontype=str(c.get("python_type").__name__),
-                    order=c.get("order"),
-                )
+            table = self.register_table(request.user, data)
 
             table.refresh_from_db()
 
@@ -184,6 +201,62 @@ class UserTableViewSet(ModelViewSet):
         except Exception as e:
             content = {"error": str(e)}
             return Response(content, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def update(self, request, *args, **kwargs):
+        super().update(request, *args, **kwargs)
+        instance = self.get_object()
+
+        # Check if the table is typed as 'cluster' and has related_table set
+        if instance.catalog_type == Table.CATALOG_TYPE_CLUSTER:
+            related_tablename = request.data.get("related_table_name", None)
+
+            if not instance.related_table and not related_tablename:
+                return Response(
+                    {"error": "Related table must be provided for cluster catalogs."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # region Register related table if not registered
+            if related_tablename:
+                schema_name = related_tablename.split(".")[0]
+                table_name = related_tablename.split(".")[-1]
+
+                if self.is_table_registered(table_name, schema_name):
+                    # Related table already registered, fetch it
+                    related_table = Table.objects.get(
+                        name=table_name,
+                        schema__name=schema_name,
+                        schema__owner=request.user,
+                    )
+                    instance.related_table = related_table
+                    instance.save()
+
+                else:
+                    # Related table not registered,
+                    # register it now
+                    try:
+                        data = {
+                            "schema": schema_name,
+                            "name": table_name,
+                            "title": f"Auto registered {table_name}",
+                            "description": "",
+                            "catalog_type": Table.CATALOG_TYPE_MEMBER,
+                        }
+
+                        table = self.register_table(request.user, data)
+                        instance.related_table = table
+                        # instance.is_completed = True
+                        instance.save()
+                    except TableRegistrationError as e:
+                        return Response(
+                            {"error": f"Failed when register related table. {e}"},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+            # endregion
+
+        instance.refresh_from_db()
+        data = self.get_serializer(instance=instance).data
+        return Response(data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["get"])
     def mydb_tables(self, request, pk=None):
@@ -201,16 +274,81 @@ class UserTableViewSet(ModelViewSet):
     @action(detail=False, methods=["get"])
     def pending_registration(self, request):
         user = request.user
-        table = Table.objects.filter(schema__owner=user, is_completed=False).first()
+        table = Table.objects.filter(
+            schema__owner=user,
+            is_completed=False,
+            catalog_type__in=[
+                Table.CATALOG_TYPE_TARGET,
+                Table.CATALOG_TYPE_CLUSTER,
+            ],  # Type members are always completed
+        ).first()
         if table:
             data = self.get_serializer(instance=table).data
             return Response(data, status=status.HTTP_200_OK)
 
         return Response({}, status=status.HTTP_200_OK)
 
+    def check_mandatory_ucds(self, table_ucds, required_ucds):
+        """Verifica se todos os UCDs obrigatórios estão presentes e têm colunas válidas."""
+        missing = []
+        for ucd in required_ucds:
+            column = table_ucds.get(ucd)
+            if not column:  # vazio, None ou não existe
+                missing.append(ucd)
+        return missing
+
+    @action(detail=True, methods=["post"])
+    def complete_registration(self, request, pk=None):
+        table = self.get_object()
+
+        # Check if table have related table when is a cluster catalog
+        if table.catalog_type == Table.CATALOG_TYPE_CLUSTER:
+            if not table.related_table:
+                return Response(
+                    {"error": "Related table must be set for cluster catalogs."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Check if related table have all required UCDs assigned
+            related_ucds = self.get_table_ucds(table.related_table)
+            missing = self.check_mandatory_ucds(
+                related_ucds, Table.RELATED_REQUIRED_UCDS
+            )
+            if len(missing) > 0:
+                return Response(
+                    {
+                        "error": "Related table is missing mandatory UCDs.",
+                        "missing_ucds": missing,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Related table ok must be marked as completed
+            table.related_table.is_completed = True
+            table.related_table.save()
+
+        # Check if all mandatory UCDs are assigned
+        table_ucds = self.get_table_ucds(table)
+        missing = self.check_mandatory_ucds(table_ucds, Table.REQUIRED_UCDS)
+        if len(missing) > 0:
+            return Response(
+                {
+                    "error": "Table is missing mandatory UCDs.",
+                    "missing_ucds": missing,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        table.is_completed = True
+        table.save()
+
+        table.refresh_from_db()
+        data = self.get_serializer(instance=table).data
+        return Response(data, status=status.HTTP_200_OK)
+
     def get_table_ucds(self, table):
         columns = table.columns.filter(ucd__isnull=False)
-        return {c.ucd: c.name for c in columns}
+        return {c.ucd: c.name for c in columns if c.ucd and c.name}
 
     def parse_filters(self, query_params):
         reserved_keys = ["page", "pageSize", "columns", "ordering"]

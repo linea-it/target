@@ -9,6 +9,7 @@ import AlertTitle from '@mui/material/AlertTitle';
 import RegisterCatalogToolbar from "./Toolbar";
 import { useRegisterCatalog } from "@/contexts/RegisterCatalogContext";
 import UserTableSelect from "@/components/UserTableSelect";
+import RelatedTableSelect from "@/components/RelatedTableSelect";
 import { useMutation } from '@tanstack/react-query'
 import { registerUserTable, updateUserTable } from "@/services/Metadata";
 
@@ -51,6 +52,14 @@ export default function RegisterCatalogBasicInformation() {
     })
   }
 
+  const onSelectRelatedTable = (value) => {
+    console.log('onSelectRelatedTable', value)
+    setCatalog({
+      ...catalog,
+      related_table_name: value
+    })
+  }
+
   const handleChange = (e) => {
     setCatalog({
       ...catalog,
@@ -90,8 +99,16 @@ export default function RegisterCatalogBasicInformation() {
         onChange={handleChange}
       >
         <MenuItem key="target-option" value="target">Target</MenuItem>
-        {/* <MenuItem key="cluster-option" value="cluster">Cluster</MenuItem> */}
+        <MenuItem key="cluster-option" value="cluster">Cluster</MenuItem>
       </TextField>
+
+      {catalog.catalog_type === 'cluster' && (
+        <>
+          {catalog.related_table && (<TextField label="Table" variant="outlined" fullWidth value={`${catalog.related_table_name}`} disabled />)}
+          {!catalog.related_table && (<RelatedTableSelect onChange={onSelectRelatedTable} value={catalog.related_table_name ? `${catalog.related_table_name}` : ''} />)}
+        </>
+      )}
+
       <TextField
         label="Description"
         variant="outlined"

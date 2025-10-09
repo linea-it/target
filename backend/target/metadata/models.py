@@ -37,11 +37,26 @@ class Schema(models.Model):
 class Table(models.Model):
     CATALOG_TYPE_TARGET = "target"
     CATALOG_TYPE_CLUSTER = "cluster"
+    CATALOG_TYPE_MEMBER = "member"
 
     CATALOG_TYPE_CHOICES = (
         (CATALOG_TYPE_TARGET, _("target")),
         (CATALOG_TYPE_CLUSTER, _("cluster")),
+        (CATALOG_TYPE_MEMBER, _("member")),
     )
+
+    REQUIRED_UCDS = [
+        "meta.id;meta.main",
+        "pos.eq.ra;meta.main",
+        "pos.eq.dec;meta.main",
+    ]
+
+    RELATED_REQUIRED_UCDS = [
+        "meta.id;meta.main",
+        "pos.eq.ra;meta.main",
+        "pos.eq.dec;meta.main",
+        "meta.id.cross",
+    ]
 
     schema = models.ForeignKey(
         Schema,
@@ -105,6 +120,17 @@ class Table(models.Model):
         verbose_name=_("Is Removed"),
         help_text=_("Indicates whether the record is marked as removed or not."),
         default=False,
+    )
+
+    # campo de relação com a própria tabela
+    related_table = models.ForeignKey(
+        "self",  # referência ao próprio modelo
+        null=True,  # pode ficar vazio
+        blank=True,
+        on_delete=models.SET_NULL,  # evita cascata (não apaga a tabela pai)
+        related_name="related_members",  # nome reverso mais claro
+        verbose_name=_("Related Table"),
+        help_text=_("Members table for tables with type cluster."),
     )
 
     class Meta:

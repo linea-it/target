@@ -10,6 +10,8 @@ export const RegisterCatalogProvider = ({ children }) => {
     catalog_type: 'target',
     schema: '',
     table: '',
+    related_table: '',
+    related_table_name: '',
     description: '',
     is_completed: false,
     columns: [],
