@@ -21,6 +21,10 @@ export const updateUserTable = (data) => {
     return api.patch(`metadata/user_tables/${data.id}/`, data);
 }
 
+export const completeUserTableRegistration = ({ id }) => {
+    return api.post(`metadata/user_tables/${id}/complete_registration/`);
+}
+
 export const deleteUserTable = (id) => {
     return api.delete(`metadata/user_tables/${id}/`);
 }

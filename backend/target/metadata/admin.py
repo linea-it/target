@@ -24,7 +24,10 @@ class TableAdmin(admin.ModelAdmin):
         "order",
         "nrows",
         "size",
+        "catalog_type",
+        "related_table",
         "is_removed",
+        "is_completed",
         "created_at",
         "updated_at",
     ]
