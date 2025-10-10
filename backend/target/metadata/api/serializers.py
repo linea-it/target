@@ -126,6 +126,7 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
     property_dec = serializers.SerializerMethodField()
 
     related_table_name = serializers.SerializerMethodField()
+    related_property_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Table
@@ -144,6 +145,7 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
             "catalog_type",
             "related_table",
             "related_table_name",
+            "related_property_id",
             "created_at",
             "updated_at",
             "is_completed",
@@ -188,4 +190,11 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
     def get_related_table_name(self, obj):
         if obj.related_table:
             return f"{obj.related_table.schema.name}.{obj.related_table.name}"
+        return None
+
+    def get_related_property_id(self, obj):
+        if obj.related_table:
+            col = obj.related_table.columns.filter(ucd="meta.id.cross").first()
+            if col:
+                return col.name
         return None

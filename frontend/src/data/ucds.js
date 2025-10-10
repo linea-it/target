@@ -16,17 +16,11 @@ export const ucds = [
     value: 'meta.id.cross',
   },
   {
-    value: 'src.redshift'
+    label: 'Radius (arcmin)',
+    value: 'phys.angSize;src',
+    unit: 'arcmin',
+    mandatory: false,
   },
-  {
-    value: 'stat.error;src.redshift'
-  },
-  {
-    value: 'stat.rank'
-  },
-  {
-    value: 'meta.curation'
-  }
 ]
 
 export function filterUcdsByValue(value) {

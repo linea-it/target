@@ -113,12 +113,12 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     A.init.then(() => {
       if (isCancelled) return;
 
-      console.log('Aladin Lite initialized');
+      // console.log('Aladin Lite initialized');
       // console.log('aladinRef.current:', aladinRef.current)
 
       // Verifica se o Aladin já foi inicializado
       if (aladinRef.current) {
-        console.warn('Aladin is already initialized');
+        // console.warn('Aladin is already initialized');
         return;
       }
 
@@ -245,17 +245,19 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
       }
     }
   }, []);
+
   const setImageSurvey = useCallback((survey) => {
     aladinRef.current?.setImageSurvey(survey);
   }, []);
 
-  const toggleCatalogVisibility = useCallback((id, visible) => {
+  const toggleCatalogVisibility = useCallback((id) => {
     const catalog = catalogsRef.current?.[id];
     if (!catalog) return;
-    if (visible) {
-      catalog.show();
-    } else {
+
+    if (catalog.isShowing) {
       catalog.hide();
+    } else {
+      catalog.show();
     }
   }, []);
 
@@ -268,9 +270,43 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     return null;
   }, []);
 
+
   const takeSnapshot = useCallback(() => {
     if (!aladinRef.current) return null;
     return aladinRef.current.exportAsPNG();
+  }, []);
+
+
+  const removeCatalog = useCallback((id) => {
+    if (!aladinRef.current) return null;
+
+    const catalog = catalogsRef.current?.[id];
+    if (catalog) {
+      catalog.removeAll();
+      aladinRef.current.removeOverlay(catalog);
+      delete catalogsRef.current[id];
+    }
+  }, []);
+
+
+  const addCatalog = useCallback((id, sources = [], options = { color: '#33ff42', sourceSize: 8, shape: 'circle' }) => {
+    // Catalog Option : https://cds-astro.github.io/aladin-lite/global.html#CatalogOptions
+    if (!aladinRef.current) return null;
+
+    if (catalogsRef.current?.[id]) {
+      removeCatalog(id);
+    }
+
+    let catalog = A.catalog({ name: id, ...options });
+
+    aladinRef.current.addCatalog(catalog);
+    catalogsRef.current[id] = catalog;
+
+    sources.forEach((source) => {
+      catalog.addSources(A.source(source.meta_ra, source.meta_dec));
+    });
+
+    return catalog;
   }, []);
 
   return {
@@ -287,5 +323,6 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     addMarker,
     toggleMarkerVisibility,
     takeSnapshot,
+    addCatalog
   };
 }

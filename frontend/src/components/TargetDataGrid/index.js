@@ -51,7 +51,6 @@ export default function TargetDataGrid(props) {
     () => ({
       getRows: async (params) => {
         params.tableId = props.tableId
-
         try {
           const res = await getTableData(params);
           const rows = res.data.results || [];
