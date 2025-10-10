@@ -245,7 +245,6 @@ class UserTableViewSet(ModelViewSet):
 
                         table = self.register_table(request.user, data)
                         instance.related_table = table
-                        # instance.is_completed = True
                         instance.save()
                     except TableRegistrationError as e:
                         return Response(
