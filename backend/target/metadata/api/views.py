@@ -134,7 +134,7 @@ class UserTableViewSet(ModelViewSet):
             tablename=data.get("name"),
         ):
             table_name = f"{data.get('schema')}.{data.get('name')}"
-            raise Exception(f"Table {table_name} already registered")
+            raise TableRegistrationError(f"Table {table_name} not found in database")
 
         # Tamanho da tabela e quantidade de linhas estimadas.
         stats = db.get_table_status(
