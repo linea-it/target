@@ -53,7 +53,6 @@ export default function RegisterCatalogBasicInformation() {
   }
 
   const onSelectRelatedTable = (value) => {
-    console.log('onSelectRelatedTable', value)
     setCatalog({
       ...catalog,
       related_table_name: value
