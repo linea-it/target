@@ -198,7 +198,7 @@ export default function RegisterCatalogColumnAssociation() {
   }
 
   const typeCluster = () => {
-    console.log("typeCluster", catalog)
+    
     return (
       <>
         <Stack
