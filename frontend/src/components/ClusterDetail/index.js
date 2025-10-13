@@ -82,7 +82,7 @@ export default function ClusterDetail(props) {
 
     let radius = 5; // valor fixo padrão
     if (selectedRecord?.meta_radius_arcmin) {
-      radius = selectedRecord.meta_radius_arcmin * 60; // convertendo para segundos
+      radius = selectedRecord.meta_radius_arcmin * 60; // convertendo para arcsegundos
     } else if (catalog?.settings?.default_marker_size) {
       radius = catalog.settings.default_marker_size;
     }
