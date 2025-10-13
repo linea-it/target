@@ -149,7 +149,7 @@ export default function ClusterDetail(props) {
         <AladinViewer />
 
         {(!selectedRecord || selectedRecord.meta_catalog_id !== catalog.id) && (
-          //  Overlay para previnir que o Aladin fique visivel
+          //  Overlay para prevenir que o Aladin fique visível
           // Sem nenhum registro selecionado 
           <Box
             sx={(theme) => ({
