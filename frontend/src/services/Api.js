@@ -207,7 +207,6 @@ const parseFilterModel = (filterModel) => {
 export const parseQueryOptions = (queryOptions) => {
   const { paginationModel, sortModel, search, filterModel } = queryOptions
   const { pageSize } = paginationModel
-
   // Fix Current page
   let page = paginationModel.page + 1
 

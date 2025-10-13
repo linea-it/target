@@ -413,6 +413,7 @@ class UserTableViewSet(ModelViewSet):
                     "meta_id": row.get(ucds.get("meta.id;meta.main")),
                     "meta_ra": row.get(ucds.get("pos.eq.ra;meta.main")),
                     "meta_dec": row.get(ucds.get("pos.eq.dec;meta.main")),
+                    "meta_radius_arcmin": row.get(ucds.get("phys.angSize;src")),
                 },
             )
 

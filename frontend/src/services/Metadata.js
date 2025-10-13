@@ -60,6 +60,17 @@ export const getTableRowById = ({ queryKey }) => {
     })
 }
 
+export const getClusterMembers = ({ tableId, property_cross_id, value }) => {
+    return api.get(`metadata/user_tables/${tableId}/data/`, {
+        params: {
+            [property_cross_id]: value,
+            pageSize: 1000
+        }
+    })
+}
+
+
+
 export const createTableSettings = (data) => {
     return api.post("metadata/settings/", data);
 }

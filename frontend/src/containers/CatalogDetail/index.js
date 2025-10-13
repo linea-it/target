@@ -8,17 +8,13 @@ import Paper from '@mui/material/Paper';
 // import Toolbar from '@mui/material/Toolbar';
 import TargetDataGrid from "@/components/TargetDataGrid";
 import TargetDetail from "@/components/TargetDetail";
-// import ClusterDetail from "@/components/ClusterDetail";
+import ClusterDetail from "@/components/ClusterDetail";
 import { useCatalog } from '@/contexts/CatalogContext';
 
 
 export default function CatalogDetailContainer({ catalog }) {
 
   const { selectedRecord, setSelectedRecord } = useCatalog();
-
-  // useEffect(() => {
-  //   console.log("Selected Record: ", selectedRecord);
-  // }, [selectedRecord])
 
   const onChangeSelection = (selectedRows) => {
     if (!selectedRows || selectedRows.length === 0) {
@@ -95,13 +91,9 @@ export default function CatalogDetailContainer({ catalog }) {
             {catalog.catalog_type === 'target' && (
               <TargetDetail />
             )}
-            {/* {record.catalog_type === 'cluster' && (
-                <ClusterDetail
-                  schema={record.schema}
-                  table={record.table}
-                  record={selectedRecord}
-                />
-              )} */}
+            {catalog.catalog_type === 'cluster' && (
+              <ClusterDetail />
+            )}
           </Paper>
         </Box>
       </Box>
