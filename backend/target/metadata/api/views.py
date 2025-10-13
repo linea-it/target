@@ -363,7 +363,14 @@ class UserTableViewSet(ModelViewSet):
     @action(detail=True, methods=["get"])
     def data(self, request, pk=None):
         # print("-----------------------------")
-        table = self.get_object()
+
+        # IMPORTANTE: Não pode ser utilizado o self.get_object()
+        # por que falha se um dos campos de filtro for "id"
+        # pk é a identificação que vem na url /{pk}/data/
+        # e não é afetada pelos filtros.
+        queryset = self.get_queryset()
+        table = queryset.get(pk=pk)
+
         # print(table)
         ucds = self.get_table_ucds(table)
         # print(ucds)

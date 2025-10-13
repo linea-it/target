@@ -38,6 +38,10 @@ export const getMetadataBySchemaTable = ({ queryKey }) => {
     return api.get(`metadata/user_tables/`, { params: { schema: params.schema, name: params.table } })
 }
 
+export const getMetadataById = ({ tableId }) => {
+    return api.get(`metadata/user_tables/${tableId}/`)
+}
+
 export const getTableColumn = (id) => {
     return api.get(`metadata/tables/${id}/columns/`)
 }
