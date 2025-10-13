@@ -12,6 +12,7 @@ import PanoramaFishEyeIcon from '@mui/icons-material/PanoramaFishEye';
 import ScatterPlotIcon from '@mui/icons-material/ScatterPlot';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import HideSourceIcon from '@mui/icons-material/HideSource';
+import CircularProgress from '@mui/material/CircularProgress';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import Tooltip from '@mui/material/Tooltip';
 import { usePathname } from 'next/navigation';
@@ -127,8 +128,12 @@ export default function ClusterDetail(props) {
               </IconButton>
             </Tooltip>
             <Tooltip title="Show/Hide members">
-              <IconButton aria-label="show-hide-members" disabled={!selectedRecord} onClick={toggleCatalogVisibility.bind(this, 'Members')}>
-                <ScatterPlotIcon />
+              <IconButton
+                aria-label="show-hide-members"
+                disabled={!selectedRecord}
+                onClick={toggleCatalogVisibility.bind(this, 'Members')}
+              >
+                {isLoading ? <CircularProgress size={24} /> : <ScatterPlotIcon />}
               </IconButton>
             </Tooltip>
             <Tooltip title="Take snapshot">
