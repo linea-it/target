@@ -35,7 +35,7 @@ export default function RegisterCatalogBasicInformation() {
       console.log('onError', error)
       // An error happened!
       console.log(`rolling back optimistic update with id ${context.id}`)
-    },
+    }
   })
 
 
