@@ -1,3 +1,4 @@
+
 from django.conf import settings
 from rest_framework import status
 from rest_framework.decorators import action
@@ -23,11 +24,25 @@ class TableRegistrationError(Exception):
     pass
 
 
+class TableDeletePermissionError(PermissionError):
+    """Raised when a user tries to delete a table without permission"""
+
+    def __init__(self):
+        super().__init__("You do not have permission to delete this table.")
+
+
 class TableAlreadyExistsError(TableRegistrationError):
     """Raised when attempting to register an existing table"""
 
     def __init__(self, schema, name):
         super().__init__(f"Table {schema}.{name} already registered")
+
+
+class MissingRelatedTableError(TableRegistrationError):
+    """Raised when required related table is missing"""
+
+    def __init__(self):
+        super().__init__("Related table must be provided for cluster catalogs.")
 
 
 class SchemaViewSet(ModelViewSet):
@@ -181,6 +196,56 @@ class UserTableViewSet(ModelViewSet):
 
         return table
 
+    def register(self, user, data):
+        # Register main table
+        table = self.register_table(user, data)
+
+        try:
+            # region Check related table
+            # Check if the table is typed as 'cluster' and has related_table set
+            if table.catalog_type == Table.CATALOG_TYPE_CLUSTER:
+                related_tablename = data.get("related_table_name", None)
+                if not related_tablename:
+                    raise MissingRelatedTableError()
+
+                # region Register related table if not registered
+                if related_tablename:
+                    schema_name = related_tablename.split(".")[0]
+                    table_name = related_tablename.split(".")[-1]
+
+                    if self.is_table_registered(table_name, schema_name):
+                        # Related table already registered, fetch it
+                        related_table = Table.objects.get(
+                            name=table_name,
+                            schema__name=schema_name,
+                            schema__owner=user,
+                        )
+                        table.related_table = related_table
+                        table.save()
+
+                    else:
+                        # Related table not registered,
+                        # register it now
+                        data = {
+                            "schema": schema_name,
+                            "name": table_name,
+                            "title": f"Auto registered {table_name}",
+                            "description": "",
+                            "catalog_type": Table.CATALOG_TYPE_MEMBER,
+                        }
+
+                        related_table = self.register_table(user, data)
+                        table.related_table = related_table
+                        table.save()
+            # endregion
+        except Exception:
+            if table:
+                table.delete()
+            raise
+
+        table.refresh_from_db()
+        return table
+
     def create(self, request):
         try:
             data = {
@@ -189,9 +254,10 @@ class UserTableViewSet(ModelViewSet):
                 "title": request.data.get("title"),
                 "description": request.data.get("description"),
                 "catalog_type": request.data.get("catalog_type"),
+                "related_table_name": request.data.get("related_table_name", None),
             }
 
-            table = self.register_table(request.user, data)
+            table = self.register(request.user, data)
 
             table.refresh_from_db()
 
@@ -360,10 +426,27 @@ class UserTableViewSet(ModelViewSet):
             return None
         return filters
 
+    def perform_destroy(self, instance):
+        if instance.schema.owner != self.request.user:
+            raise TableDeletePermissionError()
+
+        if instance.related_table:
+            instance.related_table.delete()
+
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=True, methods=["get"])
     def data(self, request, pk=None):
         # print("-----------------------------")
-        table = self.get_object()
+
+        # IMPORTANTE: Não pode ser utilizado o self.get_object()
+        # por que falha se um dos campos de filtro for "id"
+        # pk é a identificação que vem na url /{pk}/data/
+        # e não é afetada pelos filtros.
+        queryset = self.get_queryset()
+        table = queryset.get(pk=pk)
+
         # print(table)
         ucds = self.get_table_ucds(table)
         # print(ucds)

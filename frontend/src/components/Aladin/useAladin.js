@@ -236,6 +236,12 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
 
   }, []);
 
+  const gotoRaDec = useCallback((ra, dec) => {
+    if (aladinRef.current) {
+      aladinRef.current.gotoRaDec(parseFloat(ra), parseFloat(dec));
+    }
+  }, []);
+
   const toggleMarkerVisibility = useCallback(() => {
     if (targetOverlayRef.current) {
       if (targetOverlayRef.current.isShowing) {
@@ -323,6 +329,7 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     addMarker,
     toggleMarkerVisibility,
     takeSnapshot,
-    addCatalog
+    addCatalog,
+    gotoRaDec
   };
 }

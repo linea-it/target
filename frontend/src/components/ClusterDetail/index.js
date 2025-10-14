@@ -11,7 +11,6 @@ import IconButton from '@mui/material/IconButton';
 import PanoramaFishEyeIcon from '@mui/icons-material/PanoramaFishEye';
 import ScatterPlotIcon from '@mui/icons-material/ScatterPlot';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
-import HideSourceIcon from '@mui/icons-material/HideSource';
 import CircularProgress from '@mui/material/CircularProgress';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import Tooltip from '@mui/material/Tooltip';
@@ -29,10 +28,6 @@ export default function ClusterDetail(props) {
   const pathname = usePathname()
   const { isReady, setTarget, aladinRef, setImageSurvey, toggleMarkerVisibility, takeSnapshot, addCatalog, toggleCatalogVisibility } = useAladinContext();
   const { selectedRecord, catalog } = useCatalog();
-
-  // TODO: Adicionar indicador de loading no botão de members
-  // para indicar que os membros estão sendo carregados
-  // e desabilitar o botão enquanto carrega
 
   const { isLoading, data: members } = useQuery({
     queryKey: ['membersByClusterId', catalog?.related_table, selectedRecord?.meta_id],
@@ -111,6 +106,7 @@ export default function ClusterDetail(props) {
           <Stack direction="row" spacing={2}>
             <Button
               href={`${pathname}/cluster_detail/${selectedRecord?.meta_id}`}
+              target="_blank"
               variant="outlined"
               size="large"
               disabled={!selectedRecord}

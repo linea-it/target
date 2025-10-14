@@ -38,6 +38,10 @@ export const getMetadataBySchemaTable = ({ queryKey }) => {
     return api.get(`metadata/user_tables/`, { params: { schema: params.schema, name: params.table } })
 }
 
+export const getMetadataById = ({ tableId }) => {
+    return api.get(`metadata/user_tables/${tableId}/`)
+}
+
 export const getTableColumn = (id) => {
     return api.get(`metadata/tables/${id}/columns/`)
 }
@@ -48,6 +52,14 @@ export const updateTableColumn = (data) => {
 
 export const getTableData = (params) => {
     const queryParams = parseQueryOptions(params)
+    return api.get(`metadata/user_tables/${params.tableId}/data/`, queryParams)
+}
+
+export const getMembersTableData = (params) => {
+    // Igual a tabledata mais adiciona o filtro por cluster id. 
+    // Permiter utilizar todas as opções de paginação, ordenação e filtro.
+    const queryParams = parseQueryOptions(params)
+    queryParams.params[params.property_cross_id] = params.clusterId
     return api.get(`metadata/user_tables/${params.tableId}/data/`, queryParams)
 }
 

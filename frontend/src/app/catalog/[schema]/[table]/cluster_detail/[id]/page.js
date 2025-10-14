@@ -4,21 +4,66 @@ import Box from '@mui/material/Box';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link'
-import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import IconButton from '@mui/material/IconButton';
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
-import ShareIcon from '@mui/icons-material/Share';
-// import { getClusterById } from "@/data/clusters";
+import Loading from "@/components/Loading";
 import ClusterDetailContainer from "@/containers/ClusterDetail";
 
-export default function SingleTargetDetail({ params }) {
+import { useQuery } from '@tanstack/react-query'
+import { useAuth } from "@/contexts/AuthContext";
+import { useCatalog } from "@/contexts/CatalogContext";
+import { AladinProvider } from "@/components/Aladin/AladinProvider";
+import { getMetadataBySchemaTable, getTableRowById } from "@/services/Metadata";
+
+export default function SingleClusterDetail({ params }) {
   // asynchronous access of `params.id`.
   const { schema, table, id } = React.use(params)
+  const { user, settings } = useAuth();
+  const { setSelectedRecord, setCatalog } = useCatalog();
 
-  let record = undefined
-  if (id) {
-    // record = getClusterById(id)
+  if (!id || !schema || !table) {
+    return <div>Invalid parameters</div>;
+  }
+
+  const { isLoading: isLoadingTable, data: tableRecord } = useQuery({
+    queryKey: ['metadataBySchemaTable', { schema, table }],
+    queryFn: getMetadataBySchemaTable,
+    select: (data) => data?.data.results[0],
+    staleTime: 5 * 10000,
+    enabled: !!schema && !!table,
+  })
+
+  const { isLoading: isLoadingRow, data: record } = useQuery({
+    queryKey: ['tableRowById', { tableId: tableRecord?.id, filters: { [tableRecord?.property_id]: parseInt(id) } }],
+    queryFn: getTableRowById,
+    enabled: tableRecord !== undefined,
+    select: (data) => data?.data.results[0],
+    staleTime: 5 * 10000
+  })
+
+  React.useEffect(() => {
+    // seta no contexto o catalogo selecionado
+    if (tableRecord) {
+      setCatalog(tableRecord);
+    }
+  }, [tableRecord, setCatalog]);
+
+  React.useEffect(() => {
+    // seta no contexto se tiver um target selecionado
+    if (record) {
+      setSelectedRecord(record);
+    }
+  }, [record, setSelectedRecord]);
+
+
+  if (isLoadingTable || isLoadingRow) {
+    return <Loading isLoading={isLoadingTable || isLoadingRow} />
+  }
+
+
+  if (record === undefined) {
+    return <div>Not found</div>
   }
 
   return (
@@ -37,10 +82,10 @@ export default function SingleTargetDetail({ params }) {
             Home
           </Link>
           <Link color="inherit" href="/">
-            {schema}
+            {tableRecord.schema}
           </Link>
-          <Link color="inherit" href={`/catalog/${schema}/${table}`}>
-            {table}
+          <Link color="inherit" href={`/catalog/${tableRecord.schema}/${tableRecord.table}`}>
+            {tableRecord.table}
           </Link>
           <Typography> {id} </Typography>
         </Breadcrumbs>
@@ -53,14 +98,40 @@ export default function SingleTargetDetail({ params }) {
           <Typography variant="h5">
             Cluster {record.id} - {record.ra}, {record.dec}
           </Typography>
-          <IconButton>
+          {/* <IconButton>
             <ShareIcon />
           </IconButton>
           <Box sx={{ flexGrow: 1 }} />
-          <Button variant="outlined" size="large">Statistics</Button>
+          <Button variant="outlined" size="large">Statistics</Button> */}
         </Stack>
       </Box>
-      <ClusterDetailContainer record={record} />
-    </Box>
+      <AladinProvider
+        // Aladin Lite options
+        // See available options at:
+        // https://cds-astro.github.io/aladin-lite/global.html#AladinOptions
+        aladinParams={{
+          fov: 1.5,
+          // target: "12 26 53.27 +08 56 49.0",
+          projection: "AIT",
+          // cooFrame: "gal",
+          cooFrame: "ICRSd",
+          showGotoControl: true,
+          showFullscreenControl: true,
+          showSimbadPointerControl: true,
+          realFullscreen: true,
+          showCooGridControl: true,
+          showContextMenu: true,
+          showSettingsControl: true,
+          reticleColor: '#00ff04',
+          selector: {
+            color: '#00ff04' // Cor do campo de busca, OBS não funcionou por parametro a cor está hardcoded no css .aladin-input-text.search.
+          }
+        }}
+        userGroups={user?.groups || []}
+        baseHost={settings?.base_host}
+      >
+        <ClusterDetailContainer catalog={tableRecord} record={record} />
+      </AladinProvider>
+    </Box >
   );
 }
