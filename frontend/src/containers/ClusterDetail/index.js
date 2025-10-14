@@ -5,14 +5,24 @@ import Grid from '@mui/material/Grid2';
 import { useEffect } from 'react'
 import CircularProgress from '@mui/material/CircularProgress';
 import TargetProperties from "@/components/TargetProperties";
-import TargetDataGrid from "@/components/TargetDataGrid";
+import MembersDataGrid from "@/components/MembersDataGrid";
 import { useAladinContext } from '@/components/Aladin/AladinContext';
 import AladinViewer from '@/components/Aladin/AladinViewer';
 import { getClusterMembers, getMetadataById } from '@/services/Metadata';
 import { useQuery } from '@tanstack/react-query'
 
+import Stack from '@mui/material/Stack';
+import Toolbar from '@mui/material/Toolbar';
+import IconButton from '@mui/material/IconButton';
+import PanoramaFishEyeIcon from '@mui/icons-material/PanoramaFishEye';
+import ScatterPlotIcon from '@mui/icons-material/ScatterPlot';
+import MyLocationIcon from '@mui/icons-material/MyLocation';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
+import Tooltip from '@mui/material/Tooltip';
+
+
 export default function ClusterDetailContainer({ catalog, record }) {
-  const { isReady, setTarget, aladinRef, setImageSurvey, addCatalog } = useAladinContext();
+  const { isReady, setTarget, aladinRef, setImageSurvey, addCatalog, gotoRaDec, toggleMarkerVisibility, takeSnapshot, toggleCatalogVisibility } = useAladinContext();
 
   const [selectedMember, setSelectedMember] = React.useState(undefined);
 
@@ -94,9 +104,13 @@ export default function ClusterDetailContainer({ catalog, record }) {
       return;
     }
     setSelectedMember(selectedRows[0]);
-
-    console.log(selectedMember)
   }
+
+  useEffect(() => {
+    if (selectedMember) {
+      gotoRaDec(selectedMember.meta_ra, selectedMember.meta_dec);
+    }
+  }, [selectedMember]);
 
   return (
     <Grid container spacing={2} sx={{ height: '100%' }} >
@@ -106,8 +120,66 @@ export default function ClusterDetailContainer({ catalog, record }) {
         </Box>
       </Grid>
       <Grid size={{ md: 6, display: 'flex' }}>
-        <AladinViewer />
+        <Box
+          sx={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'row', // coloca lado a lado
+            position: 'relative',
+            height: '100%',
+            minHeight: 400,
+          }}
+        >
+          {/* Área principal do Aladin */}
+          <Box sx={{ flex: 1, position: 'relative' }}>
+            <AladinViewer />
+          </Box>
+
+          {/* Toolbar vertical à direita */}
+          <Toolbar
+            orientation="vertical"
+            sx={{
+              flexDirection: 'column',       // empilha os botões verticalmente
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              width: 64,                     // largura fixa (ajuste se quiser)
+              borderLeft: (theme) => `1px solid ${theme.palette.divider}`,
+              backgroundColor: (theme) => theme.palette.background.paper,
+              paddingY: 1,
+              gap: 1,
+            }}
+          >
+            <Tooltip title="Center on target">
+              <IconButton aria-label="center" disabled={!record} onClick={centerOnTarget}>
+                <MyLocationIcon />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Show/Hide Cluster Radius">
+              <IconButton aria-label="show-hide-marker" disabled={!record} onClick={toggleMarkerVisibility}>
+                <PanoramaFishEyeIcon />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Show/Hide members">
+              <IconButton
+                aria-label="show-hide-members"
+                disabled={!record}
+                onClick={toggleCatalogVisibility.bind(this, 'Members')}
+              >
+                {isLoadingMembers ? <CircularProgress size={24} /> : <ScatterPlotIcon />}
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Take snapshot">
+              <IconButton aria-label="take-snapshot" disabled={!record} onClick={takeSnapshot}>
+                <CameraAltIcon />
+              </IconButton>
+            </Tooltip>
+          </Toolbar>
+        </Box>
       </Grid>
+
       <Grid size={{ md: 12 }}>
         {isLoadingMembersCatalog && (
           <Box
@@ -125,12 +197,14 @@ export default function ClusterDetailContainer({ catalog, record }) {
               height: '500px',
             }}
           >
-            <TargetDataGrid
+            <MembersDataGrid
               type={membersCatalog.catalog_type}
               tableId={membersCatalog.id}
               schema={membersCatalog.schema}
               table={membersCatalog.table}
               tableColumns={membersCatalog.columns}
+              property_cross_id={catalog.related_property_id}
+              clusterId={record?.meta_id}
               onChangeSelection={onChangeSelection}
             />
           </Box>

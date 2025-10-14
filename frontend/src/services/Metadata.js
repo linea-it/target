@@ -55,6 +55,14 @@ export const getTableData = (params) => {
     return api.get(`metadata/user_tables/${params.tableId}/data/`, queryParams)
 }
 
+export const getMembersTableData = (params) => {
+    // Igual a tabledata mais adiciona o filtro por cluster id. 
+    // Permiter utilizar todas as opções de paginação, ordenação e filtro.
+    const queryParams = parseQueryOptions(params)
+    queryParams.params[params.property_cross_id] = params.clusterId
+    return api.get(`metadata/user_tables/${params.tableId}/data/`, queryParams)
+}
+
 export const getTableRowById = ({ queryKey }) => {
     const params = queryKey[1]
     return api.get(`metadata/user_tables/${params.tableId}/data/`, {

@@ -201,8 +201,6 @@ class UserTableViewSet(ModelViewSet):
         # Register main table
         table = self.register_table(user, data)
 
-        print("Data:")
-        print(data)
         try:
             # region Check related table
             # Check if the table is typed as 'cluster' and has related_table set
@@ -211,35 +209,35 @@ class UserTableViewSet(ModelViewSet):
                 if not related_tablename:
                     raise MissingRelatedTableError()
 
-            # region Register related table if not registered
-            if related_tablename:
-                schema_name = related_tablename.split(".")[0]
-                table_name = related_tablename.split(".")[-1]
+                # region Register related table if not registered
+                if related_tablename:
+                    schema_name = related_tablename.split(".")[0]
+                    table_name = related_tablename.split(".")[-1]
 
-                if self.is_table_registered(table_name, schema_name):
-                    # Related table already registered, fetch it
-                    related_table = Table.objects.get(
-                        name=table_name,
-                        schema__name=schema_name,
-                        schema__owner=user,
-                    )
-                    table.related_table = related_table
-                    table.save()
+                    if self.is_table_registered(table_name, schema_name):
+                        # Related table already registered, fetch it
+                        related_table = Table.objects.get(
+                            name=table_name,
+                            schema__name=schema_name,
+                            schema__owner=user,
+                        )
+                        table.related_table = related_table
+                        table.save()
 
-                else:
-                    # Related table not registered,
-                    # register it now
-                    data = {
-                        "schema": schema_name,
-                        "name": table_name,
-                        "title": f"Auto registered {table_name}",
-                        "description": "",
-                        "catalog_type": Table.CATALOG_TYPE_MEMBER,
-                    }
+                    else:
+                        # Related table not registered,
+                        # register it now
+                        data = {
+                            "schema": schema_name,
+                            "name": table_name,
+                            "title": f"Auto registered {table_name}",
+                            "description": "",
+                            "catalog_type": Table.CATALOG_TYPE_MEMBER,
+                        }
 
-                    related_table = self.register_table(user, data)
-                    table.related_table = related_table
-                    table.save()
+                        related_table = self.register_table(user, data)
+                        table.related_table = related_table
+                        table.save()
             # endregion
         except Exception:
             if table:

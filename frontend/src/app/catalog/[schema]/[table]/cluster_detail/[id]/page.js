@@ -4,11 +4,9 @@ import Box from '@mui/material/Box';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link'
-import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import IconButton from '@mui/material/IconButton';
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
-import ShareIcon from '@mui/icons-material/Share';
 import Loading from "@/components/Loading";
 import ClusterDetailContainer from "@/containers/ClusterDetail";
 
