@@ -24,7 +24,7 @@ export default function CatalogSettingsRemove({ catalog }) {
       return res;
     },
     onSuccess: (data, variables, context) => {
-      // Redireciona para a Home.
+      // Redirects to Home.
       router.push('/')
     },
     onError: (error, variables, context) => {
