@@ -31,7 +31,7 @@ export default function Home() {
             Catalogs
           </Typography>
           <Box sx={{ flexGrow: 1 }} />
-          <Button variant="outlined" size="large" href={`/catalog/register/`}>New Catalog</Button>
+          <Button variant="outlined" size="large" href={`/catalog/register/`}>Add Catalog</Button>
         </Stack>
       </Box>
       <ListCatalogContainer />

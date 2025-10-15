@@ -106,38 +106,41 @@ export default function CatalogSettingsColumnAssociation({ catalog }) {
   const isValid = usedUcds.length >= mandatoryUcds.length && usedUcds.every((ucd) => mandatoryUcds.includes(ucd))
 
   return (
-    <Card sx={{ mt: 2, mb: 2 }}>
-      <CardContent>
-        <Box
-          component="form"
-          sx={{
-            '& > :not(style)': { mb: 2 },
-            '& .MuiTextField-root': { width: '30ch' },
-          }}
-          noValidate
-          autoComplete="off"
-        >
-          <Typography variant="body1" gutterBottom>
-            Associate the column names of your file with those expected by the tool.
-          </Typography>
+    <Box>
+      <Typography variant="h4" gutterBottom>Column Association</Typography>
+      <Card sx={{ mt: 2, mb: 2 }}>
+        <CardContent>
+          <Box
+            component="form"
+            sx={{
+              '& > :not(style)': { mb: 2 },
+              '& .MuiTextField-root': { width: '30ch' },
+            }}
+            noValidate
+            autoComplete="off"
+          >
+            <Typography variant="body1" gutterBottom>
+              Associate the column names of your file with those expected by the tool.
+            </Typography>
 
-          {columns.map((column, index) => {
-            return (
-              <Stack
-                key={`table_columns_${index}`}
-                direction="row"
-                spacing={2}
-                mb={2}
-              >
-                <ColumnInputReadOnly value={column.name} />
-                {createField(column)}
-              </Stack>
-            )
-          }
-          )}
-          {isLoading ? <LinearProgress /> : <Box sx={{ height: 4, marginBottom: 2 }} />}
-        </Box>
-      </CardContent>
-    </Card>
+            {columns.map((column, index) => {
+              return (
+                <Stack
+                  key={`table_columns_${index}`}
+                  direction="row"
+                  spacing={2}
+                  mb={2}
+                >
+                  <ColumnInputReadOnly value={column.name} />
+                  {createField(column)}
+                </Stack>
+              )
+            }
+            )}
+            {isLoading ? <LinearProgress /> : <Box sx={{ height: 4, marginBottom: 2 }} />}
+          </Box>
+        </CardContent>
+      </Card>
+    </Box>
   );
 }
