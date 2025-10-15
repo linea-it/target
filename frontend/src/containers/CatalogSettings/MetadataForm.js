@@ -6,6 +6,7 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
 import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
 
 import { useEditCatalog } from "@/contexts/EditCatalogContext";
 import { updateUserTable } from "@/services/Metadata";
@@ -48,46 +49,49 @@ export default function MetadataForm() {
   }
 
   return (
-    <Card>
-      <CardContent>
-        <Box
-          component="form"
-          sx={{ '& > :not(style)': { mb: 2 } }}
-          noValidate
-          autoComplete="off"
-        >
-          <TextField
-            label="Name"
-            variant="outlined"
-            fullWidth
-            name="title"
-            value={editedCatalog.title}
-            onChange={handleChange}
-          />
-          <TextField
-            label="Description"
-            variant="outlined"
-            multiline
-            rows={5}
-            fullWidth
-            name="description"
-            value={editedCatalog.description}
-            onChange={handleChange}
-          />
-        </Box>
-      </CardContent>
-      <CardActions>
-        <Box sx={{ flexGrow: 1 }} />
-        <Button
-          onClick={handleDiscard}
-          disabled={editedCatalog === catalog}
-        >Discard</Button>
-        <Button
-          onClick={handleSave}
-          disabled={editedCatalog === catalog}
-        >Save</Button>
-      </CardActions>
-    </Card>
+    <Box>
+      <Typography variant="h4" gutterBottom>General</Typography>
+      <Card>
+        <CardContent>
+          <Box
+            component="form"
+            sx={{ '& > :not(style)': { mb: 2 } }}
+            noValidate
+            autoComplete="off"
+          >
+            <TextField
+              label="Name"
+              variant="outlined"
+              fullWidth
+              name="title"
+              value={editedCatalog.title}
+              onChange={handleChange}
+            />
+            <TextField
+              label="Description"
+              variant="outlined"
+              multiline
+              rows={5}
+              fullWidth
+              name="description"
+              value={editedCatalog.description}
+              onChange={handleChange}
+            />
+          </Box>
+        </CardContent>
+        <CardActions>
+          <Box sx={{ flexGrow: 1 }} />
+          <Button
+            onClick={handleDiscard}
+            disabled={editedCatalog === catalog}
+          >Discard</Button>
+          <Button
+            onClick={handleSave}
+            disabled={editedCatalog === catalog}
+          >Save</Button>
+        </CardActions>
+      </Card>
+    </Box>
   );
 
 }

@@ -7,6 +7,7 @@ import CardContent from '@mui/material/CardContent';
 import Stack from '@mui/material/Stack';
 import LinearProgress from '@mui/material/LinearProgress';
 import MenuItem from '@mui/material/MenuItem';
+import Typography from '@mui/material/Typography';
 import { useEditCatalog } from "@/contexts/EditCatalogContext";
 import { updateTableSettings, createTableSettings } from "@/services/Metadata";
 
@@ -90,58 +91,61 @@ export default function SettingsForm() {
 
 
   return (
-    <Card>
-      <CardContent>
-        <Box
-          component="form"
-          noValidate
-          autoComplete="off"
-        >
-          <Stack direction="row" spacing={2}>
-            <TextField
-              select
-              label="Default Survey"
-              variant="outlined"
-              fullWidth
-              name="default_image"
-              value={editedSettings?.default_image ?? ''}
-              onChange={handleChange}
-            >
-              {surveys.map((option) => {
-                if (option.requireGroup && !user?.groups?.includes(option.requireGroup)) {
-                  return null; // Não renderiza a opção se o usuário não tiver acesso
-                }
-                return (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                );
-              })}
-            </TextField>
-            <TextField
-              label="FOV (arcmin)"
-              variant="outlined"
-              type="number"
-              fullWidth
-              name="default_fov"
-              value={editedSettings?.default_fov}
-              onChange={handleChange}
-            />
+    <Box>
+      <Typography variant="h4" gutterBottom>Preferences</Typography>
+      <Card>
+        <CardContent>
+          <Box
+            component="form"
+            noValidate
+            autoComplete="off"
+          >
+            <Stack direction="row" spacing={2}>
+              <TextField
+                select
+                label="Default Survey"
+                variant="outlined"
+                fullWidth
+                name="default_image"
+                value={editedSettings?.default_image ?? ''}
+                onChange={handleChange}
+              >
+                {surveys.map((option) => {
+                  if (option.requireGroup && !user?.groups?.includes(option.requireGroup)) {
+                    return null; // Não renderiza a opção se o usuário não tiver acesso
+                  }
+                  return (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  );
+                })}
+              </TextField>
+              <TextField
+                label="FOV (arcmin)"
+                variant="outlined"
+                type="number"
+                fullWidth
+                name="default_fov"
+                value={editedSettings?.default_fov}
+                onChange={handleChange}
+              />
 
-            <TextField
-              label="Marker Radius (arcsec)"
-              variant="outlined"
-              type="number"
-              fullWidth
-              name="default_marker_size"
-              value={editedSettings?.default_marker_size}
-              onChange={handleChange}
-            />
-          </Stack>
-          {mutation.isPending ? <LinearProgress /> : <Box sx={{ height: 4, marginBottom: 2 }} />}
-        </Box>
-      </CardContent>
-    </Card>
+              <TextField
+                label="Marker Radius (arcsec)"
+                variant="outlined"
+                type="number"
+                fullWidth
+                name="default_marker_size"
+                value={editedSettings?.default_marker_size}
+                onChange={handleChange}
+              />
+            </Stack>
+            {mutation.isPending ? <LinearProgress /> : <Box sx={{ height: 4, marginBottom: 2 }} />}
+          </Box>
+        </CardContent>
+      </Card>
+    </Box>
   );
 
 }
