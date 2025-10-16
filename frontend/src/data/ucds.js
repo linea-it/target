@@ -35,7 +35,7 @@ export const ucds = [
   //   types: ['cluster']
   // }
 
-  // Opicional só para catalogos do tipo "cluster"
+  // Opcional só para catalogos do tipo "cluster"
   {
     label: 'Radius (arcmin)',
     value: 'phys.angSize;src',
