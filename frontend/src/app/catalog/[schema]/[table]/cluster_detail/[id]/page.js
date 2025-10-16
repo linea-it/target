@@ -22,10 +22,6 @@ export default function SingleClusterDetail({ params }) {
   const { user, settings } = useAuth();
   const { setSelectedRecord, setCatalog } = useCatalog();
 
-  if (!id || !schema || !table) {
-    return <div>Invalid parameters</div>;
-  }
-
   const { isLoading: isLoadingTable, data: tableRecord } = useQuery({
     queryKey: ['metadataBySchemaTable', { schema, table }],
     queryFn: getMetadataBySchemaTable,
@@ -41,6 +37,7 @@ export default function SingleClusterDetail({ params }) {
     select: (data) => data?.data.results[0],
     staleTime: 5 * 10000
   })
+
 
   React.useEffect(() => {
     // seta no contexto o catalogo selecionado
