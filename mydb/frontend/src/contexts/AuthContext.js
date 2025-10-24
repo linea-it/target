@@ -1,73 +1,80 @@
-// 'use client'
-// import { createContext, useEffect, useState, useContext } from 'react'
-// // import { setCookie, parseCookies, destroyCookie } from 'nookies'
-// import { getLoggedUser, LogoutUser } from '@/services/User'
-// import { api, getEnvironmentSettings } from "@/services/Api";
-// export const AuthContext = createContext({})
+"use client";
+import { createContext, useContext, useEffect, useState } from "react";
+import { api, getEnvironmentSettings } from "@/services/Api";
+import { getLoggedUser, LogoutUser } from "@/services/User";
 
-// export function AuthProvider({ children }) {
-//   const [user, setUser] = useState()
-//   const [settings, setSettings] = useState({})
+export const AuthContext = createContext({});
 
-//   useEffect(() => {
-//     // TODO: Usando o cookie do target por que está usando o mesmo backend
-//     const { 'target.csrftoken': access_token } = parseCookies()
+// Helpers para cookies no client
+function setCookie(name, value, days = 7) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
+}
 
-//     // Recupera as variaveis de ambiente a partir do backend
-//     if (Object.keys(settings).length === 0) {
-//       getEnvironmentSettings().then(res => {
-//         const tempSettings = res.data
-//         setSettings(tempSettings)
-//         // Verifica se o usuario ja esta logado
-//         // Se o usuario ja estiver logado, recupera os dados do usuario
-//         if (access_token && !user) {
-//           getLoggedUser().then(res => {
-//             setUser(res.data)
-//           }).catch(err => {
-//             // Se o token estiver expirado, remove o cookie
-//             destroyCookie(null, 'target.csrftoken')
-//             // Redireciona para a pagina de login
-//             // window.location.href = '/admin/login/?next=/'
-//             window.location.href = tempSettings.login_url
-//           })
-//         } else {
-//           // window.location.href = '/admin/login/?next=/'
-//           window.location.href = tempSettings.login_url
-//         }
-//       }).catch(err => {
-//         console.log('Erro ao recuperar settings', err)
-//       })
-//     }
-//   }, [])
+function getCookie(name) {
+  return document.cookie
+    .split("; ")
+    .find((row) => row.startsWith(name + "="))
+    ?.split("=")[1];
+}
 
-//   function logout() {
-//     const { 'target.csrftoken': csrftoken } = parseCookies()
-//     if (csrftoken) {
-//       LogoutUser()
-//         .then(res => {
-//           console.log('Backend Logout Success')
-//         })
-//         .catch(res => {
-//           console.log('Failed on Backend logout.')
-//         })
-//     }
+function deleteCookie(name) {
+  document.cookie = `${name}=; Max-Age=0; path=/`;
+}
 
-//     destroyCookie(null, 'target.csrftoken')
-//     destroyCookie(null, 'sessionid') // Django session cookie
-//     setUser(null)
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState();
+  const [settings, setSettings] = useState({});
 
-//     delete api.defaults.headers.Authorization
-//     delete api.defaults.headers['X-CSRFToken']
+  useEffect(() => {
+    const access_token = getCookie("target.csrftoken");
 
-//     window.location.href = '/'
-//     window.location.reload()
-//   }
+    if (Object.keys(settings).length === 0) {
+      getEnvironmentSettings()
+        .then((res) => {
+          const tempSettings = res.data;
+          setSettings(tempSettings);
 
-//   return (
-//     <AuthContext.Provider value={{ user, logout, settings }}>
-//       {children}
-//     </AuthContext.Provider>
-//   )
-// }
+          // Verifica se o usuário já está logado
+          if (access_token && !user) {
+            getLoggedUser()
+              .then((res) => setUser(res.data))
+              .catch(() => {
+                deleteCookie("target.csrftoken");
+                window.location.href = tempSettings.login_url;
+              });
+          } else {
+            window.location.href = tempSettings.login_url;
+          }
+        })
+        .catch((err) => console.error("Erro ao recuperar settings", err));
+    }
+  }, []);
 
-// export const useAuth = () => useContext(AuthContext)
+  function logout() {
+    const csrftoken = getCookie("target.csrftoken");
+    if (csrftoken) {
+      LogoutUser()
+        .then(() => console.log("Backend Logout Success"))
+        .catch(() => console.log("Failed on Backend logout."));
+    }
+
+    deleteCookie("target.csrftoken");
+    deleteCookie("sessionid");
+    setUser(null);
+
+    delete api.defaults.headers.Authorization;
+    delete api.defaults.headers["X-CSRFToken"];
+
+    window.location.href = "/";
+    window.location.reload();
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, logout, settings }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export const useAuth = () => useContext(AuthContext);
