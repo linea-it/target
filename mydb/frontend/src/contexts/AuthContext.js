@@ -6,19 +6,21 @@ import { getLoggedUser, LogoutUser } from "@/services/User";
 export const AuthContext = createContext({});
 
 // Helpers para cookies no client
-function setCookie(name, value, days = 7) {
+function _setCookie(name, value, days = 7) {
   const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  // biome-ignore lint: uso intencional de document.cookie por compatibilidade com navegadores
   document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
 }
 
 function getCookie(name) {
   return document.cookie
     .split("; ")
-    .find((row) => row.startsWith(name + "="))
+    .find((row) => row.startsWith(`${name}=`))
     ?.split("=")[1];
 }
 
 function deleteCookie(name) {
+  // biome-ignore lint: uso intencional de document.cookie por compatibilidade com navegadores
   document.cookie = `${name}=; Max-Age=0; path=/`;
 }
 
@@ -49,7 +51,7 @@ export function AuthProvider({ children }) {
         })
         .catch((err) => console.error("Erro ao recuperar settings", err));
     }
-  }, []);
+  }, [settings, user]);
 
   function logout() {
     const csrftoken = getCookie("target.csrftoken");

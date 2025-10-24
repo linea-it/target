@@ -10,7 +10,7 @@ axios.defaults.withCredentials = true;
 axios.defaults.withXSRFToken = true;
 axios.defaults.headers.post["Content-Type"] = "application/json";
 
-export function getAPIClient(ctx) {
+export function getAPIClient(_ctx) {
   const api = axios.create({
     baseURL: "/api",
     timeout: 30000,
