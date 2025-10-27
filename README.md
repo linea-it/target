@@ -16,4 +16,6 @@ https://github.com/linea-it/target/blob/main/compose/production/README.md
 docker build -f compose/production/django/Dockerfile -t linea/target:backend_$(git describe --always) .
 
 docker build -f compose/production/frontend/Dockerfile -t linea/target:frontend_$(git describe --always) .
+
+docker build -f mydb/compose/production/frontend/Dockerfile -t linea/target:mydb_frontend_$(git describe --always) .
 ```
