@@ -51,7 +51,7 @@ export function AuthProvider({ children }) {
         })
         .catch((err) => console.error("Erro ao recuperar settings", err));
     }
-  }, []);
+  });
 
   function logout() {
     const csrftoken = getCookie("target.csrftoken");
