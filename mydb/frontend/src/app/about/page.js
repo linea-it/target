@@ -5,6 +5,7 @@ import Divider from "@mui/material/Divider";
 import Grid from "@mui/material/Grid";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
+import Footer from "@/components/Footer";
 export default function About() {
   return (
     <Container>
@@ -100,7 +101,7 @@ export default function About() {
           </Grid>
         </Grid>
       </Box>
-      {/* <Footer /> */}
+      <Footer />
     </Container>
   );
 }
