@@ -15,7 +15,6 @@ const queryClient = new QueryClient();
 export default function MainContainer({ children }) {
   const { user } = useAuth();
 
-
   if (!user) {
     return (
       <Backdrop
