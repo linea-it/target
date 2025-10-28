@@ -198,14 +198,15 @@ class DBBase:
             insp = inspect(engine)
             return insp.get_table_names(schema=schema)
 
-    def execute(self, stm):
+    def execute(self, stm, parameters=None):
         """Executa a query usando con.execute,
         recomendada para query de Delete, Update ou outras
         querys que não precisem de iteração com o resultado.
 
         Args:
             stm (statement): Query a ser executada, pode ser escrita em SqlAlchemy
-            ou string no caso de string ela sera convertida para TextClause.
+                ou string no caso de string ela sera convertida para TextClause.
+            parameters (dict, optional): Parâmetros para a query. Defaults to None.
 
         Returns:
             CursorResult: [description]
@@ -215,14 +216,18 @@ class DBBase:
             stm = text(stm)
 
         with self.get_engine().connect() as con:
-            return con.execute(stm)
+            if parameters:
+                return con.execute(stm, parameters)
+            else:
+                return con.execute(stm)
 
-    def fetchall(self, stm):
+    def fetchall(self, stm, parameters=None):
         """Executa a query e retorna todos os resultados em uma lista.
 
         Args:
             stm (statement): Query a ser executada, pode ser escrita em SqlAlchemy
-            ou string no caso de string ela sera convertida para TextClause.
+                ou string no caso de string ela sera convertida para TextClause.
+            parameters (dict, optional): Parâmetros para a query. Defaults to None.
 
         Returns:
             list: Lista com os resultado no formato original do SqlAlchemy LegacyRow.
@@ -233,16 +238,20 @@ class DBBase:
         self._debug_query(stm)
 
         with self.get_engine().connect() as con:
-            queryset = con.execute(stm).fetchall()
+            if parameters:
+                queryset = con.execute(stm, parameters).fetchall()
+            else:
+                queryset = con.execute(stm).fetchall()
             return queryset
 
-    def fetchall_dict(self, stm):
+    def fetchall_dict(self, stm, parameters=None):
         """Executa a query e retorna todos os resultados em uma lista de Dicts.
             exemplo:[{'col': 'value', ..., 'colN':'valueN'}]
 
         Args:
             stm (statement): Query a ser executada, pode ser escrita em SqlAlchemy
-            ou string no caso de string ela sera convertida para TextClause.
+                ou string no caso de string ela sera convertida para TextClause.
+            parameters (dict, optional): Parâmetros para a query. Defaults to None.
 
         Returns:
             list: Resultado da query em uma lista de dicionários.
@@ -253,7 +262,10 @@ class DBBase:
         self._debug_query(stm)
 
         with self.get_engine().connect() as con:
-            queryset = con.execute(stm)
+            if parameters:
+                queryset = con.execute(stm, parameters)
+            else:
+                queryset = con.execute(stm)
 
             rows = []
             for row in queryset:
@@ -277,12 +289,13 @@ class DBBase:
 
         return df
 
-    def fetchone(self, stm):
+    def fetchone(self, stm, parameters=None):
         """Executa a query retorna a primeira linha do resultado
 
         Args:
             stm (statement): Query a ser executada, pode ser escrita em SqlAlchemy
-            ou string no caso de string ela sera convertida para TextClause.
+                ou string no caso de string ela sera convertida para TextClause.
+            parameters (dict, optional): Parâmetros para a query. Defaults to None.
 
         Returns:
             sqlalchemy.engine.row.LegacyRow: Primeira linha do resultado da query.
@@ -292,15 +305,19 @@ class DBBase:
         stm = self.raw_sql_to_stm(stm)
 
         with self.get_engine().connect() as con:
-            queryset = con.execute(stm).fetchone()
+            if parameters:
+                queryset = con.execute(stm, parameters).fetchone()
+            else:
+                queryset = con.execute(stm).fetchone()
             return queryset
 
-    def fetchone_dict(self, stm):
+    def fetchone_dict(self, stm, parameters=None):
         """Executa a query retorna a primeira linha do resultado convertida em Dict
 
         Args:
             stm (statement): Query a ser executada, pode ser escrita em SqlAlchemy
-            ou string no caso de string ela sera convertida para TextClause.
+                ou string no caso de string ela sera convertida para TextClause.
+            parameters (dict, optional): Parâmetros para a query. Defaults to None.
 
         Returns:
             dict: Primeira linha do resultado da query.
@@ -310,19 +327,23 @@ class DBBase:
         stm = self.raw_sql_to_stm(stm)
 
         with self.get_engine().connect() as con:
-            queryset = con.execute(stm).fetchone()
+            if parameters:
+                queryset = con.execute(stm, parameters).fetchone()
+            else:
+                queryset = con.execute(stm).fetchone()
 
             if queryset is not None:
                 return self.to_dict(queryset)
             return None
 
-    def fetch_scalar(self, stm):
+    def fetch_scalar(self, stm, parameters=None):
         """Retorna o valor da primeira coluna na primeira linha do resultado da query
         util para querys de count por exemplo, ou quando se quer apenas um unico valor.
 
         Args:
             stm (statement): Query a ser executada, pode ser escrita em SqlAlchemy
-            ou string no caso de string ela sera convertida para TextClause.
+                ou string no caso de string ela sera convertida para TextClause.
+            parameters (dict, optional): Parâmetros para a query. Defaults to None.
 
         Returns:
             any: Valor da primeira coluna na primeira linha.
@@ -332,7 +353,10 @@ class DBBase:
         stm = self.raw_sql_to_stm(stm)
 
         with self.get_engine().connect() as con:
-            return con.execute(stm).scalar()
+            if parameters:
+                return con.execute(stm, parameters).scalar()
+            else:
+                return con.execute(stm).scalar()
 
     def to_dict(self, row):
         """Converte uma linha de resultado do SQLAlchemy queryset para Dict
@@ -510,3 +534,20 @@ class DBBase:
             all_values.update(values)
 
         return conditions, all_values
+
+
+    def analyze_table(self, schema, tablename):
+        """Executa o comando ANALYZE na tabela especificada.
+        
+        Args:
+            schema (str): Nome do schema onde a tabela está localizada.
+            tablename (str): Nome da tabela a ser analisada.
+        
+        Returns:
+            None
+        """
+        analyze_stm = text(f'ANALYZE "{schema}"."{tablename}";')
+
+        with self.get_engine().connect() as con:
+            self._debug_query(analyze_stm)
+            con.execute(analyze_stm)
