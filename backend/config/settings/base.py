@@ -96,6 +96,7 @@ LOCAL_APPS = [
     "target.users",
     "target.common",
     "target.metadata",
+    "target.mydb",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

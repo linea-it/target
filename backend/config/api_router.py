@@ -8,6 +8,7 @@ from target.metadata.api.views import SettingsViewSet
 from target.metadata.api.views import TableViewSet
 from target.metadata.api.views import UserTableViewSet
 from target.users.api.views import UserViewSet
+from target.mydb.api.views import MydbViewSet
 
 router = DefaultRouter() if settings.DEBUG else SimpleRouter()
 
@@ -17,6 +18,8 @@ router.register("metadata/tables", TableViewSet)
 router.register("metadata/columns", ColumnViewSet)
 router.register("metadata/settings", SettingsViewSet, basename="settings")
 router.register("metadata/user_tables", UserTableViewSet, basename="user_tables")
+
+router.register("mydb", MydbViewSet, basename="mydb")
 
 
 app_name = "api"
