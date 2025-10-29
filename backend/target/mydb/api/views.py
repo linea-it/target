@@ -7,17 +7,7 @@ from django.shortcuts import get_object_or_404
 from dblinea import MyDB
 
 class MydbViewSet(viewsets.ViewSet):
-    """
-    ViewSet que simula um ModelViewSet completo sem model
-    """
-    
-    # "Banco de dados" em memória para simulação
-    _database = {
-        1: {"id": 1, "nome": "Item 1", "descricao": "Descrição do item 1", "ativo": True},
-        2: {"id": 2, "nome": "Item 2", "descricao": "Descrição do item 2", "ativo": False},
-        3: {"id": 3, "nome": "Item 3", "descricao": "Descrição do item 3", "ativo": True},
-    }
-    _next_id = 4
+
     
     def list(self, request):
         """
@@ -37,11 +27,24 @@ class MydbViewSet(viewsets.ViewSet):
 
             # List of tables in the database that the user has access to
             tables = db.get_user_tables_detailed()
+            count = len(tables)
 
-            # # Filtros opcionais via query params
-            # nome_filter = request.GET.get('nome')
-            # ativo_filter = request.GET.get('ativo')
-            
+            # Sorting
+            ordering = request.GET.get('ordering')
+            if ordering:
+                reverse = ordering.startswith('-')
+                field_name = ordering.lstrip('-')
+                tables.sort(key=lambda x: x.get(field_name), reverse=reverse)
+
+
+            # Pagination
+            page = int(request.GET.get('page', 1))
+            page_size = int(request.GET.get('pageSize', 10))
+
+            start = (page - 1) * page_size
+            end = start + page_size
+            tables = tables[start:end]
+
             # items = list(self._database.values())
             
             # # Aplicar filtros
@@ -53,7 +56,7 @@ class MydbViewSet(viewsets.ViewSet):
             #     items = [item for item in items if item['ativo'] == ativo_bool]
             
             return Response({
-                "count": len(tables),
+                "count": count,
                 "results": tables
             })
         
