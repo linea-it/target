@@ -8,7 +8,7 @@ from dblinea import MyDB
 
 class MydbViewSet(viewsets.ViewSet):
 
-    
+
     def list(self, request):
         """
         GET /api/mydb/ - Lista todas as tabelas no schema do usuario
@@ -66,25 +66,83 @@ class MydbViewSet(viewsets.ViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         
-    # def retrieve(self, request, pk=None):
-    #     """
-    #     GET /api/mydb/1/ - Busca item específico
-    #     """
-    #     try:
-    #         pk_int = int(pk)
-    #         if pk_int in self._database:
-    #             return Response(self._database[pk_int])
-    #         else:
-    #             return Response(
-    #                 {"error": f"Item com id {pk} não encontrado"}, 
-    #                 status=status.HTTP_404_NOT_FOUND
-    #             )
-    #     except ValueError:
-    #         return Response(
-    #             {"error": "ID deve ser um número inteiro"}, 
-    #             status=status.HTTP_400_BAD_REQUEST
-    #         )
-    
+    def retrieve(self, request, pk=None):
+        """
+        GET /api/mydb/<table_name>/ - Busca item específico
+        """
+        if pk is None:
+            return Response(
+                {"error": "Table name is mandatory"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            table_name = pk
+            print("Retrieving table:", table_name)
+            user = request.user
+
+            # MyDB instance
+            db = MyDB(username=user.username)
+
+            # List of tables in the database that the user has access to
+            tables = db.get_user_tables_detailed()
+
+            items = [table for table in tables if table['table_name'] == table_name]
+
+            if len(items) == 1:
+                return Response(items[0])
+            else:
+                return Response(
+                    {"error": f"Table {table_name} not found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        except ValueError:
+            return Response(
+                {"error": f"internal error table name {table_name} not found"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def destroy(self, request, pk=None):
+        """
+        DELETE /api/mydb/<table_name>/ - Remove item
+        """
+        if pk is None:
+            return Response(
+                {"error": "Table name is mandatory"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            table_name = pk
+            user = request.user
+
+            # MyDB instance
+            db = MyDB(username=user.username)
+
+            # List of tables in the database that the user has access to
+            tables = db.get_user_tables_detailed()
+
+            items = [table for table in tables if table['table_name'] == table_name]
+
+            if len(items) != 1:
+                return Response(
+                    {"error": f"Table {table_name} not found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Drop the table
+            db.drop_user_table(table_name)
+
+            return Response(
+                {"message": f"Table {table_name} dropped successfully"},
+                status=status.HTTP_200_OK
+            )
+        except ValueError:
+            return Response(
+                {"error": "Failed to remove the table."}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
     # def create(self, request):
     #     """
     #     POST /api/mydb/ - Cria novo item
@@ -106,7 +164,7 @@ class MydbViewSet(viewsets.ViewSet):
     #         "descricao": data.get('descricao', ''),
     #         "ativo": data.get('ativo', True)
     #     }
-        
+    #   
     #     self._database[new_id] = new_item
     #     self._next_id += 1
         

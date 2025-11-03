@@ -551,3 +551,18 @@ class DBBase:
         with self.get_engine().connect() as con:
             self._debug_query(analyze_stm)
             con.execute(analyze_stm)
+
+
+    def drop_table(self, schema, tablename):
+        """Remove a tabela especificada do banco de dados.
+
+        Args:
+            schema (str): Nome do schema onde a tabela está localizada.
+            tablename (str): Nome da tabela a ser removida.
+
+        Returns:
+            None
+        """
+
+        tbl = self.sa_table(tablename, schema)
+        tbl.drop(self.get_engine(), checkfirst=True)
