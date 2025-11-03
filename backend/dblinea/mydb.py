@@ -186,7 +186,14 @@ class MyDB(DBBase):
 
         return filters
 
-
+    def drop_user_table(self, tablename):
+        """Remove uma tabela do schema do usuário.
+        
+        Args:
+            tablename (str): Nome da tabela a ser removida.
+        """
+        super().drop_table(schema=self.schema, tablename=tablename)
+        
 # ---------------------------------------------
 
     def get_user_tables_detailed(self):
