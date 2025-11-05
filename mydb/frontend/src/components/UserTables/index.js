@@ -45,11 +45,7 @@ export default function UserTables() {
         // Closing dialog
         handleClose();
       });
-  }, [
-    deleteTableId, // Refreshing data grid
-    apiRef.current.dataSource.fetchRows, // Closing dialog
-    handleClose,
-  ]);
+  });
 
   const columns = [
     {
