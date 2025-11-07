@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.request import Request
 from django.shortcuts import get_object_or_404
+from django.conf import settings
 
 from dblinea import MyDB
 
@@ -54,10 +55,14 @@ class MydbViewSet(viewsets.ViewSet):
             # if ativo_filter is not None:
             #     ativo_bool = ativo_filter.lower() in ['true', '1', 'yes']
             #     items = [item for item in items if item['ativo'] == ativo_bool]
-            
+
+            # Get quota information
+            quota = self.get_quota(user.username)
+
             return Response({
                 "count": count,
-                "results": tables
+                "results": tables, 
+                "quota": quota
             })
         
         except Exception as e:
@@ -142,6 +147,44 @@ class MydbViewSet(viewsets.ViewSet):
                 {"error": "Failed to remove the table."}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    def get_quota(self, username):
+        """
+        GET /api/mydb/quota/ - Informações sobre a cota do usuário.
+        """
+
+        db = MyDB(username=username)
+
+        quota_mb = settings.MYDB_QUOTA_MB
+        quota_bytes = quota_mb * 1024 * 1024
+
+        used_bytes = db.total_size_tables()
+
+        return {
+            "quota_bytes": quota_bytes,
+            "used_bytes": used_bytes,
+            "available_bytes": max(quota_bytes - used_bytes, 0),
+        }
+        
+
+    # === CUSTOM ACTIONS ===
+    @action(detail=False, methods=['get'])
+    def quota(self, request):
+        """
+        GET /api/mydb/quota/ - Informações sobre a cota do usuário.
+        """
+        user = request.user
+
+        try:
+            quota = self.get_quota(user.username)
+            return Response(quota)
+        
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
     # def create(self, request):
     #     """

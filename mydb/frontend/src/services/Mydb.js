@@ -8,3 +8,7 @@ export const userTables = (params) => {
 export const dropTable = (table_name) => {
   return api.delete(`mydb/${table_name}/`);
 };
+
+export const userQuota = () => {
+  return api.get("mydb/quota/");
+};

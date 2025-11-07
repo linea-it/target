@@ -1,22 +1,25 @@
 "use client";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Tooltip from "@mui/material/Tooltip";
+
 import {
   DataGrid,
   GRID_ROOT_GROUP_ID,
   GridActionsCellItem,
-  useGridApiRef,
+  useGridApiRef
 } from "@mui/x-data-grid";
 import prettyBytes from "pretty-bytes";
 import React from "react";
 // import Link from 'next/link'
 import DropTableDialog from "@/components/DropTableDialog";
 import { dropTable, userTables } from "@/services/Mydb";
+import CustomFooter from "@/components/UserTables/CustomFooter";
 
 export default function UserTables() {
   const apiRef = useGridApiRef();
 
   const [deleteTableId, setDeleteTableId] = React.useState(null);
+  const [quota, setQuota] = React.useState({ used_bytes: 0, quota_bytes: 0 });
 
   const handleClose = React.useCallback(() => {
     setDeleteTableId(null);
@@ -96,12 +99,19 @@ export default function UserTables() {
       getRows: async (params) => {
         try {
           const res = await userTables(params);
+
+          setQuota({
+            used_bytes: res.data.quota.used_bytes,
+            quota_bytes: res.data.quota.quota_bytes,
+          });
+
           return {
             rows: res.data.results,
             rowCount: res.data.count,
           };
         } catch (error) {
           console.error("Erro ao carregar os dados", error);
+
           throw error; // isso é importante para acionar o `onDataSourceError`
         }
       },
@@ -109,11 +119,12 @@ export default function UserTables() {
     [],
   );
 
+
   return (
     <>
       <DataGrid
         apiRef={apiRef}
-        // dataSourceCache={null}
+        dataSourceCache={null}
         columns={columns}
         dataSource={dataSource}
         getRowId={(row) => row.table_name}
@@ -121,15 +132,17 @@ export default function UserTables() {
         pageSizeOptions={[25, 50, 100]}
         disableColumnFilter
         disableRowSelectionOnClick
-        onDataSourceError={(error) => {
-          console.log("Data source error:", error);
-        }}
         initialState={{
           pagination: {
             paginationModel: { pageSize: 25, page: 0 },
             rowCount: 0,
           },
           // sorting: { sortModel: [{ field: "table_name", sort: "asc" }] },
+        }}
+        slots={{
+          footer: (footerProps) => (
+            <CustomFooter {...footerProps} {...quota} />
+          ),
         }}
       />
       <DropTableDialog

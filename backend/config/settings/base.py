@@ -370,6 +370,7 @@ SPECTACULAR_SETTINGS = {
 # LINEA MYDB
 # ------------------------------------------------------------------------------
 USER_SCHEMA_PREFIX = env("MYDB_SCHEMA_PREFIX", default="mydb_")
+MYDB_QUOTA_MB = env.int("MYDB_QUOTA_MB", default=10240) # 10 GB
 
 ENVIRONMENT_NAME = env("ENVIRONMENT_NAME", default="development").lower()
 
@@ -395,6 +396,8 @@ RUBIN_REGISTER_URL = env("RUBIN_REGISTER_URL", default="https://register-dev.lin
 # Esses grupos são gerenciados no django admin.
 # Quando o usuario faz login pelo saml2 esses grupos não serão removidos. 
 INTERNAL_GROUPS = []
+
+
 
 SETTINGS_EXPORT = [
     "BASE_HOST",
