@@ -336,3 +336,40 @@ class MyDB(DBBase):
             analyzed_tables.append(table_name)
 
         return analyzed_tables
+
+
+    def total_size_tables(self):
+        """Calcula o tamanho total ocupado por todas as tabelas no schema do usuário.
+        
+        Returns:
+            int: Tamanho total em bytes
+        """
+        
+        # stm = text("""
+        #     SELECT 
+        #         SUM(pg_total_relation_size(c.oid)) as total_bytes
+        #     FROM pg_catalog.pg_class c
+        #     JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+        #     WHERE n.nspname = :schema
+        #     AND c.relkind = 'r';
+        # """)
+
+        stm = text("""
+            SELECT
+                nspname AS schema_name,
+                SUM(pg_total_relation_size(pg_class.oid)) AS total_bytes
+            FROM
+                pg_class
+                JOIN pg_namespace ON relnamespace = pg_namespace.oid
+            WHERE
+                nspname = :schema  -- substitua pelo seu schema
+                AND relkind IN ('r', 'm', 't', 'p')  -- tabelas, materialized views, TOAST, partitions
+            GROUP BY
+                nspname;
+        """)
+
+
+        result = self.fetchone_dict(stm, {"schema": self.schema})
+        total_bytes = result['total_bytes'] if result['total_bytes'] is not None else 0
+        
+        return total_bytes
