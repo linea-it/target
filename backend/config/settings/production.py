@@ -291,19 +291,21 @@ SAML_ATTRIBUTE_MAPPING = {
     # "isMemberOf": ("name",),
 }
 
+SAML_SP_NAME = env("SAML_SP_NAME", default="SP Target Viewer")
+
 SAML_CONFIG = {
     # Biblioteca usada para assinatura e criptografia
     "xmlsec_binary": "/usr/bin/xmlsec1",
     "entityid": FQDN + "/saml2/metadata/",
     # Diretório contendo os esquemas de mapeamento de atributo
     "attribute_map_dir": str(ATTR_DIR),
-    "description": "SP Target Viewer",
+    "description": SAML_SP_NAME,
     "service": {
         "sp": {
-            "name": "SP Target Viewer",
+            "name": SAML_SP_NAME,
             "ui_info": {
-                "display_name": {"text": "SP Target Viewer", "lang": "en"},
-                "description": {"text": "SP Target Viewer", "lang": "en"},
+                "display_name": {"text": SAML_SP_NAME, "lang": "en"},
+                "description": {"text": SAML_SP_NAME, "lang": "en"},
                 "information_url": {"text": FQDN, "lang": "en"},
                 "privacy_statement_url": {"text": FQDN, "lang": "en"},
             },
