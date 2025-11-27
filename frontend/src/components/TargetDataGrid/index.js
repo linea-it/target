@@ -24,7 +24,7 @@ export default function TargetDataGrid(props) {
       return;
     }
 
-    const id = BigInt(selectedRecord.meta_id);
+    const id = selectedRecord.meta_id;
     setRowSelectionModel({ type: 'include', ids: new Set([id]) });
 
   }, [selectedRecord, visibleRowIds])

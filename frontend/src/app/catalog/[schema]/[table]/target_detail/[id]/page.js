@@ -35,7 +35,12 @@ export default function SingleTargetDetail({ params }) {
   })
 
   const { isLoading: isLoadingRow, data: record } = useQuery({
-    queryKey: ['tableRowById', { tableId: tableRecord?.id, filters: { [tableRecord?.property_id]: parseInt(id) } }],
+    queryKey: ['tableRowById', {
+      tableId: tableRecord?.id,
+      filters: {
+        [tableRecord?.property_id]: String(id)
+      }
+    }],
     queryFn: getTableRowById,
     enabled: tableRecord !== undefined,
     select: (data) => data?.data.results[0],

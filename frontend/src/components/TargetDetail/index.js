@@ -77,7 +77,7 @@ export default function TargetDetail(props) {
         <Toolbar>
           <Stack direction="row" spacing={2}>
             <Button
-              href={`${pathname}/target_detail/${BigInt(selectedRecord?.meta_id)}`}
+              href={`${pathname}/target_detail/${selectedRecord?.meta_id}`}
               target="_blank"
               variant="outlined"
               size="large"
