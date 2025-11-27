@@ -99,7 +99,7 @@ export default function SingleTargetDetail({ params }) {
             <ArrowBackIosIcon />
           </IconButton>
           <Typography variant="h5">
-            Target {record?.id} - {record?.ra}, {record?.dec}
+            Target {record?.meta_id} - {record?.meta_ra}, {record?.meta_dec}
           </Typography>
           {/* <IconButton disabled>
             <ShareIcon />

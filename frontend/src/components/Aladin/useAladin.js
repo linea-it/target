@@ -41,6 +41,18 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
       },
       requireGroup: 'lsst_dp0.2', // Grupo necessário para acesso
     },
+    // Adiciona imagem do LSST DP1 (privada, requer grupo 'lsst_dp1')
+    {
+      id: "LSST_DP1_IRG_LIneA",
+      name: "LSST DP1 IRG at LIneA",
+      url: `${baseHost}/data/releases/lsst/dp1/images/hips`,
+      cooFrame: "ICRSd",
+      options: {
+        requestCredentials: 'include',
+        requestMode: 'cors',
+      },
+      requireGroup: 'lsst_dp1', // Grupo necessário para acesso
+    },
     // Rubin First Look (pública)
     {
       id: "RUBIN_FIRST_LOOK_UGRI",
@@ -72,6 +84,17 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
       options: { color: '#2BC7EE' },
       requireGroup: 'dp02', // Grupo necessário para acesso
     },
+    {
+      id: 'lsst_dp1',
+      name: 'LSST DP1',
+      url: `${baseHost}/data/releases/lsst/dp1/catalogs/hips`,
+      options: {
+        color: '#2BC7EE',
+        requestCredentials: 'include',
+        requestMode: 'cors',
+      },
+      requireGroup: 'lsst_dp1',
+    },
     // Adiciona Catalogos default do Aladin ( Simbad, Gaia DR3, 2MASS )
     {
       id: 'simbad',
@@ -101,7 +124,8 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     // "RUBIN_FIRST_LOOK_UGRI": "12 26 53.27 +08 56 49.0",
     "RUBIN_FIRST_LOOK_UGRI": "184.940790 +5.51919840",
     // "LSST_DP02_IRG_LIneA": "04 08 29.07 -37 02 47.9"
-    "LSST_DP02_IRG_LIneA": "239.215847 -47.5856227"
+    "LSST_DP02_IRG_LIneA": "239.215847 -47.5856227",
+    "LSST_DP1_IRG_LIneA": "02 39 35.55 -34 30 38.3",
   }
 
   useEffect(() => {
@@ -163,6 +187,11 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
           return; // Não adiciona o survey se o usuário não tiver acesso
         }
 
+        if (survey.devOnly == true && isDev == false) {
+          // console.warn(`Survey ${survey.name} is only available in dev mode.`);
+          return; // Não adiciona o survey se não estiver em modo dev
+        }
+
         const hips_survey = aladinRef.current.createImageSurvey(survey.id, survey.name, survey.url, survey.cooFrame);
 
         aladinRef.current.setImageSurvey(hips_survey, survey.options || {});
@@ -178,6 +207,12 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
           // console.warn(`User does not have access to catalog: ${cat.name}`);
           return; // Não adiciona o catálogo se o usuário não tiver acesso
         }
+
+        if (cat.devOnly == true && isDev == false) {
+          // console.warn(`Survey ${survey.name} is only available in dev mode.`);
+          return; // Não adiciona o survey se não estiver em modo dev
+        }
+
         const hips_cat = A.catalogHiPS(cat.url, {
           name: cat.name,
           onClick: 'showTable',

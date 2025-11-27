@@ -11,7 +11,7 @@ from target.metadata.models import Schema
 from target.metadata.models import Settings
 from target.metadata.models import Table
 
-from .serializers import ColumnSerializer
+from .serializers import ColumnSerializer, ResumedColumnSerializer
 from .serializers import NestedTableSerializer
 from .serializers import SchemaSerializer
 from .serializers import SettingsSerializer
@@ -436,6 +436,14 @@ class UserTableViewSet(ModelViewSet):
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    def convert_bigints_to_string(self, data, bigint_columns):
+        if isinstance(data, dict):
+            return {k: str(v) if k in bigint_columns and isinstance(v, int) and v > 9007199254740991 else v 
+                    for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self.convert_bigints_to_string(item, bigint_columns) for item in data]
+        return data
+
     @action(detail=True, methods=["get"])
     def data(self, request, pk=None):
         # print("-----------------------------")
@@ -445,7 +453,7 @@ class UserTableViewSet(ModelViewSet):
         # pk é a identificação que vem na url /{pk}/data/
         # e não é afetada pelos filtros.
         queryset = self.get_queryset()
-        table = queryset.get(pk=pk)
+        table = queryset.prefetch_related("columns").get(pk=pk)
 
         # print(table)
         ucds = self.get_table_ucds(table)
@@ -493,16 +501,31 @@ class UserTableViewSet(ModelViewSet):
             row.update(
                 {
                     "meta_catalog_id": table.id,
-                    "meta_id": row.get(ucds.get("meta.id;meta.main")),
-                    "meta_ra": row.get(ucds.get("pos.eq.ra;meta.main")),
-                    "meta_dec": row.get(ucds.get("pos.eq.dec;meta.main")),
+                    "meta_id": str(row.get(ucds.get("meta.id;meta.main"))),
+                    "meta_ra": str(row.get(ucds.get("pos.eq.ra;meta.main"))),
+                    "meta_dec": str(row.get(ucds.get("pos.eq.dec;meta.main"))),
                     "meta_radius_arcmin": row.get(ucds.get("phys.angSize;src")),
                 },
             )
 
+        # Convert bigints to string to avoid JS issues
+        bigint_columns = []
+        for col in table.columns.all():
+            datatype = col.datatype.lower().split("(")[0]
+            if datatype in ["bigint", "int8"]:
+                bigint_columns.append(col.name)
+
+        parsed_rows = self.convert_bigints_to_string(rows, bigint_columns)
+
+        # columns_data = ResumedColumnSerializer(
+        #     table.columns.all(),
+        #     many=True,
+        # ).data
+
         results = {
-            "results": rows,
+            "results": parsed_rows,
             "count": count,
+            # "columns": columns_data,
             "has_more": (offset + limit) < count,
         }
 
