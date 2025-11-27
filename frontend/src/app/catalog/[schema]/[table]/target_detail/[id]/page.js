@@ -35,7 +35,12 @@ export default function SingleTargetDetail({ params }) {
   })
 
   const { isLoading: isLoadingRow, data: record } = useQuery({
-    queryKey: ['tableRowById', { tableId: tableRecord?.id, filters: { [tableRecord?.property_id]: parseInt(id) } }],
+    queryKey: ['tableRowById', {
+      tableId: tableRecord?.id,
+      filters: {
+        [tableRecord?.property_id]: String(id)
+      }
+    }],
     queryFn: getTableRowById,
     enabled: tableRecord !== undefined,
     select: (data) => data?.data.results[0],
@@ -99,7 +104,7 @@ export default function SingleTargetDetail({ params }) {
             <ArrowBackIosIcon />
           </IconButton>
           <Typography variant="h5">
-            Target {record?.id} - {record?.ra}, {record?.dec}
+            Target {record?.meta_id} - {record?.meta_ra}, {record?.meta_dec}
           </Typography>
           {/* <IconButton disabled>
             <ShareIcon />

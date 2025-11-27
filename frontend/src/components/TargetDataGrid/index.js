@@ -35,13 +35,21 @@ export default function TargetDataGrid(props) {
     return props.tableColumns.map((column) => {
 
       const width = mainUcds.includes(column.ucd) ? 150 : undefined;
-      return {
+      const colDef = {
         field: column.name,
         headerName: column.title || column.name,
         width: width,
         type: column.muicolumntype || 'string',
-        // flex: flex
       }
+      if (column.muicolumntype === 'number') {
+        colDef.renderCell = (params) => {
+          if (params.value === null || params.value === undefined) {
+            return '';
+          }
+          return String(params.value);
+        }
+      }
+      return colDef;
     })
   }
 
@@ -56,7 +64,7 @@ export default function TargetDataGrid(props) {
           const rows = res.data.results || [];
 
           // atualiza o conjunto de ids visíveis
-          setVisibleRowIds(new Set(rows.map((r) => r.meta_id)));
+          setVisibleRowIds(new Set(rows.map((r) => BigInt(r.meta_id))));
 
           return {
             rows,
@@ -91,7 +99,7 @@ export default function TargetDataGrid(props) {
 
       columns={columns}
       dataSource={dataSource}
-      getRowId={(row) => row.meta_id}
+      getRowId={(row) => BigInt(row.meta_id)}
       // Disable datasouce Cache for tests
       // dataSourceCache={null}      
       onDataSourceError={(error) => {
