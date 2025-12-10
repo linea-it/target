@@ -23,10 +23,10 @@
     "axios": "^1.7.9",
     "dayjs": "^1.11.13",
     "filesize.js": "^2.0.0",
-    "next": "15.0.3",
+    "next": "16.0.7",
     "nookies": "^2.5.2",
-    "react": "19.0.0-rc-66855b96-20241106",
-    "react-dom": "19.0.0-rc-66855b96-20241106"
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1"
   },
   "devDependencies": {
     "eslint": "^8",
