@@ -21,10 +21,10 @@
     "@mui/x-data-grid": "^8.15.0",
     "@tanstack/react-query": "^5.90.5",
     "axios": "^1.12.2",
-    "next": "16.0.0",
+    "next": "16.0.11",
     "pretty-bytes": "^7.1.0",
-    "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react": "19.2.1",
+    "react-dom": "19.2.1"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
