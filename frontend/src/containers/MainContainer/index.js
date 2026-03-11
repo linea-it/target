@@ -6,7 +6,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Header from "@/components/Header";
 import { useAuth } from "@/contexts/AuthContext";
 import { CatalogProvider } from "@/contexts/CatalogContext";
-
+import TitleManager from "@/components/TitleManager";
 import CssBaseline from '@mui/material/CssBaseline';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -30,6 +30,7 @@ export default function MainContainer({ children }) {
     <React.Fragment>
       <CssBaseline />
       <Header />
+      <TitleManager />
       <QueryClientProvider client={queryClient}>
         <CatalogProvider>
           {user && (

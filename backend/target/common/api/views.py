@@ -37,11 +37,16 @@ def environment_settings(request):
 
     login_url = settings.LOGIN_URL
 
+    enable_cluster = bool(settings.ENABLE_CLUSTER)
+
     env_settings = {
         "environment": enviroment,
         "base_host": settings.BASE_HOST,
         "login_url": login_url,
         "is_dev": is_dev,
+        "enable_cluster": enable_cluster,
+        "application_name": settings.APPLICATION_NAME,
+        "application_title": settings.APPLICATION_TITLE,
         "version": "1.0.0",
         "build": "12345",
     }

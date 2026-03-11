@@ -1,0 +1,1 @@
+DATABASE_MYDB_URL=postgres://<user>:<password>@host.docker.internal:3308/catalogsdb
