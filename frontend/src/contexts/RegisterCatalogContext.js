@@ -1,13 +1,19 @@
 import { createContext, useEffect, useState, useContext } from 'react'
 
+import { useAuth } from "./AuthContext";
+
 export const RegisterCatalogContext = createContext({})
 
 export const RegisterCatalogProvider = ({ children }) => {
 
+  const { settings } = useAuth();
+
+  const catalogType = settings?.enable_cluster ? "cluster" : "target";
+
   const emptyCatalog = {
     id: undefined,
     title: '',
-    catalog_type: 'target',
+    catalog_type: catalogType,
     schema: '',
     table: '',
     related_table: '',

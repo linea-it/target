@@ -14,8 +14,8 @@ const roboto = Roboto({
 });
 
 export const metadata = {
-  title: "TARGET",
-  description: "TARGET by linea",
+  title: "LIneA Science Platform",
+  description: "LIneA Science Platform",
 };
 
 export default function RootLayout(props) {

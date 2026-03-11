@@ -6,8 +6,8 @@ IPYTHONDIR=/app/.ipython
 DJANGO_DEBUG=True
 DJANGO_UWSGI_WORKER_PROCESSES=4
 DJANGO_UWSGI_WORKER_THREADS=2
-DATABASE_URL=postgres://debug:debug@postgres:5432/target
-DATABASE_MYDB_URL=postgres://user_dridev:278e41447c72@host.docker.internal:3307/prod_gavo
+DATABASE_URL=postgres://debug:debug@postgres-14:5432/target
+DATABASE_MYDB_URL=postgres://<user>:<password>@host.docker.internal:3308/catalogsdb
 MYDB_SCHEMA_PREFIX=mydb_
 # Redis
 # ------------------------------------------------------------------------------

@@ -365,12 +365,22 @@ SPECTACULAR_SETTINGS = {
     "SCHEMA_PATH_PREFIX": "/api/",
 }
 
+# ------------------------------------------------------------------------------
 # LINEA Settings
 # ------------------------------------------------------------------------------
+APPLICATION_NAME = env("APPLICATION_NAME", default="Target")
+APPLICATION_TITLE = env("APPLICATION_TITLE", default="Target Viewer")
 # LINEA MYDB
 # ------------------------------------------------------------------------------
 USER_SCHEMA_PREFIX = env("MYDB_SCHEMA_PREFIX", default="mydb_")
 MYDB_QUOTA_MB = env.int("MYDB_QUOTA_MB", default=10240) # 10 GB
+
+# LINEA Canvas
+# ------------------------------------------------------------------------------
+# Define se a funcionalidade de visualização de clusters está habilitada ou não. 
+# Diferencia entre target e canvas. 
+ENABLE_CLUSTER = env.bool("ENABLE_CLUSTER", default=False)
+
 
 ENVIRONMENT_NAME = env("ENVIRONMENT_NAME", default="development").lower()
 

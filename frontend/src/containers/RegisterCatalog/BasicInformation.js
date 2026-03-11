@@ -81,6 +81,13 @@ export default function RegisterCatalogBasicInformation() {
         <UserTableSelect onChange={onSelectTable} value={catalog.schema && catalog.table ? `${catalog.schema}.${catalog.table}` : ''} />
       )}
 
+      {catalog.catalog_type === 'cluster' && (
+        <>
+          {catalog.related_table && (<TextField label="Table" variant="outlined" fullWidth value={`${catalog.related_table_name}`} disabled />)}
+          {!catalog.related_table && (<RelatedTableSelect onChange={onSelectRelatedTable} value={catalog.related_table_name ? `${catalog.related_table_name}` : ''} />)}
+        </>
+      )}
+
       <TextField
         label="Name"
         variant="outlined"
@@ -88,7 +95,8 @@ export default function RegisterCatalogBasicInformation() {
         name="title"
         value={catalog.title}
         onChange={handleChange} />
-      <TextField
+
+      {/* <TextField
         label="Type"
         variant="outlined"
         fullWidth
@@ -99,14 +107,7 @@ export default function RegisterCatalogBasicInformation() {
       >
         <MenuItem key="target-option" value="target">Target</MenuItem>
         <MenuItem key="cluster-option" value="cluster">Cluster</MenuItem>
-      </TextField>
-
-      {catalog.catalog_type === 'cluster' && (
-        <>
-          {catalog.related_table && (<TextField label="Table" variant="outlined" fullWidth value={`${catalog.related_table_name}`} disabled />)}
-          {!catalog.related_table && (<RelatedTableSelect onChange={onSelectRelatedTable} value={catalog.related_table_name ? `${catalog.related_table_name}` : ''} />)}
-        </>
-      )}
+      </TextField> */}
 
       <TextField
         label="Description"

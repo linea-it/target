@@ -80,7 +80,11 @@ export default function Header() {
           >
             <MenuIcon />
           </IconButton>
+
           <List sx={{ display: { xs: 'none', md: 'flex' } }}>
+            <ListItem sx={{ width: 'auto', marginRight: 4, fontWeight: 'bold' }} >
+              {settings?.application_name}
+            </ListItem>
             {navItems.map(item => (
               <ListItem key={item.href} sx={{ width: 'auto' }}>
                 <Link href={item.href} color="inherit" underline="none" target={item.target}>
