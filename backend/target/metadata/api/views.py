@@ -1,4 +1,3 @@
-
 from django.conf import settings
 from rest_framework import status
 from rest_framework.decorators import action
@@ -11,8 +10,9 @@ from target.metadata.models import Schema
 from target.metadata.models import Settings
 from target.metadata.models import Table
 
-from .serializers import ColumnSerializer, ResumedColumnSerializer
+from .serializers import ColumnSerializer
 from .serializers import NestedTableSerializer
+from .serializers import ResumedColumnSerializer
 from .serializers import SchemaSerializer
 from .serializers import SettingsSerializer
 from .serializers import TableSerializer
@@ -64,7 +64,7 @@ class TableViewSet(ModelViewSet):
     @action(detail=True, methods=["get"])
     def columns(self, request, pk=None):
         table = self.get_object()
-        columns = table.columns.all()
+        columns = table.columns.all().order_by("name")
         serializer = ColumnSerializer(columns, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -334,6 +334,8 @@ class UserTableViewSet(ModelViewSet):
             if not self.is_table_registered(table, db.schema)
         ]
 
+        # Order by tablename
+        results.sort(key=lambda x: x["table"].lower())
         return Response(results, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["get"])
@@ -438,10 +440,16 @@ class UserTableViewSet(ModelViewSet):
 
     def convert_bigints_to_string(self, data, bigint_columns):
         if isinstance(data, dict):
-            return {k: str(v) if k in bigint_columns and isinstance(v, int) and v > 9007199254740991 else v 
-                    for k, v in data.items()}
+            return {
+                k: str(v)
+                if k in bigint_columns and isinstance(v, int) and v > 9007199254740991
+                else v
+                for k, v in data.items()
+            }
         elif isinstance(data, list):
-            return [self.convert_bigints_to_string(item, bigint_columns) for item in data]
+            return [
+                self.convert_bigints_to_string(item, bigint_columns) for item in data
+            ]
         return data
 
     @action(detail=True, methods=["get"])
@@ -510,7 +518,7 @@ class UserTableViewSet(ModelViewSet):
 
         # Convert bigints to string to avoid JS issues
         bigint_columns = []
-        for col in table.columns.all():
+        for col in table.columns.all().order_by("name"):
             datatype = col.datatype.lower().split("(")[0]
             if datatype in ["bigint", "int8"]:
                 bigint_columns.append(col.name)
