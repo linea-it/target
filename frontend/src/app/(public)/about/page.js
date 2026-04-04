@@ -8,6 +8,7 @@ import Footer from '@/components/Footer';
 import { useTheme } from '@mui/material/styles';
 import Link from '@mui/material/Link';
 import Divider from '@mui/material/Divider';
+import AppNameBreadcrumbLink from '@/components/AppNameBreadcrumbLink';
 export default function About() {
   return (
     <Container>
@@ -23,9 +24,7 @@ export default function About() {
         <Grid container spacing={2}>
           <Grid item xs={12}>
             <Breadcrumbs aria-label="breadcrumb" sx={{ mt: 2 }}>
-              <Link color="inherit" href="/">
-                Home
-              </Link>
+              <AppNameBreadcrumbLink />
               <Typography color="textPrimary">About</Typography>
             </Breadcrumbs>
             <Typography variant="h6" sx={{ mb: 2 }}>
