@@ -3,6 +3,9 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
+import Button from '@mui/material/Button';
+import Footer from '@/components/Footer';
+import Link from 'next/link';
 
 export default function LandingBodyCanvas() {
     return (
@@ -17,25 +20,24 @@ export default function LandingBodyCanvas() {
         >
             <Grid container spacing={2} justifyContent="center">
                 <Grid size={{ xs: 12, md: 10, lg: 8 }}>
-                    <Typography variant="h4" sx={{ mb: 2, fontWeight: 600, textAlign: 'center' }}>
-                        Canvas experience
-                    </Typography>
 
                     <Typography variant="body1" sx={{ mb: 3, lineHeight: 1.9, textAlign: 'center' }}>
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam. Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum. Praesent mauris.
+                        CAnVAS is a scientific platform designed to analyze galaxy cluster catalogs detected in optical surveys using the WaZP cluster finder. Users can upload their catalogs directly to the service, enabling a comprehensive evaluation of cluster candidates. The platform provides statistical analyses of the submitted catalogs, along with interactive visualizations of detected clusters. When available, CAnVAS also integrates detailed information on cluster members, survey depth maps, and the footprint of the originating survey, offering a robust and intuitive environment for validation and exploration.
                     </Typography>
 
-                    <Divider sx={{ my: 4 }} />
-
-                    <Typography variant="h5" sx={{ mb: 2, fontWeight: 600, textAlign: 'center' }}>
-                        Explore catalogs and clusters
-                    </Typography>
-
-                    <Typography variant="body1" sx={{ lineHeight: 1.9, textAlign: 'center' }}>
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Mauris ultrices eros in cursus turpis massa tincidunt dui ut. Turpis egestas integer eget aliquet nibh praesent tristique magna.
-                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
+                        <Button
+                            component={Link}
+                            href="/catalogs"
+                            variant="contained"
+                            size="large"
+                        >
+                            Explore Catalogs
+                        </Button>
+                    </Box>
                 </Grid>
             </Grid>
+            <Footer />
         </Box>
     );
 }
