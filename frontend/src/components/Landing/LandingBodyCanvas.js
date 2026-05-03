@@ -14,7 +14,7 @@ export default function LandingBodyCanvas() {
             sx={{
                 display: 'flex',
                 flexDirection: 'column',
-                minHeight: 'calc(100vh - 64px - 496px)',
+                // minHeight: 'calc(100vh - 64px - 496px)',
                 py: 4,
             }}
         >
@@ -37,7 +37,6 @@ export default function LandingBodyCanvas() {
                     </Box>
                 </Grid>
             </Grid>
-            <Footer />
         </Box>
     );
 }
