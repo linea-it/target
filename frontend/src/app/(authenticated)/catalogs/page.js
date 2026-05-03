@@ -3,12 +3,11 @@ import React from "react";
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
-import Link from '@mui/material/Link'
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
+import AppNameBreadcrumbLink from '@/components/AppNameBreadcrumbLink';
 import ListCatalogContainer from '@/containers/ListCatalog';
-import { userTables } from "@/services/Metadata";
-export default function Home() {
+export default function Catalogs() {
 
   return (
     <Box sx={{
@@ -22,9 +21,10 @@ export default function Home() {
     >
       <Box mb={4}>
         <Breadcrumbs aria-label="breadcrumb">
-          <Link color="inherit" href="/">
-            Home
-          </Link>
+          <AppNameBreadcrumbLink />
+          <Typography color="textPrimary">
+            Catalogs
+          </Typography>
         </Breadcrumbs>
         <Stack direction="row" spacing={2}>
           <Typography variant="h5" mt={2}>

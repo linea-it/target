@@ -30,7 +30,7 @@ function Footer() {
           }}
         />
         <Grid container spacing={4} alignItems="center">
-          <Grid item md={5}>
+          <Grid size={{ xs: 12, md: 5 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', pl: 4 }}>
               <a
                 href="https://www.linea.org.br/"
@@ -87,7 +87,7 @@ function Footer() {
             </Typography>
           </Grid>
 
-          <Grid item xs={12} md={1}>
+          <Grid size={{ xs: 12, md: 1 }}>
             <Box
               sx={{
                 height: '110px',
@@ -100,7 +100,7 @@ function Footer() {
             />
           </Grid>
 
-          <Grid item md={6} sx={{ textAlign: 'left', mb: 2 }}>
+          <Grid size={{ xs: 12, md: 6 }} sx={{ textAlign: 'left', mb: 2 }}>
             <Box>
               <Typography variant="body2" sx={{ color: '#a3a3a3', fontSize: '.9rem' }}>
                 Support:
@@ -229,7 +229,7 @@ function Footer() {
             </Box>
           </Grid>
         </Grid>
-        <Grid item md={12}>
+        <Grid size={{ xs: 12 }}>
           <Typography
             variant="body2"
             sx={{ mt: '40px', textAlign: 'center', color: '#a3a3a3', fontSize: '0.875rem' }}

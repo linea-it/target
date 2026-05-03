@@ -3,8 +3,8 @@ import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
 import { Roboto } from 'next/font/google';
 import { ThemeProvider } from '@mui/material/styles';
 import theme from '../theme';
-import MainContainer from "@/containers/MainContainer";
 import { AuthProvider } from "@/contexts/AuthContext";
+import AppBootstrapGate from "@/components/AppBootstrapGate";
 
 const roboto = Roboto({
   weight: ['300', '400', '500', '700'],
@@ -26,9 +26,9 @@ export default function RootLayout(props) {
         <AppRouterCacheProvider options={{ enableCssLayer: true }}>
           <ThemeProvider theme={theme}>
             <AuthProvider>
-              <MainContainer>
+              <AppBootstrapGate>
                 {children}
-              </MainContainer>
+              </AppBootstrapGate>
             </AuthProvider>
           </ThemeProvider>
         </AppRouterCacheProvider>

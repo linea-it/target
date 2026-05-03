@@ -14,6 +14,8 @@ import IconButton from '@mui/material/IconButton';
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import Stack from '@mui/material/Stack';
 import Loading from "@/components/Loading";
+import AppNameBreadcrumbLink from '@/components/AppNameBreadcrumbLink';
+import CatalogsBreadcrumbLink from '@/components/CatalogsBreadcrumbLink';
 
 import { getMetadataBySchemaTable } from "@/services/Metadata";
 
@@ -72,9 +74,8 @@ export default function CatalogSettingsContainer({ schema, table }) {
     >
       <Box mb={4}>
         <Breadcrumbs aria-label="breadcrumb">
-          <Link color="inherit" href="/">
-            Home
-          </Link>
+          <AppNameBreadcrumbLink />
+          <CatalogsBreadcrumbLink />
           <Link color="inherit" href={`/catalog/${catalog.schema}/${catalog.table}`}>
             {catalog.schema}
           </Link>

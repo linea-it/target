@@ -26,6 +26,13 @@ export default function Header() {
       href: '/',
       target: '_self'
     },
+    ...(user
+      ? [{
+        description: 'Catalogs',
+        href: '/catalogs/',
+        target: '_self'
+      }]
+      : []),
     {
       description: 'About',
       href: '/about/',

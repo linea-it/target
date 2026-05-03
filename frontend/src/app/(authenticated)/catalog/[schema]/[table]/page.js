@@ -13,6 +13,8 @@ import Stack from '@mui/material/Stack';
 
 import CatalogDetailContainer from "@/containers/CatalogDetail";
 import Loading from "@/components/Loading";
+import AppNameBreadcrumbLink from '@/components/AppNameBreadcrumbLink';
+import CatalogsBreadcrumbLink from '@/components/CatalogsBreadcrumbLink';
 
 import { useAuth } from "@/contexts/AuthContext";
 import { getMetadataBySchemaTable } from "@/services/Metadata";
@@ -74,16 +76,15 @@ export default function CatalogDetail({ params }) {
     >
       <Box mb={4}>
         <Breadcrumbs aria-label="breadcrumb">
-          <Link color="inherit" href="/">
-            Home
-          </Link>
+          <AppNameBreadcrumbLink />
+          <CatalogsBreadcrumbLink />
           <Typography >{catalog.schema}</Typography>
           <Typography >{catalog.table}</Typography>
         </Breadcrumbs>
         <Stack direction="row" mt={2} spacing={1} sx={{
           alignItems: "center",
         }}>
-          <IconButton href={`/`}>
+          <IconButton href={`/catalogs/`}>
             <ArrowBackIosIcon />
           </IconButton>
           <Typography variant="h5" mt={2}>

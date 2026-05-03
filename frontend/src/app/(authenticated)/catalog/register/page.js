@@ -3,10 +3,11 @@ import React from "react";
 import Box from '@mui/material/Box';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Typography from '@mui/material/Typography';
-import Link from '@mui/material/Link'
 import IconButton from '@mui/material/IconButton';
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import Stack from '@mui/material/Stack';
+import AppNameBreadcrumbLink from '@/components/AppNameBreadcrumbLink';
+import CatalogsBreadcrumbLink from '@/components/CatalogsBreadcrumbLink';
 import RegisterCatalogContainer from "@/containers/RegisterCatalog";
 import { RegisterCatalogProvider } from "@/contexts/RegisterCatalogContext";
 export default function RegisterCatalog({ params }) {
@@ -23,16 +24,14 @@ export default function RegisterCatalog({ params }) {
     >
       <Box mb={4}>
         <Breadcrumbs aria-label="breadcrumb">
-          <Link color="inherit" href="/">
-            Home
-          </Link>
-          <Typography >Catalog</Typography>
+          <AppNameBreadcrumbLink />
+          <CatalogsBreadcrumbLink />
           <Typography >New</Typography>
         </Breadcrumbs>
         <Stack direction="row" mt={2} spacing={1} sx={{
           alignItems: "center",
         }}>
-          <IconButton href={`/`}>
+          <IconButton href={`/catalogs/`}>
             <ArrowBackIosIcon />
           </IconButton>
           <Typography variant="h5" mt={2}>
