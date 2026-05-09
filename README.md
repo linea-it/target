@@ -19,3 +19,17 @@ docker build -f compose/production/frontend/Dockerfile -t linea/target:frontend_
 
 docker build -f mydb/compose/production/frontend/Dockerfile -t linea/target:mydb_frontend_$(git describe --always) .
 ```
+
+
+## TODOS: Canvas
+
+- Schema publico "mydb_canvas_public"
+- Upload de tabelas. 
+- Salvar as colunas que que o usuario selecionou e orden.
+- Um segundo de arc no ra e dec.  
+- Tabela dos membros do lado da imagem
+- Alterar o titulo da tela para canvas
+- Alterar o titulo da tela de detalhe.
+- Selecionar linha de membro ao clicar no aladin.
+
+Imagem docker do jupyter = quay.io/jupyter/datascience-notebook:2025-05-12
