@@ -21,6 +21,20 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={roboto.variable}>
+      <head>
+        {/* Google tag (gtag.js) */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-J2ZCP6CT0E" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-J2ZCP6CT0E');
+            `
+          }}
+        />
+      </head>
       <body>
         <AppRouterCacheProvider>
           <ThemeProvider theme={theme}>
