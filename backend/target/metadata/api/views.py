@@ -537,3 +537,58 @@ class UserTableViewSet(ModelViewSet):
         }
 
         return Response(results, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["get"])
+    def notebook(self, request, pk=None):
+        from pathlib import Path
+
+        import nbformat
+        from nbconvert import HTMLExporter
+
+        queryset = self.get_queryset()
+        table = queryset.prefetch_related("columns").get(pk=pk)
+
+        ucds = self.get_table_ucds(table)
+        url_filters = self.parse_filters(request.query_params)
+
+        db = MyDB(username=request.user.username)
+        rows, _ = db.query(
+            tablename=table.name,
+            limit=1,
+            offset=0,
+            url_filters=url_filters,
+        )
+
+        if not rows:
+            return Response(
+                {"error": "Record not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        row = rows[0]
+        row.update(
+            {
+                "meta_id": str(row.get(ucds.get("meta.id;meta.main")) or ""),
+                "meta_ra": str(row.get(ucds.get("pos.eq.ra;meta.main")) or ""),
+                "meta_dec": str(row.get(ucds.get("pos.eq.dec;meta.main")) or ""),
+                "meta_radius_arcmin": str(row.get(ucds.get("phys.angSize;src")) or ""),
+            },
+        )
+
+        template_path = (
+            Path(__file__).parent.parent / "notebooks" / "cluster_detail_template.ipynb"
+        )
+        with template_path.open() as f:
+            nb = nbformat.read(f, as_version=4)
+
+        for cell in nb.cells:
+            for key, value in row.items():
+                cell.source = cell.source.replace(
+                    f"{{{{{key}}}}}",
+                    str(value if value is not None else ""),
+                )
+
+        exporter = HTMLExporter()
+        html, _ = exporter.from_notebook_node(nb)
+
+        return Response({"html": html}, status=status.HTTP_200_OK)
