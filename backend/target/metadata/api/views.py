@@ -1,6 +1,15 @@
+import base64
+import io
+import json
 import math
+import traceback as tb
+from contextlib import redirect_stderr
+from contextlib import redirect_stdout
+from pathlib import Path
 
+import nbformat
 from django.conf import settings
+from nbconvert import HTMLExporter
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -17,6 +26,78 @@ from .serializers import NestedTableSerializer
 from .serializers import SchemaSerializer
 from .serializers import SettingsSerializer
 from .serializers import TableSerializer
+
+
+def _execute_notebook_inprocess(nb):
+    """Execute notebook code cells in-process, capturing outputs."""
+    namespace = {}
+
+    # Ensure matplotlib uses a non-interactive backend before any import
+    exec("import matplotlib; matplotlib.use('Agg')", namespace)  # noqa: S102
+
+    for execution_count, cell in enumerate(nb.cells, start=1):
+        if cell.cell_type != "code":
+            continue
+
+        cell.outputs = []
+        cell.execution_count = execution_count
+
+        stdout_buf = io.StringIO()
+        stderr_buf = io.StringIO()
+
+        try:
+            with redirect_stdout(stdout_buf), redirect_stderr(stderr_buf):
+                exec(cell.source, namespace)  # noqa: S102
+
+            # Capture any matplotlib figures produced by this cell
+            try:
+                import matplotlib.pyplot as plt
+
+                for fig_num in plt.get_fignums():
+                    fig = plt.figure(fig_num)
+                    buf = io.BytesIO()
+                    fig.savefig(buf, format="png", bbox_inches="tight")
+                    img_b64 = base64.b64encode(buf.getvalue()).decode()
+                    cell.outputs.append(
+                        nbformat.v4.new_output(
+                            output_type="display_data",
+                            data={"image/png": img_b64, "text/plain": "<Figure>"},
+                            metadata={},
+                        ),
+                    )
+                plt.close("all")
+            except ImportError:
+                pass
+
+        except Exception as exc:  # noqa: BLE001
+            cell.outputs.append(
+                nbformat.v4.new_output(
+                    output_type="error",
+                    ename=type(exc).__name__,
+                    evalue=str(exc),
+                    traceback=tb.format_exception(type(exc), exc, exc.__traceback__),
+                ),
+            )
+
+        stdout_val = stdout_buf.getvalue()
+        stderr_val = stderr_buf.getvalue()
+
+        if stdout_val:
+            cell.outputs.append(
+                nbformat.v4.new_output(
+                    output_type="stream",
+                    name="stdout",
+                    text=stdout_val,
+                ),
+            )
+        if stderr_val:
+            cell.outputs.append(
+                nbformat.v4.new_output(
+                    output_type="stream",
+                    name="stderr",
+                    text=stderr_val,
+                ),
+            )
 
 
 class TableRegistrationError(Exception):
@@ -463,38 +544,16 @@ class UserTableViewSet(ModelViewSet):
             return result
         return data
 
-    @action(detail=True, methods=["get"])
-    def data(self, request, pk=None):
-        # IMPORTANTE: Não pode ser utilizado o self.get_object()
-        # por que falha se um dos campos de filtro for "id"
-        # pk é a identificação que vem na url /{pk}/data/
-        # e não é afetada pelos filtros.
-        queryset = self.get_queryset()
-        table = queryset.prefetch_related("columns").get(pk=pk)
-
-        ucds = self.get_table_ucds(table)
-
-        # Total de linhas estimado da tabela.
-        count = table.nrows
-
-        # Pagination parameters
-        page = int(request.query_params.get("page", 1))
-        page_size = request.query_params.get(
-            "pageSize",
-            int(settings.REST_FRAMEWORK["PAGE_SIZE"]),
-        )
-
-        limit = int(page_size)
-        offset = (limit * page) - limit
-
-        # TODO: selecionar as colunas que serao utilizadas.
-
-        # Parse Filters
-        url_filters = self.parse_filters(request.query_params)
-
-        ordering = request.query_params.get("ordering", None)
-
-        db = MyDB(username=request.user.username)
+    def query_data(  # noqa: PLR0913
+        self,
+        table,
+        limit,
+        offset,
+        url_filters,
+        ordering,
+        ucds,
+    ):
+        db = MyDB(username=self.request.user.username)
         rows, count = db.query(
             tablename=table.name,
             limit=limit,
@@ -529,6 +588,47 @@ class UserTableViewSet(ModelViewSet):
                 bigint_columns.append(col.name)
 
         parsed_rows = self.sanitize_rows(rows, bigint_columns)
+        return parsed_rows, count
+
+    @action(detail=True, methods=["get"])
+    def data(self, request, pk=None):
+        # IMPORTANTE: Não pode ser utilizado o self.get_object()
+        # por que falha se um dos campos de filtro for "id"
+        # pk é a identificação que vem na url /{pk}/data/
+        # e não é afetada pelos filtros.
+        queryset = self.get_queryset()
+        table = queryset.prefetch_related("columns").get(pk=pk)
+
+        ucds = self.get_table_ucds(table)
+
+        # Total de linhas estimado da tabela.
+        count = table.nrows
+
+        # Pagination parameters
+        page = int(request.query_params.get("page", 1))
+        page_size = request.query_params.get(
+            "pageSize",
+            int(settings.REST_FRAMEWORK["PAGE_SIZE"]),
+        )
+
+        limit = int(page_size)
+        offset = (limit * page) - limit
+
+        # TODO: selecionar as colunas que serao utilizadas.
+
+        # Parse Filters
+        url_filters = self.parse_filters(request.query_params)
+
+        ordering = request.query_params.get("ordering", None)
+
+        parsed_rows, count = self.query_data(
+            table=table,
+            limit=limit,
+            offset=offset,
+            url_filters=url_filters,
+            ordering=ordering,
+            ucds=ucds,
+        )
 
         results = {
             "results": parsed_rows,
@@ -540,40 +640,72 @@ class UserTableViewSet(ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def notebook(self, request, pk=None):
-        from pathlib import Path
-
-        import nbformat
-        from nbconvert import HTMLExporter
+        """Generate a notebook for the given table and record ID."""
 
         queryset = self.get_queryset()
-        table = queryset.prefetch_related("columns").get(pk=pk)
 
-        ucds = self.get_table_ucds(table)
+        main_table = queryset.prefetch_related("columns").get(pk=pk)
+
+        # Main table metadata ( cluster table metadata )
+        main_table_metadata = NestedTableSerializer(
+            main_table,
+            context={"request": request},
+        ).data
+
+        ucds = self.get_table_ucds(main_table)
         url_filters = self.parse_filters(request.query_params)
 
-        db = MyDB(username=request.user.username)
-        rows, _ = db.query(
-            tablename=table.name,
+        main_record, _ = self.query_data(
+            table=main_table,
             limit=1,
             offset=0,
             url_filters=url_filters,
+            ordering=None,
+            ucds=ucds,
         )
-
-        if not rows:
+        if len(main_record) != 1:
             return Response(
                 {"error": "Record not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        row = rows[0]
-        row.update(
-            {
-                "meta_id": str(row.get(ucds.get("meta.id;meta.main")) or ""),
-                "meta_ra": str(row.get(ucds.get("pos.eq.ra;meta.main")) or ""),
-                "meta_dec": str(row.get(ucds.get("pos.eq.dec;meta.main")) or ""),
-                "meta_radius_arcmin": str(row.get(ucds.get("phys.angSize;src")) or ""),
-            },
-        )
+        # Main record data ( cluster data for the given filters )
+        main_record = main_record[0]
+
+        # IF cluster
+        related_table_metadata = None
+        related_table_data = None
+
+        if main_table.catalog_type == Table.CATALOG_TYPE_CLUSTER:
+            if not main_table.related_table:
+                return Response(
+                    {"error": "Related table must be set for cluster catalogs."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Related table metadata ( members table metadata )
+            related_table_metadata = NestedTableSerializer(
+                main_table.related_table,
+                context={"request": self.request},
+            ).data
+
+            # Related table data ( members data for the given cluster )
+            cross_id_property = main_table_metadata.get("related_property_id")
+
+            related_filters = {}
+            related_filters[cross_id_property] = main_record[
+                (main_table_metadata.get("property_id"))
+            ]
+
+            # Related table data ( members data for the given cluster )
+            related_table_data, count = self.query_data(
+                table=main_table.related_table,
+                limit=None,
+                offset=0,
+                url_filters=related_filters,
+                ordering=None,
+                ucds=related_table_metadata.get("ucds"),
+            )
 
         template_path = (
             Path(__file__).parent.parent / "notebooks" / "cluster_detail_template.ipynb"
@@ -581,12 +713,23 @@ class UserTableViewSet(ModelViewSet):
         with template_path.open() as f:
             nb = nbformat.read(f, as_version=4)
 
+        def to_python_literal(value):
+            return json.dumps(value)
+
+        replacements = {
+            "main_table_metadata": to_python_literal(main_table_metadata),
+            "main_record": to_python_literal(main_record),
+            "related_table_metadata": to_python_literal(related_table_metadata),
+            "related_table_data": to_python_literal(related_table_data),
+        }
+
         for cell in nb.cells:
-            for key, value in row.items():
-                cell.source = cell.source.replace(
-                    f"{{{{{key}}}}}",
-                    str(value if value is not None else ""),
-                )
+            if cell.source.strip().startswith("# canvas-variables"):
+                for key, value in replacements.items():
+                    cell.source = cell.source.replace(f"{{{{{key}}}}}", value)
+                break
+
+        _execute_notebook_inprocess(nb)
 
         exporter = HTMLExporter()
         html, _ = exporter.from_notebook_node(nb)
