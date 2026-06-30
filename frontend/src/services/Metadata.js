@@ -56,7 +56,7 @@ export const getTableData = (params) => {
 }
 
 export const getMembersTableData = (params) => {
-    // Igual a tabledata mais adiciona o filtro por cluster id. 
+    // Igual a tabledata mais adiciona o filtro por cluster id.
     // Permiter utilizar todas as opções de paginação, ordenação e filtro.
     const queryParams = parseQueryOptions(params)
     queryParams.params[params.property_cross_id] = params.clusterId
@@ -83,6 +83,12 @@ export const getClusterMembers = ({ tableId, property_cross_id, value }) => {
 
 
 
+export const getNotebookHtml = ({ tableId, propertyId, recordId }) => {
+    return api.get(`metadata/user_tables/${tableId}/notebook/`, {
+        params: { [propertyId]: recordId }
+    })
+}
+
 export const createTableSettings = (data) => {
     return api.post("metadata/settings/", data);
 }
@@ -90,4 +96,3 @@ export const createTableSettings = (data) => {
 export const updateTableSettings = (data) => {
     return api.patch(`metadata/settings/${data.id}/`, data);
 }
-

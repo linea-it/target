@@ -4,13 +4,14 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
 import { useEffect } from 'react'
 import CircularProgress from '@mui/material/CircularProgress';
+import Skeleton from '@mui/material/Skeleton';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import TargetProperties from "@/components/TargetProperties";
 import MembersDataGrid from "@/components/MembersDataGrid";
 import { useAladinContext } from '@/components/Aladin/AladinContext';
 import AladinViewer from '@/components/Aladin/AladinViewer';
-import { getClusterMembers, getMetadataById } from '@/services/Metadata';
+import { getClusterMembers, getMetadataById, getNotebookHtml } from '@/services/Metadata';
 import { useQuery } from '@tanstack/react-query'
 
 import Stack from '@mui/material/Stack';
@@ -36,6 +37,8 @@ export default function ClusterDetailContainer({ catalog, record }) {
 
   const [selectedMember, setSelectedMember] = React.useState(undefined);
   const [activeTab, setActiveTab] = React.useState(0);
+  const [iframeHeight, setIframeHeight] = React.useState(0);
+  const iframeRef = React.useRef(null);
 
   useEffect(() => {
     // Quando o catalogo tem uma imagem/survey default
@@ -107,6 +110,29 @@ export default function ClusterDetailContainer({ catalog, record }) {
       addCatalog('Members', members)
     }
   }, [members]);
+
+  const { isLoading: isLoadingNotebook, data: notebookHtml } = useQuery({
+    queryKey: ['notebookHtml', catalog.id, record?.meta_id],
+    queryFn: () => getNotebookHtml({
+      tableId: catalog.id,
+      propertyId: catalog.property_id,
+      recordId: record.meta_id,
+    }),
+    select: (data) => data?.data?.html,
+    enabled: !!record?.meta_id && !!catalog?.property_id,
+    staleTime: 5 * 60000,
+  });
+
+  useEffect(() => {
+    if (!notebookHtml) setIframeHeight(0);
+  }, [notebookHtml]);
+
+  const handleIframeLoad = () => {
+    const doc = iframeRef.current?.contentDocument;
+    if (doc) {
+      setIframeHeight(doc.documentElement.scrollHeight);
+    }
+  };
 
 
   const onChangeSelection = (selectedRows) => {
@@ -220,7 +246,26 @@ export default function ClusterDetailContainer({ catalog, record }) {
       </Grid>
 
       </Grid>
-      <Paper elevation={3} sx={{ flex: 1 }} />
+      {(isLoadingNotebook || (notebookHtml && !iframeHeight)) && (
+        <Skeleton variant="rectangular" sx={{ flex: 1, borderRadius: 1 }} />
+      )}
+      {notebookHtml && (
+        // Paper permanece no DOM com height:0 enquanto o iframe mede seu conteúdo.
+        // overflow:hidden esconde visualmente mas mantém o layout computado,
+        // permitindo que onLoad dispare e scrollHeight seja lido corretamente.
+        <Paper
+          elevation={iframeHeight ? 3 : 0}
+          sx={{ width: '100%', height: iframeHeight || 0, overflow: 'hidden' }}
+        >
+          <iframe
+            ref={iframeRef}
+            srcDoc={notebookHtml}
+            onLoad={handleIframeLoad}
+            style={{ width: '100%', height: iframeHeight || 1, border: 'none', display: 'block' }}
+            title="Cluster Notebook"
+          />
+        </Paper>
+      )}
     </Box>
   );
 
