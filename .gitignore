@@ -283,3 +283,5 @@ backend/target/media/
 pg_data/
 data/
 log/
+
+docker-compose.yml
