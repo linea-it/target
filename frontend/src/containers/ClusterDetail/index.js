@@ -4,6 +4,8 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
 import { useEffect } from 'react'
 import CircularProgress from '@mui/material/CircularProgress';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
 import TargetProperties from "@/components/TargetProperties";
 import MembersDataGrid from "@/components/MembersDataGrid";
 import { useAladinContext } from '@/components/Aladin/AladinContext';
@@ -20,11 +22,20 @@ import MyLocationIcon from '@mui/icons-material/MyLocation';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import Tooltip from '@mui/material/Tooltip';
 
+function TabPanel({ children, value, index }) {
+  return (
+    <Box role="tabpanel" hidden={value !== index} sx={{ flex: 1, overflow: 'auto' }}>
+      {value === index && children}
+    </Box>
+  );
+}
+
 
 export default function ClusterDetailContainer({ catalog, record }) {
   const { isReady, setTarget, aladinRef, setImageSurvey, addCatalog, gotoRaDec, toggleMarkerVisibility, takeSnapshot, toggleCatalogVisibility } = useAladinContext();
 
   const [selectedMember, setSelectedMember] = React.useState(undefined);
+  const [activeTab, setActiveTab] = React.useState(0);
 
   useEffect(() => {
     // Quando o catalogo tem uma imagem/survey default
@@ -113,36 +124,62 @@ export default function ClusterDetailContainer({ catalog, record }) {
   }, [selectedMember]);
 
   return (
-    <Grid container spacing={2} sx={{ height: '100%' }} >
-      <Grid size={{ md: 6, display: 'flex' }}>
-        <Box sx={{ height: 400, flex: 1, display: 'flex' }}>
-          <TargetProperties record={record} />
+    <Grid container spacing={2} sx={{ height: '100%' }}>
+      <Grid size={{ md: 6 }} sx={{ height: 500 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
+            <Tab label="Members" />
+            <Tab label="Properties" />
+          </Tabs>
+
+          <TabPanel value={activeTab} index={0}>
+            {isLoadingMembersCatalog && (
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 100 }}>
+                <CircularProgress />
+              </Box>
+            )}
+            {(!isLoadingMembersCatalog && membersCatalog !== undefined) && (
+              <Box sx={{ width: '100%', height: '100%' }}>
+                <MembersDataGrid
+                  type={membersCatalog.catalog_type}
+                  tableId={membersCatalog.id}
+                  schema={membersCatalog.schema}
+                  table={membersCatalog.table}
+                  tableColumns={membersCatalog.columns}
+                  property_cross_id={catalog.related_property_id}
+                  clusterId={record?.meta_id}
+                  onChangeSelection={onChangeSelection}
+                />
+              </Box>
+            )}
+          </TabPanel>
+
+          <TabPanel value={activeTab} index={1}>
+            <TargetProperties record={record} />
+          </TabPanel>
         </Box>
       </Grid>
-      <Grid size={{ md: 6, display: 'flex' }}>
+
+      <Grid size={{ md: 6 }} sx={{ height: 500 }}>
         <Box
           sx={{
-            flex: 1,
             display: 'flex',
-            flexDirection: 'row', // coloca lado a lado
+            flexDirection: 'row',
             position: 'relative',
             height: '100%',
-            minHeight: 400,
           }}
         >
-          {/* Área principal do Aladin */}
           <Box sx={{ flex: 1, position: 'relative' }}>
             <AladinViewer />
           </Box>
 
-          {/* Toolbar vertical à direita */}
           <Toolbar
             orientation="vertical"
             sx={{
-              flexDirection: 'column',       // empilha os botões verticalmente
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'flex-start',
-              width: 64,                     // largura fixa (ajuste se quiser)
+              width: 64,
               borderLeft: (theme) => `1px solid ${theme.palette.divider}`,
               backgroundColor: (theme) => theme.palette.background.paper,
               paddingY: 1,
@@ -181,34 +218,8 @@ export default function ClusterDetailContainer({ catalog, record }) {
       </Grid>
 
       <Grid size={{ md: 12 }}>
-        {isLoadingMembersCatalog && (
-          <Box
-            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 100 }}>
-            <CircularProgress />
-          </Box>
-        )}
-
-        {(!isLoadingMembersCatalog && membersCatalog !== undefined) && (
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              width: '100%',
-              height: '500px',
-            }}
-          >
-            <MembersDataGrid
-              type={membersCatalog.catalog_type}
-              tableId={membersCatalog.id}
-              schema={membersCatalog.schema}
-              table={membersCatalog.table}
-              tableColumns={membersCatalog.columns}
-              property_cross_id={catalog.related_property_id}
-              clusterId={record?.meta_id}
-              onChangeSelection={onChangeSelection}
-            />
-          </Box>
-        )}
+        {/* TODO: add Jupyter Notebook integration */}
+        <Box />
       </Grid>
     </Grid>
   );
