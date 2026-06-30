@@ -273,7 +273,7 @@ export default function ClusterDetailContainer({ catalog, record }) {
         </Paper>
       )}
       {/* Spacer */}
-      <Box mt={4} />
+      <Box mt={6} />
     </Box>
   );
 
