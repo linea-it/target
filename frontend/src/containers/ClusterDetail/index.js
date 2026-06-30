@@ -127,11 +127,17 @@ export default function ClusterDetailContainer({ catalog, record }) {
     if (!notebookHtml) setIframeHeight(0);
   }, [notebookHtml]);
 
-  const handleIframeLoad = () => {
+  const measureIframeHeight = () => {
     const doc = iframeRef.current?.contentDocument;
     if (doc) {
       setIframeHeight(doc.documentElement.scrollHeight);
     }
+  };
+
+  const handleIframeLoad = () => {
+    measureIframeHeight();
+    // Re-measure after a short delay so late-painted content (images, CSS) is included.
+    setTimeout(measureIframeHeight, 500);
   };
 
 
@@ -150,104 +156,104 @@ export default function ClusterDetailContainer({ catalog, record }) {
   }, [selectedMember]);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 2 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }} mb={4}>
       <Grid container spacing={2}>
-      <Grid size={{ md: 6 }} sx={{ height: 600 }}>
-        <Paper elevation={3} sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-          <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
-            <Tab label="Members" />
-            <Tab label="Properties" />
-          </Tabs>
+        <Grid size={{ md: 6 }} sx={{ height: 600 }}>
+          <Paper elevation={3} sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
+              <Tab label="Members" />
+              <Tab label="Properties" />
+            </Tabs>
 
-          <TabPanel value={activeTab} index={0}>
-            {isLoadingMembersCatalog && (
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 100 }}>
-                <CircularProgress />
-              </Box>
-            )}
-            {(!isLoadingMembersCatalog && membersCatalog !== undefined) && (
-              <Box sx={{ width: '100%', height: '100%' }}>
-                <MembersDataGrid
-                  type={membersCatalog.catalog_type}
-                  tableId={membersCatalog.id}
-                  schema={membersCatalog.schema}
-                  table={membersCatalog.table}
-                  tableColumns={membersCatalog.columns}
-                  property_cross_id={catalog.related_property_id}
-                  clusterId={record?.meta_id}
-                  onChangeSelection={onChangeSelection}
-                />
-              </Box>
-            )}
-          </TabPanel>
+            <TabPanel value={activeTab} index={0}>
+              {isLoadingMembersCatalog && (
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 100 }}>
+                  <CircularProgress />
+                </Box>
+              )}
+              {(!isLoadingMembersCatalog && membersCatalog !== undefined) && (
+                <Box sx={{ width: '100%', height: '100%' }}>
+                  <MembersDataGrid
+                    type={membersCatalog.catalog_type}
+                    tableId={membersCatalog.id}
+                    schema={membersCatalog.schema}
+                    table={membersCatalog.table}
+                    tableColumns={membersCatalog.columns}
+                    property_cross_id={catalog.related_property_id}
+                    clusterId={record?.meta_id}
+                    onChangeSelection={onChangeSelection}
+                  />
+                </Box>
+              )}
+            </TabPanel>
 
-          <TabPanel value={activeTab} index={1}>
-            <TargetProperties record={record} />
-          </TabPanel>
-        </Paper>
-      </Grid>
+            <TabPanel value={activeTab} index={1}>
+              <TargetProperties record={record} />
+            </TabPanel>
+          </Paper>
+        </Grid>
 
-      <Grid size={{ md: 6 }} sx={{ height: 600 }}>
-        <Paper
-          elevation={3}
-          sx={{
-            display: 'flex',
-            flexDirection: 'row',
-            position: 'relative',
-            height: '100%',
-          }}
-        >
-          <Box sx={{ flex: 1, position: 'relative' }}>
-            <AladinViewer />
-          </Box>
-
-          <Toolbar
-            orientation="vertical"
+        <Grid size={{ md: 6 }} sx={{ height: 600 }}>
+          <Paper
+            elevation={3}
             sx={{
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'flex-start',
-              width: 64,
-              borderLeft: (theme) => `1px solid ${theme.palette.divider}`,
-              backgroundColor: (theme) => theme.palette.background.paper,
-              paddingY: 1,
-              gap: 1,
+              display: 'flex',
+              flexDirection: 'row',
+              position: 'relative',
+              height: '100%',
             }}
           >
-            <Tooltip title="Center on target">
-              <IconButton aria-label="center" disabled={!record} onClick={centerOnTarget}>
-                <MyLocationIcon />
-              </IconButton>
-            </Tooltip>
+            <Box sx={{ flex: 1, position: 'relative' }}>
+              <AladinViewer />
+            </Box>
 
-            <Tooltip title="Show/Hide Cluster Radius">
-              <IconButton aria-label="show-hide-marker" disabled={!record} onClick={toggleMarkerVisibility}>
-                <PanoramaFishEyeIcon />
-              </IconButton>
-            </Tooltip>
+            <Toolbar
+              orientation="vertical"
+              sx={{
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                width: 64,
+                borderLeft: (theme) => `1px solid ${theme.palette.divider}`,
+                backgroundColor: (theme) => theme.palette.background.paper,
+                paddingY: 1,
+                gap: 1,
+              }}
+            >
+              <Tooltip title="Center on target">
+                <IconButton aria-label="center" disabled={!record} onClick={centerOnTarget}>
+                  <MyLocationIcon />
+                </IconButton>
+              </Tooltip>
 
-            <Tooltip title="Show/Hide members">
-              <IconButton
-                aria-label="show-hide-members"
-                disabled={!record}
-                onClick={toggleCatalogVisibility.bind(this, 'Members')}
-              >
-                {isLoadingMembers ? <CircularProgress size={24} /> : <ScatterPlotIcon />}
-              </IconButton>
-            </Tooltip>
+              <Tooltip title="Show/Hide Cluster Radius">
+                <IconButton aria-label="show-hide-marker" disabled={!record} onClick={toggleMarkerVisibility}>
+                  <PanoramaFishEyeIcon />
+                </IconButton>
+              </Tooltip>
 
-            <Tooltip title="Take snapshot">
-              <IconButton aria-label="take-snapshot" disabled={!record} onClick={takeSnapshot}>
-                <CameraAltIcon />
-              </IconButton>
-            </Tooltip>
-          </Toolbar>
-        </Paper>
-      </Grid>
+              <Tooltip title="Show/Hide members">
+                <IconButton
+                  aria-label="show-hide-members"
+                  disabled={!record}
+                  onClick={toggleCatalogVisibility.bind(this, 'Members')}
+                >
+                  {isLoadingMembers ? <CircularProgress size={24} /> : <ScatterPlotIcon />}
+                </IconButton>
+              </Tooltip>
+
+              <Tooltip title="Take snapshot">
+                <IconButton aria-label="take-snapshot" disabled={!record} onClick={takeSnapshot}>
+                  <CameraAltIcon />
+                </IconButton>
+              </Tooltip>
+            </Toolbar>
+          </Paper>
+        </Grid>
 
       </Grid>
       {(isLoadingNotebook || (notebookHtml && !iframeHeight)) && (
-        <Skeleton variant="rectangular" sx={{ flex: 1, borderRadius: 1 }} />
+        <Skeleton variant="rectangular" height={500} sx={{ borderRadius: 1 }} />
       )}
       {notebookHtml && (
         // Paper permanece no DOM com height:0 enquanto o iframe mede seu conteúdo.
@@ -266,6 +272,8 @@ export default function ClusterDetailContainer({ catalog, record }) {
           />
         </Paper>
       )}
+      {/* Spacer */}
+      <Box mt={4} />
     </Box>
   );
 
