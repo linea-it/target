@@ -113,6 +113,7 @@ class SettingsSerializer(serializers.ModelSerializer[Settings]):
 class NestedTableSerializer(serializers.ModelSerializer[Table]):
     qs_columns = Table.objects.prefetch_related("columns")
     columns = ResumedColumnSerializer(qs_columns, many=True, read_only=True)
+    ucds = serializers.SerializerMethodField()
 
     qs_settings = Table.objects.prefetch_related("settings")
     settings = SettingsSerializer(qs_settings, many=False, read_only=True)
@@ -153,6 +154,7 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
             "property_ra",
             "property_dec",
             "columns",
+            "ucds",
             "settings",
         ]
 
@@ -198,3 +200,7 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
             if col:
                 return col.name
         return None
+
+    def get_ucds(self, obj):
+        columns = obj.columns.filter(ucd__isnull=False)
+        return {c.ucd: c.name for c in columns if c.ucd and c.name}

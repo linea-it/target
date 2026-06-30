@@ -15,6 +15,10 @@ pandas==2.2.3 # https://github.com/pandas-dev/pandas
 astropy>=6.1 # https://github.com/astropy/astropy
 psycopg2==2.9.10 # https://github.com/psycopg/psycopg2
 psycopg==3.2.3 # https://github.com/psycopg/psycopg
+nbconvert==7.17.1
+nbformat==5.10.4
+ipykernel==7.3.0
+matplotlib==3.11.0
 # Django
 # ------------------------------------------------------------------------------
 django==5.0.10  # pyup: < 5.1  # https://www.djangoproject.com/
