@@ -124,9 +124,10 @@ export default function ClusterDetailContainer({ catalog, record }) {
   }, [selectedMember]);
 
   return (
-    <Grid container spacing={2} sx={{ height: '100%' }}>
-      <Grid size={{ md: 6 }} sx={{ height: 500 }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 2 }}>
+      <Grid container spacing={2}>
+      <Grid size={{ md: 6 }} sx={{ height: 600 }}>
+        <Paper elevation={3} sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
           <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
             <Tab label="Members" />
             <Tab label="Properties" />
@@ -157,11 +158,12 @@ export default function ClusterDetailContainer({ catalog, record }) {
           <TabPanel value={activeTab} index={1}>
             <TargetProperties record={record} />
           </TabPanel>
-        </Box>
+        </Paper>
       </Grid>
 
-      <Grid size={{ md: 6 }} sx={{ height: 500 }}>
-        <Box
+      <Grid size={{ md: 6 }} sx={{ height: 600 }}>
+        <Paper
+          elevation={3}
           sx={{
             display: 'flex',
             flexDirection: 'row',
@@ -214,14 +216,12 @@ export default function ClusterDetailContainer({ catalog, record }) {
               </IconButton>
             </Tooltip>
           </Toolbar>
-        </Box>
+        </Paper>
       </Grid>
 
-      <Grid size={{ md: 12 }}>
-        {/* TODO: add Jupyter Notebook integration */}
-        <Box />
       </Grid>
-    </Grid>
+      <Paper elevation={3} sx={{ flex: 1 }} />
+    </Box>
   );
 
 }
