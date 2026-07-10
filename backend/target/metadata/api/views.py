@@ -9,6 +9,7 @@ from pathlib import Path
 
 import nbformat
 from django.conf import settings
+from django.http import HttpResponse
 from nbconvert import HTMLExporter
 from rest_framework import status
 from rest_framework.decorators import action
@@ -26,6 +27,118 @@ from .serializers import NestedTableSerializer
 from .serializers import SchemaSerializer
 from .serializers import SettingsSerializer
 from .serializers import TableSerializer
+
+
+_NULL_STRINGS = frozenset({"", "none", "nan", "null", "undefined", "na", "n/a"})
+
+
+def _is_nullish(value):
+    if value is None:
+        return True
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, str):
+        return value.strip().lower() in _NULL_STRINGS or value == "None"
+    if isinstance(value, float):
+        return not math.isfinite(value)
+    if type(value).__module__ == "numpy":
+        import numpy as np
+
+        if isinstance(value, np.floating):
+            return not np.isfinite(value)
+        return False
+    try:
+        from decimal import Decimal
+    except ImportError:
+        return False
+    else:
+        if isinstance(value, Decimal):
+            return value.is_nan() or value.is_infinite()
+    return False
+
+
+def _sanitize_scalar(value):
+    if _is_nullish(value):
+        return None
+    if type(value).__module__ == "numpy":
+        return value.item()
+    try:
+        from decimal import Decimal
+    except ImportError:
+        return value
+    else:
+        if isinstance(value, Decimal):
+            return float(value)
+    return value
+
+
+def _meta_field(value):
+    if _is_nullish(value):
+        return None
+    return str(value)
+
+
+def sanitize_data(data, bigint_columns=None):
+    if isinstance(data, list):
+        return [sanitize_data(item, bigint_columns) for item in data]
+    if isinstance(data, dict):
+        result = {}
+        for key, value in data.items():
+            if isinstance(value, dict):
+                result[key] = sanitize_data(value, bigint_columns)
+            elif isinstance(value, list):
+                result[key] = sanitize_data(value, bigint_columns)
+            elif _is_nullish(value):
+                result[key] = None
+            elif (
+                bigint_columns
+                and key in bigint_columns
+                and isinstance(value, int)
+                and value > 9007199254740991  # noqa: PLR2004
+            ):
+                result[key] = str(value)
+            else:
+                result[key] = _sanitize_scalar(value)
+        return result
+    return data
+
+
+def _figure_has_content(fig):
+    return any(ax.has_data() for ax in fig.axes)
+
+
+def _notebook_for_display(nb):
+    """Keep markdown and figure outputs only (no code source or stdout)."""
+    display_cells = []
+    for cell in nb.cells:
+        if cell.cell_type == "markdown":
+            display_cells.append(cell)
+            continue
+        if cell.cell_type != "code":
+            continue
+
+        outputs = [
+            output
+            for output in cell.outputs
+            if output.get("output_type") in ("display_data", "error")
+            and (
+                output.get("output_type") == "error"
+                or any(
+                    mime.startswith("image/")
+                    for mime in output.get("data", {})
+                )
+            )
+        ]
+        if not outputs:
+            continue
+
+        display_cell = nbformat.v4.new_code_cell(source="")
+        display_cell.outputs = outputs
+        display_cells.append(display_cell)
+
+    display_nb = nbformat.v4.new_notebook(cells=display_cells)
+    display_nb.metadata = nb.metadata
+    return display_nb
 
 
 def _execute_notebook_inprocess(nb):
@@ -53,18 +166,34 @@ def _execute_notebook_inprocess(nb):
             try:
                 import matplotlib.pyplot as plt
 
-                for fig_num in plt.get_fignums():
+                for fig_num in list(plt.get_fignums()):
                     fig = plt.figure(fig_num)
-                    buf = io.BytesIO()
-                    fig.savefig(buf, format="png", bbox_inches="tight")
-                    img_b64 = base64.b64encode(buf.getvalue()).decode()
-                    cell.outputs.append(
-                        nbformat.v4.new_output(
-                            output_type="display_data",
-                            data={"image/png": img_b64, "text/plain": "<Figure>"},
-                            metadata={},
-                        ),
-                    )
+                    if not _figure_has_content(fig):
+                        continue
+                    try:
+                        buf = io.BytesIO()
+                        fig.savefig(buf, format="png", bbox_inches="tight")
+                        img_b64 = base64.b64encode(buf.getvalue()).decode()
+                        cell.outputs.append(
+                            nbformat.v4.new_output(
+                                output_type="display_data",
+                                data={"image/png": img_b64, "text/plain": "<Figure>"},
+                                metadata={},
+                            ),
+                        )
+                    except Exception as fig_exc:  # noqa: BLE001
+                        cell.outputs.append(
+                            nbformat.v4.new_output(
+                                output_type="error",
+                                ename=type(fig_exc).__name__,
+                                evalue=str(fig_exc),
+                                traceback=tb.format_exception(
+                                    type(fig_exc),
+                                    fig_exc,
+                                    fig_exc.__traceback__,
+                                ),
+                            ),
+                        )
                 plt.close("all")
             except ImportError:
                 pass
@@ -98,6 +227,19 @@ def _execute_notebook_inprocess(nb):
                     text=stderr_val,
                 ),
             )
+
+
+NOTEBOOK_TEMPLATE = (
+    Path(__file__).parent.parent / "notebooks" / "cluster_detail_wazp_y6.ipynb"
+)
+
+
+def _inject_notebook_variables(nb, replacements):
+    for cell in nb.cells:
+        source = cell.source
+        for key, value in replacements.items():
+            source = source.replace(f"{{{{{key}}}}}", value)
+        cell.source = source
 
 
 class TableRegistrationError(Exception):
@@ -523,26 +665,7 @@ class UserTableViewSet(ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def sanitize_rows(self, data, bigint_columns=None):
-        if isinstance(data, list):
-            return [self.sanitize_rows(item, bigint_columns) for item in data]
-        if isinstance(data, dict):
-            result = {}
-            for k, v in data.items():
-                if (isinstance(v, float) and not math.isfinite(v)) or (
-                    isinstance(v, str) and v == "None"
-                ):
-                    result[k] = None
-                elif (
-                    bigint_columns
-                    and k in bigint_columns
-                    and isinstance(v, int)
-                    and v > 9007199254740991  # noqa: PLR2004
-                ):
-                    result[k] = str(v)
-                else:
-                    result[k] = self.sanitize_rows(v, bigint_columns)
-            return result
-        return data
+        return sanitize_data(data, bigint_columns)
 
     def query_data(  # noqa: PLR0913
         self,
@@ -567,16 +690,12 @@ class UserTableViewSet(ModelViewSet):
             row.update(
                 {
                     "meta_catalog_id": table.id,
-                    "meta_id": None
-                    if (v := row.get(ucds.get("meta.id;meta.main"))) is None
-                    else str(v),
-                    "meta_ra": None
-                    if (v := row.get(ucds.get("pos.eq.ra;meta.main"))) is None
-                    else str(v),
-                    "meta_dec": None
-                    if (v := row.get(ucds.get("pos.eq.dec;meta.main"))) is None
-                    else str(v),
-                    "meta_radius_arcmin": row.get(ucds.get("phys.angSize;src")),
+                    "meta_id": _meta_field(row.get(ucds.get("meta.id;meta.main"))),
+                    "meta_ra": _meta_field(row.get(ucds.get("pos.eq.ra;meta.main"))),
+                    "meta_dec": _meta_field(row.get(ucds.get("pos.eq.dec;meta.main"))),
+                    "meta_radius_arcmin": _sanitize_scalar(
+                        row.get(ucds.get("phys.angSize;src")),
+                    ),
                 },
             )
 
@@ -638,15 +757,10 @@ class UserTableViewSet(ModelViewSet):
 
         return Response(results, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=["get"])
-    def notebook(self, request, pk=None):
-        """Generate a notebook for the given table and record ID."""
-
+    def _prepare_cluster_notebook(self, request, pk):
         queryset = self.get_queryset()
-
         main_table = queryset.prefetch_related("columns").get(pk=pk)
 
-        # Main table metadata ( cluster table metadata )
         main_table_metadata = NestedTableSerializer(
             main_table,
             context={"request": request},
@@ -664,41 +778,33 @@ class UserTableViewSet(ModelViewSet):
             ucds=ucds,
         )
         if len(main_record) != 1:
-            return Response(
+            return None, Response(
                 {"error": "Record not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Main record data ( cluster data for the given filters )
         main_record = main_record[0]
-
-        # IF cluster
         related_table_metadata = None
-        related_table_data = None
+        related_table_data = []
 
         if main_table.catalog_type == Table.CATALOG_TYPE_CLUSTER:
             if not main_table.related_table:
-                return Response(
+                return None, Response(
                     {"error": "Related table must be set for cluster catalogs."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Related table metadata ( members table metadata )
             related_table_metadata = NestedTableSerializer(
                 main_table.related_table,
-                context={"request": self.request},
+                context={"request": request},
             ).data
 
-            # Related table data ( members data for the given cluster )
             cross_id_property = main_table_metadata.get("related_property_id")
+            related_filters = {
+                cross_id_property: main_record[main_table_metadata.get("property_id")],
+            }
 
-            related_filters = {}
-            related_filters[cross_id_property] = main_record[
-                (main_table_metadata.get("property_id"))
-            ]
-
-            # Related table data ( members data for the given cluster )
-            related_table_data, count = self.query_data(
+            related_table_data, _count = self.query_data(
                 table=main_table.related_table,
                 limit=None,
                 offset=0,
@@ -707,31 +813,74 @@ class UserTableViewSet(ModelViewSet):
                 ucds=related_table_metadata.get("ucds"),
             )
 
-        template_path = (
-            Path(__file__).parent.parent / "notebooks" / "cluster_detail_template.ipynb"
-        )
-        with template_path.open() as f:
+        with NOTEBOOK_TEMPLATE.open() as f:
             nb = nbformat.read(f, as_version=4)
 
-        def to_python_literal(value):
-            return json.dumps(value)
+        cluster_id = main_record.get("meta_id") or main_record.get("id") or "unknown"
 
         replacements = {
-            "main_table_metadata": to_python_literal(main_table_metadata),
-            "main_record": to_python_literal(main_record),
-            "related_table_metadata": to_python_literal(related_table_metadata),
-            "related_table_data": to_python_literal(related_table_data),
+            "cluster_id": str(cluster_id),
+            "main_table_metadata": json.dumps(
+                main_table_metadata,
+                allow_nan=False,
+            ),
+            "main_record": json.dumps(main_record, allow_nan=False),
+            "related_table_metadata": json.dumps(
+                related_table_metadata,
+                allow_nan=False,
+            ),
+            "related_table_data": json.dumps(
+                related_table_data,
+                allow_nan=False,
+            ),
         }
+        _inject_notebook_variables(nb, replacements)
 
-        for cell in nb.cells:
-            if cell.source.strip().startswith("# canvas-variables"):
-                for key, value in replacements.items():
-                    cell.source = cell.source.replace(f"{{{{{key}}}}}", value)
-                break
+        context = {
+            "main_record": main_record,
+            "related_table_data": related_table_data,
+            "notebook": nb,
+        }
+        return context, None
 
+    @action(detail=True, methods=["get"])
+    def notebook(self, request, pk=None):
+        """Execute cluster analysis notebook and return rendered HTML."""
+
+        context, error_response = self._prepare_cluster_notebook(request, pk)
+        if error_response:
+            return error_response
+
+        nb = context["notebook"]
         _execute_notebook_inprocess(nb)
 
+        display_nb = _notebook_for_display(nb)
         exporter = HTMLExporter()
-        html, _ = exporter.from_notebook_node(nb)
+        exporter.exclude_input = True
+        exporter.exclude_input_prompt = True
+        exporter.exclude_output_prompt = True
+        html, _ = exporter.from_notebook_node(display_nb)
 
         return Response({"html": html}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["get"], url_path="notebook/download")
+    def notebook_download(self, request, pk=None):
+        """Download cluster analysis notebook with hardcoded injected data."""
+
+        context, error_response = self._prepare_cluster_notebook(request, pk)
+        if error_response:
+            return error_response
+
+        nb = context["notebook"]
+        cluster_id = (
+            context["main_record"].get("meta_id")
+            or context["main_record"].get("id")
+            or "cluster"
+        )
+
+        content = nbformat.writes(nb)
+        response = HttpResponse(content, content_type="application/x-ipynb")
+        response["Content-Disposition"] = (
+            f'attachment; filename="cluster_{cluster_id}_analysis.ipynb"'
+        )
+        return response
