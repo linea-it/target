@@ -228,15 +228,19 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
 
     return () => {
       isCancelled = true;
-      // if (containerRef.current) {
-      //   containerRef.current.innerHTML = '';
-      // }
-      // console.log('Aladin instance cleaned up');
-      // console.log('aladinRef.current to null');
-      // aladinRef.current = null;
-      // setIsReady(false);
     };
   }, [aladinParams]);
+
+  // Recalcula o canvas quando o container muda de tamanho (ex.: mobile ↔ desktop)
+  useEffect(() => {
+    if (!isReady || !containerRef.current) return undefined;
+
+    const observer = new ResizeObserver(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [isReady]);
 
   // Métodos utilitários
 

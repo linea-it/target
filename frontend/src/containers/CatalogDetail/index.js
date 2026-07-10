@@ -2,10 +2,9 @@
 import React from "react";
 import { useEffect } from "react";
 import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid2';
 import Paper from '@mui/material/Paper';
-// import Button from '@mui/material/Button';
-// import Toolbar from '@mui/material/Toolbar';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import TargetDataGrid from "@/components/TargetDataGrid";
 import TargetDetail from "@/components/TargetDetail";
 import ClusterDetail from "@/components/ClusterDetail";
@@ -14,6 +13,8 @@ import { useCatalog } from '@/contexts/CatalogContext';
 
 export default function CatalogDetailContainer({ catalog }) {
 
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { selectedRecord, setSelectedRecord } = useCatalog();
 
   const onChangeSelection = (selectedRows) => {
@@ -41,18 +42,22 @@ export default function CatalogDetailContainer({ catalog }) {
       <Box
         sx={{
           display: 'flex',
-          minWidth: '1200px', // largura mínima para os dois painéis
-          maxHeight: 'calc(100vh - 250px)',
-          minHeight: 'calc(100vh - 250px)',
+          flexDirection: isMobile ? 'column' : 'row',
+          width: '100%',
+          minWidth: isMobile ? '100%' : '1200px',
+          maxHeight: isMobile ? 'none' : 'calc(100vh - 250px)',
+          minHeight: isMobile ? 'auto' : 'calc(100vh - 250px)',
+          gap: isMobile ? 2 : 0,
         }}
       >
-        {/* Painel esquerdo */}
+        {/* Painel esquerdo — tabela */}
         <Box
           sx={{
-            flex: 2,
+            flex: isMobile ? 'none' : 2,
             display: 'flex',
-            padding: 1,
-            minWidth: '400px', // largura mínima para o painel direito            
+            padding: isMobile ? 0 : 1,
+            minWidth: isMobile ? '100%' : '400px',
+            height: isMobile ? 420 : 'auto',
           }}
         >
           <Paper elevation={3} sx={{ flex: 1, width: '100%' }}>
@@ -62,8 +67,6 @@ export default function CatalogDetailContainer({ catalog }) {
                 flexDirection: 'column',
                 width: '100%',
                 height: '100%',
-                // minHeight: 'calc(100vh - 250px)',
-                // maxHeight: 'calc(100vh - 250px)',
               }}
             >
               <TargetDataGrid
@@ -78,16 +81,17 @@ export default function CatalogDetailContainer({ catalog }) {
           </Paper>
         </Box>
 
-        {/* Painel direito */}
+        {/* Painel direito — mapa Aladin */}
         <Box
           sx={{
-            flex: 1,
+            flex: isMobile ? 'none' : 1,
             display: 'flex',
-            padding: 1,
-            minWidth: '500px', // largura mínima para o painel direito
+            padding: isMobile ? 0 : 1,
+            minWidth: isMobile ? '100%' : '500px',
+            height: isMobile ? 420 : 'auto',
           }}
         >
-          <Paper elevation={3} sx={{ flex: 1, width: '100%' }}>
+          <Paper elevation={3} sx={{ flex: 1, width: '100%', minHeight: isMobile ? 420 : 0 }}>
             {catalog.catalog_type === 'target' && (
               <TargetDetail />
             )}

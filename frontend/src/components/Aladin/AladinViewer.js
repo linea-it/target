@@ -13,6 +13,7 @@ export default function AladinViewer() {
         backgroundColor: 'darkgray',
         height: '100%',
         width: '100%',
+        minHeight: 320,
       }}
     />
   );

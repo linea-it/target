@@ -114,28 +114,36 @@ export default function ClusterDetail(props) {
               Cluster Detail
             </Button>
             <Tooltip title="Center on target">
-              <IconButton aria-label="center" disabled={!selectedRecord} onClick={centerOnTarget}>
-                <MyLocationIcon />
-              </IconButton>
+              <span>
+                <IconButton aria-label="center" disabled={!selectedRecord} onClick={centerOnTarget}>
+                  <MyLocationIcon />
+                </IconButton>
+              </span>
             </Tooltip>
             <Tooltip title="Show/Hide Cluster Radius">
-              <IconButton aria-label="show-hide-marker" disabled={!selectedRecord} onClick={toggleMarkerVisibility}>
-                <PanoramaFishEyeIcon />
-              </IconButton>
+              <span>
+                <IconButton aria-label="show-hide-marker" disabled={!selectedRecord} onClick={toggleMarkerVisibility}>
+                  <PanoramaFishEyeIcon />
+                </IconButton>
+              </span>
             </Tooltip>
             <Tooltip title="Show/Hide members">
-              <IconButton
-                aria-label="show-hide-members"
-                disabled={!selectedRecord}
-                onClick={toggleCatalogVisibility.bind(this, 'Members')}
-              >
-                {isLoading ? <CircularProgress size={24} /> : <ScatterPlotIcon />}
-              </IconButton>
+              <span>
+                <IconButton
+                  aria-label="show-hide-members"
+                  disabled={!selectedRecord}
+                  onClick={toggleCatalogVisibility.bind(this, 'Members')}
+                >
+                  {isLoading ? <CircularProgress size={24} /> : <ScatterPlotIcon />}
+                </IconButton>
+              </span>
             </Tooltip>
             <Tooltip title="Take snapshot">
-              <IconButton aria-label="take-snapshot" disabled={!selectedRecord} onClick={takeSnapshot}>
-                <CameraAltIcon />
-              </IconButton>
+              <span>
+                <IconButton aria-label="take-snapshot" disabled={!selectedRecord} onClick={takeSnapshot}>
+                  <CameraAltIcon />
+                </IconButton>
+              </span>
             </Tooltip>
           </Stack>
         </Toolbar>
