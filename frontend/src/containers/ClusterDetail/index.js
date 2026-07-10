@@ -4,14 +4,13 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
 import { useEffect } from 'react'
 import CircularProgress from '@mui/material/CircularProgress';
-import Skeleton from '@mui/material/Skeleton';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import TargetProperties from "@/components/TargetProperties";
 import MembersDataGrid from "@/components/MembersDataGrid";
 import { useAladinContext } from '@/components/Aladin/AladinContext';
 import AladinViewer from '@/components/Aladin/AladinViewer';
-import { getClusterMembers, getMetadataById, getNotebookHtml } from '@/services/Metadata';
+import { getClusterMembers, getMetadataById, getNotebookHtml, downloadClusterNotebook } from '@/services/Metadata';
 import { useQuery } from '@tanstack/react-query'
 
 import Stack from '@mui/material/Stack';
@@ -22,6 +21,9 @@ import ScatterPlotIcon from '@mui/icons-material/ScatterPlot';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import Tooltip from '@mui/material/Tooltip';
+import Skeleton from '@mui/material/Skeleton';
+import Button from '@mui/material/Button';
+import DownloadIcon from '@mui/icons-material/Download';
 
 function TabPanel({ children, value, index }) {
   return (
@@ -38,6 +40,7 @@ export default function ClusterDetailContainer({ catalog, record }) {
   const [selectedMember, setSelectedMember] = React.useState(undefined);
   const [activeTab, setActiveTab] = React.useState(0);
   const [iframeHeight, setIframeHeight] = React.useState(0);
+  const [downloadingNotebook, setDownloadingNotebook] = React.useState(false);
   const iframeRef = React.useRef(null);
 
   useEffect(() => {
@@ -136,8 +139,21 @@ export default function ClusterDetailContainer({ catalog, record }) {
 
   const handleIframeLoad = () => {
     measureIframeHeight();
-    // Re-measure after a short delay so late-painted content (images, CSS) is included.
     setTimeout(measureIframeHeight, 500);
+  };
+
+  const handleDownloadNotebook = async () => {
+    if (!record?.meta_id || !catalog?.property_id) return;
+    setDownloadingNotebook(true);
+    try {
+      await downloadClusterNotebook({
+        tableId: catalog.id,
+        propertyId: catalog.property_id,
+        recordId: record.meta_id,
+      });
+    } finally {
+      setDownloadingNotebook(false);
+    }
   };
 
 
@@ -158,7 +174,7 @@ export default function ClusterDetailContainer({ catalog, record }) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }} mb={4}>
       <Grid container spacing={2}>
-        <Grid size={{ md: 6 }} sx={{ height: 600 }}>
+        <Grid size={{ xs: 12, md: 6 }} sx={{ height: { xs: 420, md: 600 }, order: { xs: 2, md: 1 } }}>
           <Paper elevation={3} sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
               <Tab label="Members" />
@@ -193,7 +209,7 @@ export default function ClusterDetailContainer({ catalog, record }) {
           </Paper>
         </Grid>
 
-        <Grid size={{ md: 6 }} sx={{ height: 600 }}>
+        <Grid size={{ xs: 12, md: 6 }} sx={{ height: { xs: 420, md: 600 }, order: { xs: 1, md: 2 } }}>
           <Paper
             elevation={3}
             sx={{
@@ -252,13 +268,22 @@ export default function ClusterDetailContainer({ catalog, record }) {
         </Grid>
 
       </Grid>
+
+      <Stack direction="row" justifyContent="flex-end">
+        <Button
+          variant="outlined"
+          startIcon={<DownloadIcon />}
+          onClick={handleDownloadNotebook}
+          disabled={downloadingNotebook || !record?.meta_id}
+        >
+          {downloadingNotebook ? 'Preparing…' : 'Download notebook'}
+        </Button>
+      </Stack>
+
       {(isLoadingNotebook || (notebookHtml && !iframeHeight)) && (
         <Skeleton variant="rectangular" height={500} sx={{ borderRadius: 1 }} />
       )}
       {notebookHtml && (
-        // Paper permanece no DOM com height:0 enquanto o iframe mede seu conteúdo.
-        // overflow:hidden esconde visualmente mas mantém o layout computado,
-        // permitindo que onLoad dispare e scrollHeight seja lido corretamente.
         <Paper
           elevation={iframeHeight ? 3 : 0}
           sx={{ width: '100%', height: iframeHeight || 0, overflow: 'hidden' }}
