@@ -11,7 +11,9 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
   const [isReady, setIsReady] = useState(false);
   const surveysRef = useRef({})
   const catalogsRef = useRef({})
+  const mapsRef = useRef({})
   const targetOverlayRef = useRef(null);
+  const lastBaseSurveyIdRef = useRef(null);
   const [currentSurveyId, setCurrentSurveyId] = useState(null);
 
   const surveys = [
@@ -118,6 +120,32 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     }
   ]
 
+  // Mapas sistemáticos (HiPS) — pré-registrados no init para aparecerem
+  // no menu nativo "+ Surveys" do Aladin como layers de overlay.
+  const maps = [
+    {
+      surveyKey: 'des_dr2',
+      name: 'DES DR2',
+      // TODO: os HiPS fracdet declaram hips_frame=galactic mas a imagem DES é
+      // equatorial; mapa pode renderizar desalinhado (problema na geração do HiPS).
+      cooFrame: "ICRSd",
+      categories: [
+        {
+          id: 'frac_detection',
+          label: 'Fracdet',
+          baseUrl: 'https://datasets.linea.org.br/data/releases/des/dr2/maps/systematic_maps/frac_detection',
+          bands: [
+            { value: 'g', label: 'g' },
+            { value: 'r', label: 'r' },
+            { value: 'i', label: 'i' },
+            { value: 'z', label: 'z' },
+            { value: 'y', label: 'Y' }, // label DES é Y maiúsculo; URL é hips_y
+          ],
+        },
+      ],
+    },
+  ]
+
   const defaultTargets = {
     // "DES_DR2_IRG_LIneA": "02 32 44.09 -35 57 39.5",
     "DES_DR2_IRG_LIneA": "45.5695474 -19.0760449",
@@ -161,8 +189,13 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
         if (currentSurvey) {
           setCurrentSurveyId(currentSurvey.id);
 
-          if (targetOverlayRef.current) {
-            // Já tem um target setado.
+          // O evento dispara para qualquer layer adicionada, inclusive
+          // overlays (ex: mapas). Só recentraliza quando a base mudou.
+          const baseChanged = lastBaseSurveyIdRef.current !== currentSurvey.id;
+          lastBaseSurveyIdRef.current = currentSurvey.id;
+
+          if (targetOverlayRef.current || !baseChanged) {
+            // Já tem um target setado ou a base não mudou.
 
           } else {
             // Não tem nenhum target selecionado, centraliza a imagem no target default.
@@ -223,6 +256,35 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
         aladinRef.current.addCatalog(hips_cat);
         catalogsRef.current[cat.id] = hips_cat;
         // console.log(`${cat.name} HiPS catalog added`);
+      })
+
+      // Registra os mapas sistemáticos no cache de HiPS do Aladin.
+      // Apenas registra (sem exibir): os mapas ficam disponíveis no menu
+      // nativo "+ Surveys" e o usuário os adiciona como overlay pela UI.
+      // Nesta versão do aladin-lite (3.7.0-beta) a lista do menu vem de
+      // hipsFavorites, então além do createImageSurvey (que preenche o
+      // hipsCache) é preciso chamar addHiPSToFavorites.
+      // Não passar requestCredentials: o servidor responde ACAO: * e o
+      // browser bloqueia tiles requisitados com credenciais.
+      maps.forEach(group => {
+        if (group.requireGroup && !userGroups.includes(group.requireGroup)) {
+          return; // Não adiciona os mapas se o usuário não tiver acesso
+        }
+
+        group.categories.forEach(cat => {
+          cat.bands.forEach(band => {
+            const mapId = `${group.surveyKey}_${cat.id}_${band.value}`;
+            const hips_map = aladinRef.current.createImageSurvey(
+              mapId,
+              `${group.name} ${cat.label} ${band.label}`, // ex: "DES DR2 Fracdet g"
+              `${cat.baseUrl}/hips_${band.value}/`,
+              group.cooFrame
+            );
+            aladinRef.current.addHiPSToFavorites(hips_map);
+            mapsRef.current[mapId] = hips_map;
+            // console.log(`${group.name} ${cat.label} ${band.label} HIPS MAP registered`);
+          })
+        })
       })
     });
 
@@ -359,6 +421,7 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     aladinRef,
     surveysRef,
     catalogsRef,
+    mapsRef,
     isReady, // Importante: indica se o Aladin está pronto
     currentSurveyId, // ID do survey atual
     setFoV,
