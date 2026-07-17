@@ -1,16 +1,6 @@
-import base64
-import io
-import json
-import math
-import traceback as tb
-from contextlib import redirect_stderr
-from contextlib import redirect_stdout
-from pathlib import Path
-
-import nbformat
 from django.conf import settings
+from django.db import transaction
 from django.http import HttpResponse
-from nbconvert import HTMLExporter
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -21,225 +11,19 @@ from target.metadata.models import Column
 from target.metadata.models import Schema
 from target.metadata.models import Settings
 from target.metadata.models import Table
+from target.metadata.notebook_utils import _meta_field
+from target.metadata.notebook_utils import _notebook_to_ipynb_string
+from target.metadata.notebook_utils import _prepare_cluster_notebook
+from target.metadata.notebook_utils import _render_notebook_html
+from target.metadata.notebook_utils import _sanitize_scalar
+from target.metadata.notebook_utils import sanitize_data
+from target.metadata.tasks import generate_catalog_diagnostic
 
 from .serializers import ColumnSerializer
 from .serializers import NestedTableSerializer
 from .serializers import SchemaSerializer
 from .serializers import SettingsSerializer
 from .serializers import TableSerializer
-
-
-_NULL_STRINGS = frozenset({"", "none", "nan", "null", "undefined", "na", "n/a"})
-
-
-def _is_nullish(value):
-    if value is None:
-        return True
-    if isinstance(value, bool):
-        return False
-    if isinstance(value, str):
-        return value.strip().lower() in _NULL_STRINGS or value == "None"
-    if isinstance(value, float):
-        return not math.isfinite(value)
-    if type(value).__module__ == "numpy":
-        import numpy as np
-
-        if isinstance(value, np.floating):
-            return not np.isfinite(value)
-        return False
-    try:
-        from decimal import Decimal
-    except ImportError:
-        return False
-    else:
-        if isinstance(value, Decimal):
-            return value.is_nan() or value.is_infinite()
-    return False
-
-
-def _sanitize_scalar(value):
-    if _is_nullish(value):
-        return None
-    if type(value).__module__ == "numpy":
-        return value.item()
-    try:
-        from decimal import Decimal
-    except ImportError:
-        return value
-    else:
-        if isinstance(value, Decimal):
-            return float(value)
-    return value
-
-
-def _meta_field(value):
-    if _is_nullish(value):
-        return None
-    return str(value)
-
-
-def sanitize_data(data, bigint_columns=None):
-    if isinstance(data, list):
-        return [sanitize_data(item, bigint_columns) for item in data]
-    if isinstance(data, dict):
-        result = {}
-        for key, value in data.items():
-            if isinstance(value, dict):
-                result[key] = sanitize_data(value, bigint_columns)
-            elif isinstance(value, list):
-                result[key] = sanitize_data(value, bigint_columns)
-            elif _is_nullish(value):
-                result[key] = None
-            elif (
-                bigint_columns
-                and key in bigint_columns
-                and isinstance(value, int)
-                and value > 9007199254740991  # noqa: PLR2004
-            ):
-                result[key] = str(value)
-            else:
-                result[key] = _sanitize_scalar(value)
-        return result
-    return data
-
-
-def _figure_has_content(fig):
-    return any(ax.has_data() for ax in fig.axes)
-
-
-def _notebook_for_display(nb):
-    """Keep markdown and figure outputs only (no code source or stdout)."""
-    display_cells = []
-    for cell in nb.cells:
-        if cell.cell_type == "markdown":
-            display_cells.append(cell)
-            continue
-        if cell.cell_type != "code":
-            continue
-
-        outputs = [
-            output
-            for output in cell.outputs
-            if output.get("output_type") in ("display_data", "error")
-            and (
-                output.get("output_type") == "error"
-                or any(
-                    mime.startswith("image/")
-                    for mime in output.get("data", {})
-                )
-            )
-        ]
-        if not outputs:
-            continue
-
-        display_cell = nbformat.v4.new_code_cell(source="")
-        display_cell.outputs = outputs
-        display_cells.append(display_cell)
-
-    display_nb = nbformat.v4.new_notebook(cells=display_cells)
-    display_nb.metadata = nb.metadata
-    return display_nb
-
-
-def _execute_notebook_inprocess(nb):
-    """Execute notebook code cells in-process, capturing outputs."""
-    namespace = {}
-
-    # Ensure matplotlib uses a non-interactive backend before any import
-    exec("import matplotlib; matplotlib.use('Agg')", namespace)  # noqa: S102
-
-    for execution_count, cell in enumerate(nb.cells, start=1):
-        if cell.cell_type != "code":
-            continue
-
-        cell.outputs = []
-        cell.execution_count = execution_count
-
-        stdout_buf = io.StringIO()
-        stderr_buf = io.StringIO()
-
-        try:
-            with redirect_stdout(stdout_buf), redirect_stderr(stderr_buf):
-                exec(cell.source, namespace)  # noqa: S102
-
-            # Capture any matplotlib figures produced by this cell
-            try:
-                import matplotlib.pyplot as plt
-
-                for fig_num in list(plt.get_fignums()):
-                    fig = plt.figure(fig_num)
-                    if not _figure_has_content(fig):
-                        continue
-                    try:
-                        buf = io.BytesIO()
-                        fig.savefig(buf, format="png", bbox_inches="tight")
-                        img_b64 = base64.b64encode(buf.getvalue()).decode()
-                        cell.outputs.append(
-                            nbformat.v4.new_output(
-                                output_type="display_data",
-                                data={"image/png": img_b64, "text/plain": "<Figure>"},
-                                metadata={},
-                            ),
-                        )
-                    except Exception as fig_exc:  # noqa: BLE001
-                        cell.outputs.append(
-                            nbformat.v4.new_output(
-                                output_type="error",
-                                ename=type(fig_exc).__name__,
-                                evalue=str(fig_exc),
-                                traceback=tb.format_exception(
-                                    type(fig_exc),
-                                    fig_exc,
-                                    fig_exc.__traceback__,
-                                ),
-                            ),
-                        )
-                plt.close("all")
-            except ImportError:
-                pass
-
-        except Exception as exc:  # noqa: BLE001
-            cell.outputs.append(
-                nbformat.v4.new_output(
-                    output_type="error",
-                    ename=type(exc).__name__,
-                    evalue=str(exc),
-                    traceback=tb.format_exception(type(exc), exc, exc.__traceback__),
-                ),
-            )
-
-        stdout_val = stdout_buf.getvalue()
-        stderr_val = stderr_buf.getvalue()
-
-        if stdout_val:
-            cell.outputs.append(
-                nbformat.v4.new_output(
-                    output_type="stream",
-                    name="stdout",
-                    text=stdout_val,
-                ),
-            )
-        if stderr_val:
-            cell.outputs.append(
-                nbformat.v4.new_output(
-                    output_type="stream",
-                    name="stderr",
-                    text=stderr_val,
-                ),
-            )
-
-
-NOTEBOOK_TEMPLATE = (
-    Path(__file__).parent.parent / "notebooks" / "cluster_detail_wazp_y6.ipynb"
-)
-
-
-def _inject_notebook_variables(nb, replacements):
-    for cell in nb.cells:
-        source = cell.source
-        for key, value in replacements.items():
-            source = source.replace(f"{{{{{key}}}}}", value)
-        cell.source = source
 
 
 class TableRegistrationError(Exception):
@@ -635,6 +419,17 @@ class UserTableViewSet(ModelViewSet):
         table.is_completed = True
         table.save()
 
+        # Trigger catalog diagnostic generation for cluster catalogs.
+        if table.catalog_type == Table.CATALOG_TYPE_CLUSTER:
+            table.catalog_diagnostic_status = Table.DIAGNOSTIC_STATUS_PENDING
+            table.save(update_fields=["catalog_diagnostic_status"])
+            # on_commit: só dispara a task após o commit da transação do
+            # request (ATOMIC_REQUESTS), garantindo que o worker leia o
+            # estado já persistido (ex.: is_completed=True).
+            transaction.on_commit(
+                lambda: generate_catalog_diagnostic.delay(table.id),
+            )
+
         table.refresh_from_db()
         data = self.get_serializer(instance=table).data
         return Response(data, status=status.HTTP_200_OK)
@@ -757,130 +552,123 @@ class UserTableViewSet(ModelViewSet):
 
         return Response(results, status=status.HTTP_200_OK)
 
-    def _prepare_cluster_notebook(self, request, pk):
-        queryset = self.get_queryset()
-        main_table = queryset.prefetch_related("columns").get(pk=pk)
-
-        main_table_metadata = NestedTableSerializer(
-            main_table,
-            context={"request": request},
-        ).data
-
-        ucds = self.get_table_ucds(main_table)
-        url_filters = self.parse_filters(request.query_params)
-
-        main_record, _ = self.query_data(
-            table=main_table,
-            limit=1,
-            offset=0,
-            url_filters=url_filters,
-            ordering=None,
-            ucds=ucds,
-        )
-        if len(main_record) != 1:
-            return None, Response(
-                {"error": "Record not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        main_record = main_record[0]
-        related_table_metadata = None
-        related_table_data = []
-
-        if main_table.catalog_type == Table.CATALOG_TYPE_CLUSTER:
-            if not main_table.related_table:
-                return None, Response(
-                    {"error": "Related table must be set for cluster catalogs."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            related_table_metadata = NestedTableSerializer(
-                main_table.related_table,
-                context={"request": request},
-            ).data
-
-            cross_id_property = main_table_metadata.get("related_property_id")
-            related_filters = {
-                cross_id_property: main_record[main_table_metadata.get("property_id")],
-            }
-
-            related_table_data, _count = self.query_data(
-                table=main_table.related_table,
-                limit=None,
-                offset=0,
-                url_filters=related_filters,
-                ordering=None,
-                ucds=related_table_metadata.get("ucds"),
-            )
-
-        with NOTEBOOK_TEMPLATE.open() as f:
-            nb = nbformat.read(f, as_version=4)
-
-        cluster_id = main_record.get("meta_id") or main_record.get("id") or "unknown"
-
-        replacements = {
-            "cluster_id": str(cluster_id),
-            "main_table_metadata": json.dumps(
-                main_table_metadata,
-                allow_nan=False,
-            ),
-            "main_record": json.dumps(main_record, allow_nan=False),
-            "related_table_metadata": json.dumps(
-                related_table_metadata,
-                allow_nan=False,
-            ),
-            "related_table_data": json.dumps(
-                related_table_data,
-                allow_nan=False,
-            ),
-        }
-        _inject_notebook_variables(nb, replacements)
-
-        context = {
-            "main_record": main_record,
-            "related_table_data": related_table_data,
-            "notebook": nb,
-        }
-        return context, None
-
     @action(detail=True, methods=["get"])
     def notebook(self, request, pk=None):
         """Execute cluster analysis notebook and return rendered HTML."""
 
-        context, error_response = self._prepare_cluster_notebook(request, pk)
+        # Não usar self.get_object(): o filtro "id" colide com o
+        # query param ?id=<cluster> usado para selecionar o cluster.
+        table = self.get_queryset().get(pk=pk)
+        context, error_response = _prepare_cluster_notebook(table, request, self)
         if error_response:
-            return error_response
+            return Response(
+                error_response,
+                status=error_response.get("status", status.HTTP_400_BAD_REQUEST),
+            )
 
-        nb = context["notebook"]
-        _execute_notebook_inprocess(nb)
-
-        display_nb = _notebook_for_display(nb)
-        exporter = HTMLExporter()
-        exporter.exclude_input = True
-        exporter.exclude_input_prompt = True
-        exporter.exclude_output_prompt = True
-        html, _ = exporter.from_notebook_node(display_nb)
-
+        html = _render_notebook_html(context["notebook"])
         return Response({"html": html}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["get"], url_path="notebook/download")
     def notebook_download(self, request, pk=None):
         """Download cluster analysis notebook with hardcoded injected data."""
 
-        context, error_response = self._prepare_cluster_notebook(request, pk)
+        # Não usar self.get_object(): o filtro "id" colide com o
+        # query param ?id=<cluster> usado para selecionar o cluster.
+        table = self.get_queryset().get(pk=pk)
+        context, error_response = _prepare_cluster_notebook(table, request, self)
         if error_response:
-            return error_response
+            return Response(
+                error_response,
+                status=error_response.get("status", status.HTTP_400_BAD_REQUEST),
+            )
 
-        nb = context["notebook"]
         cluster_id = (
             context["main_record"].get("meta_id")
             or context["main_record"].get("id")
             or "cluster"
         )
 
-        content = nbformat.writes(nb)
+        content = _notebook_to_ipynb_string(context["notebook"])
         response = HttpResponse(content, content_type="application/x-ipynb")
         response["Content-Disposition"] = (
             f'attachment; filename="cluster_{cluster_id}_analysis.ipynb"'
         )
         return response
+
+    @action(detail=True, methods=["get"], url_path="catalog_diagnostic")
+    def catalog_diagnostic(self, request, pk=None):
+        """Return pre-rendered catalog diagnostic HTML if available."""
+
+        table = self.get_object()
+        if (
+            table.catalog_type != Table.CATALOG_TYPE_CLUSTER
+            or not table.related_table
+        ):
+            return Response(
+                {"error": "Diagnostic is only available for CAnVAS cluster catalogs."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {
+                "html": table.catalog_diagnostic_html,
+                "status": table.catalog_diagnostic_status,
+                "error": table.catalog_diagnostic_error,
+                "updated_at": table.catalog_diagnostic_updated_at,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["get"], url_path="catalog_diagnostic/download")
+    def catalog_diagnostic_download(self, request, pk=None):
+        """Download pre-rendered catalog diagnostic notebook."""
+
+        table = self.get_object()
+        if (
+            table.catalog_type != Table.CATALOG_TYPE_CLUSTER
+            or not table.related_table
+        ):
+            return Response(
+                {"error": "Diagnostic is only available for CAnVAS cluster catalogs."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not table.catalog_diagnostic_notebook:
+            return Response(
+                {"error": "Diagnostic notebook not available."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        response = HttpResponse(
+            table.catalog_diagnostic_notebook.read(),
+            content_type="application/x-ipynb",
+        )
+        filename = table.catalog_diagnostic_notebook.name.split("/")[-1]
+        response["Content-Disposition"] = (
+            f'attachment; filename="{filename}"'
+        )
+        return response
+
+    @action(detail=True, methods=["post"], url_path="catalog_diagnostic/regenerate")
+    def catalog_diagnostic_regenerate(self, request, pk=None):
+        """Re-trigger catalog diagnostic generation."""
+
+        table = self.get_object()
+        if (
+            table.catalog_type != Table.CATALOG_TYPE_CLUSTER
+            or not table.related_table
+        ):
+            return Response(
+                {"error": "Diagnostic is only available for CAnVAS cluster catalogs."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        table.catalog_diagnostic_status = Table.DIAGNOSTIC_STATUS_PENDING
+        table.save(update_fields=["catalog_diagnostic_status"])
+        generate_catalog_diagnostic.delay(table.id)
+
+        return Response(
+            {"status": table.catalog_diagnostic_status},
+            status=status.HTTP_202_ACCEPTED,
+        )
