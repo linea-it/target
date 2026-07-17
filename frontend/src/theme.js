@@ -8,7 +8,7 @@ const theme = createTheme({
     mode: 'light',
   },
   typography: {
-    fontFamily: 'var(--font-roboto)',
+    fontFamily: 'Roboto, "Helvetica", "Arial", sans-serif',
   },
 });
 
