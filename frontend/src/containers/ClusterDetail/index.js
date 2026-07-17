@@ -1,7 +1,6 @@
 import React from "react";
 import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid2';
 import { useEffect } from 'react'
 import CircularProgress from '@mui/material/CircularProgress';
 import Tabs from '@mui/material/Tabs';
@@ -14,6 +13,8 @@ import { getClusterMembers, getMetadataById, getNotebookHtml, downloadClusterNot
 import { useQuery } from '@tanstack/react-query'
 
 import Stack from '@mui/material/Stack';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import Toolbar from '@mui/material/Toolbar';
 import IconButton from '@mui/material/IconButton';
 import PanoramaFishEyeIcon from '@mui/icons-material/PanoramaFishEye';
@@ -42,6 +43,50 @@ export default function ClusterDetailContainer({ catalog, record }) {
   const [iframeHeight, setIframeHeight] = React.useState(0);
   const [downloadingNotebook, setDownloadingNotebook] = React.useState(false);
   const iframeRef = React.useRef(null);
+
+  const theme = useTheme();
+  const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
+  const [leftWidth, setLeftWidth] = React.useState(64);
+  const splitRef = React.useRef(null);
+  const draggingRef = React.useRef(false);
+
+  useEffect(() => {
+    const saved = Number(window.localStorage.getItem('clusterDetailSplit'));
+    if (saved >= 20 && saved <= 80) setLeftWidth(saved);
+  }, []);
+
+  const startSplitDrag = () => {
+    draggingRef.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  };
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!draggingRef.current || !splitRef.current) return;
+      const rect = splitRef.current.getBoundingClientRect();
+      const pct = ((e.clientX - rect.left) / rect.width) * 100;
+      setLeftWidth(Math.min(80, Math.max(20, pct)));
+    };
+    const onUp = () => {
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      setLeftWidth((w) => {
+        window.localStorage.setItem('clusterDetailSplit', String(w));
+        return w;
+      });
+      // Força o Aladin a recalcular o tamanho do canvas.
+      window.dispatchEvent(new Event('resize'));
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
 
   useEffect(() => {
     // Quando o catalogo tem uma imagem/survey default
@@ -173,8 +218,15 @@ export default function ClusterDetailContainer({ catalog, record }) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }} mb={4}>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 6 }} sx={{ height: { xs: 420, md: 600 }, order: { xs: 2, md: 1 } }}>
+      <Box
+        ref={splitRef}
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          gap: { xs: 2, md: 0 },
+        }}
+      >
+        <Box sx={{ width: isMdUp ? `${leftWidth}%` : '100%', height: { xs: 420, md: 600 }, order: { xs: 2, md: 1 }, minWidth: 0 }}>
           <Paper elevation={3} sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
               <Tab label="Members" />
@@ -207,9 +259,30 @@ export default function ClusterDetailContainer({ catalog, record }) {
               <TargetProperties record={record} />
             </TabPanel>
           </Paper>
-        </Grid>
+        </Box>
 
-        <Grid size={{ xs: 12, md: 6 }} sx={{ height: { xs: 420, md: 600 }, order: { xs: 1, md: 2 } }}>
+        {isMdUp && (
+          <Box
+            onMouseDown={startSplitDrag}
+            sx={{
+              order: 2,
+              flexShrink: 0,
+              width: '14px',
+              cursor: 'col-resize',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              '&:hover .split-handle-bar': { backgroundColor: 'primary.main' },
+            }}
+          >
+            <Box
+              className="split-handle-bar"
+              sx={{ width: '4px', height: '48px', borderRadius: 2, backgroundColor: 'divider', transition: 'background-color 0.15s' }}
+            />
+          </Box>
+        )}
+
+        <Box sx={{ flex: { md: 1 }, width: { xs: '100%', md: 'auto' }, height: { xs: 420, md: 600 }, order: { xs: 1, md: 3 }, minWidth: 0 }}>
           <Paper
             elevation={3}
             sx={{
@@ -265,38 +338,37 @@ export default function ClusterDetailContainer({ catalog, record }) {
               </Tooltip>
             </Toolbar>
           </Paper>
-        </Grid>
+        </Box>
 
-      </Grid>
+      </Box>
 
-      <Stack direction="row" justifyContent="flex-end">
-        <Button
-          variant="outlined"
-          startIcon={<DownloadIcon />}
-          onClick={handleDownloadNotebook}
-          disabled={downloadingNotebook || !record?.meta_id}
-        >
-          {downloadingNotebook ? 'Preparing…' : 'Download notebook'}
-        </Button>
-      </Stack>
+      <Paper elevation={3} sx={{ p: 2 }}>
+        <Stack direction="row" justifyContent="flex-end" mb={2}>
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={handleDownloadNotebook}
+            disabled={downloadingNotebook || !record?.meta_id}
+          >
+            {downloadingNotebook ? 'Preparing…' : 'Download notebook'}
+          </Button>
+        </Stack>
 
-      {(isLoadingNotebook || (notebookHtml && !iframeHeight)) && (
-        <Skeleton variant="rectangular" height={500} sx={{ borderRadius: 1 }} />
-      )}
-      {notebookHtml && (
-        <Paper
-          elevation={iframeHeight ? 3 : 0}
-          sx={{ width: '100%', height: iframeHeight || 0, overflow: 'hidden' }}
-        >
-          <iframe
-            ref={iframeRef}
-            srcDoc={notebookHtml}
-            onLoad={handleIframeLoad}
-            style={{ width: '100%', height: iframeHeight || 1, border: 'none', display: 'block' }}
-            title="Cluster Notebook"
-          />
-        </Paper>
-      )}
+        {(isLoadingNotebook || (notebookHtml && !iframeHeight)) && (
+          <Skeleton variant="rectangular" height={500} sx={{ borderRadius: 1 }} />
+        )}
+        {notebookHtml && (
+          <Box sx={{ width: '100%', height: iframeHeight || 0, overflow: 'hidden' }}>
+            <iframe
+              ref={iframeRef}
+              srcDoc={notebookHtml.replace(/<head(\s[^>]*)?>/i, '$&<base target="_blank">')}
+              onLoad={handleIframeLoad}
+              style={{ width: '100%', height: iframeHeight || 1, border: 'none', display: 'block' }}
+              title="Cluster Notebook"
+            />
+          </Box>
+        )}
+      </Paper>
       {/* Spacer */}
       <Box mt={6} />
     </Box>
