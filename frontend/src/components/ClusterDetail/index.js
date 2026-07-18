@@ -13,6 +13,7 @@ import ScatterPlotIcon from '@mui/icons-material/ScatterPlot';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import CircularProgress from '@mui/material/CircularProgress';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
+import LayersIcon from '@mui/icons-material/Layers';
 import Tooltip from '@mui/material/Tooltip';
 import { usePathname } from 'next/navigation';
 import { useAladinContext } from '@/components/Aladin/AladinContext';
@@ -23,11 +24,17 @@ import { getClusterMembers } from '@/services/Metadata';
 
 
 import AladinViewer from '@/components/Aladin/AladinViewer';
+import MapsDialog from '@/components/Aladin/MapsDialog';
 
 export default function ClusterDetail(props) {
   const pathname = usePathname()
-  const { isReady, setTarget, aladinRef, setImageSurvey, toggleMarkerVisibility, takeSnapshot, addCatalog, toggleCatalogVisibility } = useAladinContext();
+  const { isReady, setTarget, aladinRef, setImageSurvey, toggleMarkerVisibility, takeSnapshot, addCatalog, toggleCatalogVisibility, getMapsForSurvey } = useAladinContext();
   const { selectedRecord, catalog } = useCatalog();
+
+  const [mapsOpen, setMapsOpen] = React.useState(false);
+
+  const defaultImage = catalog?.settings?.default_image;
+  const hasMaps = !!getMapsForSurvey(defaultImage);
 
   const { isLoading, data: members } = useQuery({
     queryKey: ['membersByClusterId', catalog?.related_table, selectedRecord?.meta_id],
@@ -145,6 +152,17 @@ export default function ClusterDetail(props) {
                 </IconButton>
               </span>
             </Tooltip>
+            <Tooltip title={hasMaps ? 'Maps' : 'No maps available for this survey'}>
+              <span>
+                <IconButton
+                  aria-label="maps"
+                  disabled={!selectedRecord || !hasMaps}
+                  onClick={() => setMapsOpen(true)}
+                >
+                  <LayersIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
           </Stack>
         </Toolbar>
 
@@ -154,7 +172,7 @@ export default function ClusterDetail(props) {
 
         {(!selectedRecord || selectedRecord.meta_catalog_id !== catalog.id) && (
           //  Overlay para prevenir que o Aladin fique visível
-          // Sem nenhum registro selecionado 
+          // Sem nenhum registro selecionado
           <Box
             sx={(theme) => ({
               position: 'absolute',
@@ -170,6 +188,8 @@ export default function ClusterDetail(props) {
           </Box>
         )}
       </Box>
+
+      <MapsDialog open={mapsOpen} onClose={() => setMapsOpen(false)} surveyId={defaultImage} />
     </Stack>
 
   );

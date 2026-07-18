@@ -9,6 +9,7 @@ import TargetProperties from "@/components/TargetProperties";
 import MembersDataGrid from "@/components/MembersDataGrid";
 import { useAladinContext } from '@/components/Aladin/AladinContext';
 import AladinViewer from '@/components/Aladin/AladinViewer';
+import MapsDialog from '@/components/Aladin/MapsDialog';
 import { getClusterMembers, getMetadataById, getNotebookHtml, downloadClusterNotebook } from '@/services/Metadata';
 import { useQuery } from '@tanstack/react-query'
 
@@ -21,6 +22,7 @@ import PanoramaFishEyeIcon from '@mui/icons-material/PanoramaFishEye';
 import ScatterPlotIcon from '@mui/icons-material/ScatterPlot';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
+import LayersIcon from '@mui/icons-material/Layers';
 import Tooltip from '@mui/material/Tooltip';
 import Skeleton from '@mui/material/Skeleton';
 import Button from '@mui/material/Button';
@@ -36,9 +38,13 @@ function TabPanel({ children, value, index }) {
 
 
 export default function ClusterDetailContainer({ catalog, record }) {
-  const { isReady, setTarget, aladinRef, setImageSurvey, addCatalog, gotoRaDec, toggleMarkerVisibility, takeSnapshot, toggleCatalogVisibility } = useAladinContext();
+  const { isReady, setTarget, aladinRef, setImageSurvey, addCatalog, gotoRaDec, toggleMarkerVisibility, takeSnapshot, toggleCatalogVisibility, getMapsForSurvey } = useAladinContext();
 
   const [selectedMember, setSelectedMember] = React.useState(undefined);
+  const [mapsOpen, setMapsOpen] = React.useState(false);
+
+  const defaultImage = catalog?.settings?.default_image;
+  const hasMaps = !!getMapsForSurvey(defaultImage);
   const [activeTab, setActiveTab] = React.useState(0);
   const [iframeHeight, setIframeHeight] = React.useState(0);
   const [downloadingNotebook, setDownloadingNotebook] = React.useState(false);
@@ -336,6 +342,18 @@ export default function ClusterDetailContainer({ catalog, record }) {
                   <CameraAltIcon />
                 </IconButton>
               </Tooltip>
+
+              <Tooltip title={hasMaps ? 'Maps' : 'No maps available for this survey'}>
+                <span>
+                  <IconButton
+                    aria-label="maps"
+                    disabled={!record || !hasMaps}
+                    onClick={() => setMapsOpen(true)}
+                  >
+                    <LayersIcon />
+                  </IconButton>
+                </span>
+              </Tooltip>
             </Toolbar>
           </Paper>
         </Box>
@@ -369,6 +387,8 @@ export default function ClusterDetailContainer({ catalog, record }) {
           </Box>
         )}
       </Paper>
+      <MapsDialog open={mapsOpen} onClose={() => setMapsOpen(false)} surveyId={defaultImage} />
+
       {/* Spacer */}
       <Box mt={6} />
     </Box>

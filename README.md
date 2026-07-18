@@ -24,12 +24,12 @@ docker build -f mydb/compose/production/frontend/Dockerfile -t linea/target:mydb
 ## TODOS: Canvas
 
 - Schema publico "mydb_canvas_public"
-- Upload de tabelas. 
+- Upload de tabelas.
 - Salvar as colunas que que o usuario selecionou e orden.
-- Um segundo de arc no ra e dec.  
+- Um segundo de arc no ra e dec.
 - Tabela dos membros do lado da imagem
 - Alterar o titulo da tela para canvas
 - Alterar o titulo da tela de detalhe.
 - Selecionar linha de membro ao clicar no aladin.
 
-Imagem docker do jupyter = quay.io/jupyter/datascience-notebook:2025-05-12
+Imagem docker do jupyter = quay.io/jupyter/datascience-notebook:2025-05-12docker

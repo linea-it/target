@@ -12,9 +12,13 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
   const surveysRef = useRef({})
   const catalogsRef = useRef({})
   const mapsRef = useRef({})
+  // Layers de overlay de mapa atualmente na pilha do Aladin, por surveyKey.
+  const mapLayersRef = useRef({})
   const targetOverlayRef = useRef(null);
   const lastBaseSurveyIdRef = useRef(null);
   const [currentSurveyId, setCurrentSurveyId] = useState(null);
+  // Espelha mapLayersRef para a UI: { [surveyKey]: { mapId, opacity } }
+  const [mapOverlays, setMapOverlays] = useState({});
 
   const surveys = [
     // Adiciona imagem do DES DR2 (pública)
@@ -126,6 +130,9 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     {
       surveyKey: 'des_dr2',
       name: 'DES DR2',
+      // Ids das imagens base (surveys) que possuem estes mapas. É o que casa
+      // com catalog.settings.default_image para decidir quais mapas exibir.
+      surveyIds: ['DES_DR2_IRG_LIneA'],
       // TODO: os HiPS fracdet declaram hips_frame=galactic mas a imagem DES é
       // equatorial; mapa pode renderizar desalinhado (problema na geração do HiPS).
       cooFrame: "ICRSd",
@@ -290,6 +297,9 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
 
     return () => {
       isCancelled = true;
+      // Evita reusar layers órfãs de uma instância anterior do Aladin.
+      mapLayersRef.current = {};
+      setMapOverlays({});
     };
   }, [aladinParams]);
 
@@ -324,7 +334,7 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     let fov_deg = (fov_arcmin / 60).toFixed(4);
     aladinRef.current.setFoV(fov_deg);
 
-    // Draw marker 
+    // Draw marker
     if (targetOverlayRef.current) {
       aladinRef.current.removeOverlay(targetOverlayRef.current);
     }
@@ -416,6 +426,84 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     return catalog;
   }, []);
 
+  // ---------------------------------------------------------------------
+  // Mapas (overlays HiPS com opacidade)
+  // ---------------------------------------------------------------------
+
+  // Retorna o grupo de mapas da imagem base informada, no formato pronto
+  // para a UI, ou null quando o survey não tem mapas.
+  const getMapsForSurvey = useCallback((surveyId) => {
+    if (!surveyId) return null;
+
+    const group = maps.find(g => g.surveyIds?.includes(surveyId));
+    if (!group) return null;
+
+    if (group.requireGroup && !userGroups.includes(group.requireGroup)) return null;
+
+    const options = group.categories.flatMap(cat =>
+      cat.bands.map(band => ({
+        mapId: `${group.surveyKey}_${cat.id}_${band.value}`,
+        label: `${cat.label} ${band.label}`, // ex: "Fracdet g"
+      }))
+    );
+
+    return { surveyKey: group.surveyKey, name: group.name, options };
+  }, [userGroups]);
+
+  // Aplica (ou substitui) o overlay de mapa do survey. O layer name é estável
+  // por survey, então trocar de banda substitui a layer em vez de empilhar.
+  const setMapOverlay = useCallback((surveyKey, mapId, opacity = 0.8) => {
+    if (!aladinRef.current) return;
+
+    const hips = mapsRef.current[mapId];
+    if (!hips) return;
+
+    const layer = aladinRef.current.setOverlayImageLayer(hips, `map-${surveyKey}`);
+    layer.setOpacity(opacity);
+
+    // Escolher o mapa já o torna visível (mesmo comportamento do "+ Surveys").
+    mapLayersRef.current[surveyKey] = { layer, mapId, opacity, visible: true };
+    setMapOverlays(prev => ({ ...prev, [surveyKey]: { mapId, opacity, visible: true } }));
+  }, []);
+
+  const setMapOpacity = useCallback((surveyKey, opacity) => {
+    const entry = mapLayersRef.current[surveyKey];
+    if (!entry) return;
+
+    entry.opacity = opacity;
+    // Com o mapa oculto só guarda o valor; a opacidade real segue 0 até reexibir.
+    if (entry.visible) entry.layer.setOpacity(opacity);
+
+    setMapOverlays(prev => ({ ...prev, [surveyKey]: { ...prev[surveyKey], opacity } }));
+  }, []);
+
+  // Mostrar/ocultar sem perder o mapa escolhido nem a opacidade. O idioma do
+  // aladin-lite para isso é opacity 0 <-> valor anterior: mantém a posição na
+  // pilha e o cache de tiles (sem re-download ao reexibir). Não usamos o
+  // toggle() nativo porque ele guarda um prevOpacity interno que pode
+  // dessincronizar do estado da aplicação.
+  const setMapVisibility = useCallback((surveyKey, visible) => {
+    const entry = mapLayersRef.current[surveyKey];
+    if (!entry) return;
+
+    entry.visible = visible;
+    entry.layer.setOpacity(visible ? entry.opacity : 0);
+
+    setMapOverlays(prev => ({ ...prev, [surveyKey]: { ...prev[surveyKey], visible } }));
+  }, []);
+
+  const removeMapOverlay = useCallback((surveyKey) => {
+    if (!aladinRef.current) return;
+
+    aladinRef.current.removeImageLayer(`map-${surveyKey}`);
+    delete mapLayersRef.current[surveyKey];
+    setMapOverlays(prev => {
+      const next = { ...prev };
+      delete next[surveyKey];
+      return next;
+    });
+  }, []);
+
   return {
     containerRef,
     aladinRef,
@@ -432,6 +520,12 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     toggleMarkerVisibility,
     takeSnapshot,
     addCatalog,
-    gotoRaDec
+    gotoRaDec,
+    mapOverlays,
+    getMapsForSurvey,
+    setMapOverlay,
+    setMapOpacity,
+    setMapVisibility,
+    removeMapOverlay,
   };
 }
