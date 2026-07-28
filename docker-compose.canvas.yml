@@ -11,8 +11,6 @@ services:
       - ./logs/:/logs
       - ./data/tmp:/data
     env_file:
-      - .envs/.local/.django
-      - .envs/.local/.postgres
       - .env
     environment:
       - APPLICATION_NAME=CAnVAS
@@ -46,50 +44,41 @@ services:
   #     - .envs/.local/.postgres
 
 
-# -------------- FOR FUTURE USE --------------
+  # -------------- FOR FUTURE USE --------------
   # mailpit:
   #   image: docker.io/axllent/mailpit:latest
   #   container_name: target_local_mailpit
   #   ports:
   #     - "8025:8025"
 
-  # redis:
-  #   image: docker.io/redis:6
-  #   container_name: target_local_redis
+  redis:
+    image: docker.io/redis:6
+    volumes:
+      - target_local_redis_data:/data
 
-  #   volumes:
-  #     - target_local_redis_data:/data
+  celeryworker:
+    <<: *django
+    depends_on:
+      - redis
+      - postgres-14
+    ports: []
+    command: /start-celeryworker
 
+  celerybeat:
+    <<: *django
+    depends_on:
+      - redis
+      - postgres-14
+    ports: []
+    command: /start-celerybeat
 
-  # celeryworker:
-  #   <<: *django
-  #   image: target_local_celeryworker
-  #   container_name: target_local_celeryworker
-  #   depends_on:
-  #     - redis
-  #     - postgres
-  #     - mailpit
-  #   ports: []
-  #   command: /start-celeryworker
-
-  # celerybeat:
-  #   <<: *django
-  #   image: target_local_celerybeat
-  #   container_name: target_local_celerybeat
-  #   depends_on:
-  #     - redis
-  #     - postgres
-  #     - mailpit
-  #   ports: []
-  #   command: /start-celerybeat
-
-  # flower:
-  #   <<: *django
-  #   image: target_local_flower
-  #   container_name: target_local_flower
-  #   ports:
-  #     - '5555:5555'
-  #   command: /start-flower
+  flower:
+    <<: *django
+    ports:
+      - '5555:5555'
+    depends_on:
+      - redis
+    command: /start-flower
 
   frontend:
     image: node:22.12.0-bookworm-slim
@@ -112,3 +101,6 @@ services:
     depends_on:
       - backend
       - frontend
+
+volumes:
+  target_local_redis_data:

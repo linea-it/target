@@ -1,27 +1,32 @@
 import React from "react";
 import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid2';
 import { useEffect } from 'react'
 import CircularProgress from '@mui/material/CircularProgress';
-import Skeleton from '@mui/material/Skeleton';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import TargetProperties from "@/components/TargetProperties";
 import MembersDataGrid from "@/components/MembersDataGrid";
 import { useAladinContext } from '@/components/Aladin/AladinContext';
 import AladinViewer from '@/components/Aladin/AladinViewer';
-import { getClusterMembers, getMetadataById, getNotebookHtml } from '@/services/Metadata';
+import MapsDialog from '@/components/Aladin/MapsDialog';
+import { getClusterMembers, getMetadataById, getNotebookHtml, downloadClusterNotebook } from '@/services/Metadata';
 import { useQuery } from '@tanstack/react-query'
 
 import Stack from '@mui/material/Stack';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import Toolbar from '@mui/material/Toolbar';
 import IconButton from '@mui/material/IconButton';
 import PanoramaFishEyeIcon from '@mui/icons-material/PanoramaFishEye';
 import ScatterPlotIcon from '@mui/icons-material/ScatterPlot';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
+import LayersIcon from '@mui/icons-material/Layers';
 import Tooltip from '@mui/material/Tooltip';
+import Skeleton from '@mui/material/Skeleton';
+import Button from '@mui/material/Button';
+import DownloadIcon from '@mui/icons-material/Download';
 
 function TabPanel({ children, value, index }) {
   return (
@@ -33,12 +38,61 @@ function TabPanel({ children, value, index }) {
 
 
 export default function ClusterDetailContainer({ catalog, record }) {
-  const { isReady, setTarget, aladinRef, setImageSurvey, addCatalog, gotoRaDec, toggleMarkerVisibility, takeSnapshot, toggleCatalogVisibility } = useAladinContext();
+  const { isReady, setTarget, aladinRef, setImageSurvey, addCatalog, gotoRaDec, toggleMarkerVisibility, takeSnapshot, toggleCatalogVisibility, getMapsForSurvey } = useAladinContext();
 
   const [selectedMember, setSelectedMember] = React.useState(undefined);
+  const [mapsOpen, setMapsOpen] = React.useState(false);
+
+  const defaultImage = catalog?.settings?.default_image;
+  const hasMaps = !!getMapsForSurvey(defaultImage);
   const [activeTab, setActiveTab] = React.useState(0);
   const [iframeHeight, setIframeHeight] = React.useState(0);
+  const [downloadingNotebook, setDownloadingNotebook] = React.useState(false);
   const iframeRef = React.useRef(null);
+
+  const theme = useTheme();
+  const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
+  const [leftWidth, setLeftWidth] = React.useState(64);
+  const splitRef = React.useRef(null);
+  const draggingRef = React.useRef(false);
+
+  useEffect(() => {
+    const saved = Number(window.localStorage.getItem('clusterDetailSplit'));
+    if (saved >= 20 && saved <= 80) setLeftWidth(saved);
+  }, []);
+
+  const startSplitDrag = () => {
+    draggingRef.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  };
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!draggingRef.current || !splitRef.current) return;
+      const rect = splitRef.current.getBoundingClientRect();
+      const pct = ((e.clientX - rect.left) / rect.width) * 100;
+      setLeftWidth(Math.min(80, Math.max(20, pct)));
+    };
+    const onUp = () => {
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      setLeftWidth((w) => {
+        window.localStorage.setItem('clusterDetailSplit', String(w));
+        return w;
+      });
+      // Força o Aladin a recalcular o tamanho do canvas.
+      window.dispatchEvent(new Event('resize'));
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
 
   useEffect(() => {
     // Quando o catalogo tem uma imagem/survey default
@@ -136,8 +190,21 @@ export default function ClusterDetailContainer({ catalog, record }) {
 
   const handleIframeLoad = () => {
     measureIframeHeight();
-    // Re-measure after a short delay so late-painted content (images, CSS) is included.
     setTimeout(measureIframeHeight, 500);
+  };
+
+  const handleDownloadNotebook = async () => {
+    if (!record?.meta_id || !catalog?.property_id) return;
+    setDownloadingNotebook(true);
+    try {
+      await downloadClusterNotebook({
+        tableId: catalog.id,
+        propertyId: catalog.property_id,
+        recordId: record.meta_id,
+      });
+    } finally {
+      setDownloadingNotebook(false);
+    }
   };
 
 
@@ -157,8 +224,15 @@ export default function ClusterDetailContainer({ catalog, record }) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }} mb={4}>
-      <Grid container spacing={2}>
-        <Grid size={{ md: 6 }} sx={{ height: 600 }}>
+      <Box
+        ref={splitRef}
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          gap: { xs: 2, md: 0 },
+        }}
+      >
+        <Box sx={{ width: isMdUp ? `${leftWidth}%` : '100%', height: { xs: 420, md: 600 }, order: { xs: 2, md: 1 }, minWidth: 0 }}>
           <Paper elevation={3} sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
               <Tab label="Members" />
@@ -191,9 +265,30 @@ export default function ClusterDetailContainer({ catalog, record }) {
               <TargetProperties record={record} />
             </TabPanel>
           </Paper>
-        </Grid>
+        </Box>
 
-        <Grid size={{ md: 6 }} sx={{ height: 600 }}>
+        {isMdUp && (
+          <Box
+            onMouseDown={startSplitDrag}
+            sx={{
+              order: 2,
+              flexShrink: 0,
+              width: '14px',
+              cursor: 'col-resize',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              '&:hover .split-handle-bar': { backgroundColor: 'primary.main' },
+            }}
+          >
+            <Box
+              className="split-handle-bar"
+              sx={{ width: '4px', height: '48px', borderRadius: 2, backgroundColor: 'divider', transition: 'background-color 0.15s' }}
+            />
+          </Box>
+        )}
+
+        <Box sx={{ flex: { md: 1 }, width: { xs: '100%', md: 'auto' }, height: { xs: 420, md: 600 }, order: { xs: 1, md: 3 }, minWidth: 0 }}>
           <Paper
             elevation={3}
             sx={{
@@ -247,31 +342,53 @@ export default function ClusterDetailContainer({ catalog, record }) {
                   <CameraAltIcon />
                 </IconButton>
               </Tooltip>
+
+              <Tooltip title={hasMaps ? 'Maps' : 'No maps available for this survey'}>
+                <span>
+                  <IconButton
+                    aria-label="maps"
+                    disabled={!record || !hasMaps}
+                    onClick={() => setMapsOpen(true)}
+                  >
+                    <LayersIcon />
+                  </IconButton>
+                </span>
+              </Tooltip>
             </Toolbar>
           </Paper>
-        </Grid>
+        </Box>
 
-      </Grid>
-      {(isLoadingNotebook || (notebookHtml && !iframeHeight)) && (
-        <Skeleton variant="rectangular" height={500} sx={{ borderRadius: 1 }} />
-      )}
-      {notebookHtml && (
-        // Paper permanece no DOM com height:0 enquanto o iframe mede seu conteúdo.
-        // overflow:hidden esconde visualmente mas mantém o layout computado,
-        // permitindo que onLoad dispare e scrollHeight seja lido corretamente.
-        <Paper
-          elevation={iframeHeight ? 3 : 0}
-          sx={{ width: '100%', height: iframeHeight || 0, overflow: 'hidden' }}
-        >
-          <iframe
-            ref={iframeRef}
-            srcDoc={notebookHtml}
-            onLoad={handleIframeLoad}
-            style={{ width: '100%', height: iframeHeight || 1, border: 'none', display: 'block' }}
-            title="Cluster Notebook"
-          />
-        </Paper>
-      )}
+      </Box>
+
+      <Paper elevation={3} sx={{ p: 2 }}>
+        <Stack direction="row" justifyContent="flex-end" mb={2}>
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={handleDownloadNotebook}
+            disabled={downloadingNotebook || !record?.meta_id}
+          >
+            {downloadingNotebook ? 'Preparing…' : 'Download notebook'}
+          </Button>
+        </Stack>
+
+        {(isLoadingNotebook || (notebookHtml && !iframeHeight)) && (
+          <Skeleton variant="rectangular" height={500} sx={{ borderRadius: 1 }} />
+        )}
+        {notebookHtml && (
+          <Box sx={{ width: '100%', height: iframeHeight || 0, overflow: 'hidden' }}>
+            <iframe
+              ref={iframeRef}
+              srcDoc={notebookHtml.replace(/<head(\s[^>]*)?>/i, '$&<base target="_blank">')}
+              onLoad={handleIframeLoad}
+              style={{ width: '100%', height: iframeHeight || 1, border: 'none', display: 'block' }}
+              title="Cluster Notebook"
+            />
+          </Box>
+        )}
+      </Paper>
+      <MapsDialog open={mapsOpen} onClose={() => setMapsOpen(false)} surveyId={defaultImage} />
+
       {/* Spacer */}
       <Box mt={6} />
     </Box>
