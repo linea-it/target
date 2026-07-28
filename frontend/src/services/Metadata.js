@@ -85,8 +85,28 @@ export const getClusterMembers = ({ tableId, property_cross_id, value }) => {
 
 export const getNotebookHtml = ({ tableId, propertyId, recordId }) => {
     return api.get(`metadata/user_tables/${tableId}/notebook/`, {
-        params: { [propertyId]: recordId }
+        params: { [propertyId]: recordId },
+        timeout: 120000,
     })
+}
+
+export const downloadClusterNotebook = async ({ tableId, propertyId, recordId }) => {
+    const response = await api.get(`metadata/user_tables/${tableId}/notebook/download/`, {
+        params: { [propertyId]: recordId },
+        responseType: 'blob',
+        timeout: 120000,
+    })
+
+    const clusterId = recordId || 'cluster'
+    const blob = new Blob([response.data], { type: 'application/x-ipynb' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `cluster_${clusterId}_analysis.ipynb`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
 }
 
 export const createTableSettings = (data) => {
@@ -95,4 +115,28 @@ export const createTableSettings = (data) => {
 
 export const updateTableSettings = (data) => {
     return api.patch(`metadata/settings/${data.id}/`, data);
+}
+
+export const getCatalogDiagnostic = ({ tableId }) => {
+    return api.get(`metadata/user_tables/${tableId}/catalog_diagnostic/`)
+}
+
+export const downloadCatalogDiagnostic = async ({ tableId }) => {
+    const response = await api.get(`metadata/user_tables/${tableId}/catalog_diagnostic/download/`, {
+        responseType: 'blob',
+    })
+
+    const blob = new Blob([response.data], { type: 'application/x-ipynb' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `cluster_catalog_diagnostic_${tableId}.ipynb`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+}
+
+export const regenerateCatalogDiagnostic = ({ tableId }) => {
+    return api.post(`metadata/user_tables/${tableId}/catalog_diagnostic/regenerate/`)
 }

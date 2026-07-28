@@ -21,6 +21,12 @@ export const AladinContext = createContext({
   takeSnapshot: () => { },
   addCatalog: () => { },
   gotoRaDec: () => { },
+  mapOverlays: {},
+  getMapsForSurvey: () => null,
+  setMapOverlay: () => { },
+  setMapOpacity: () => { },
+  setMapVisibility: () => { },
+  removeMapOverlay: () => { },
 });
 
 /**

@@ -78,7 +78,7 @@ export default function RegisterCatalogBasicInformation() {
       {catalog.id ? (
         <TextField label="Table" variant="outlined" fullWidth value={`${catalog.schema}.${catalog.table}`} disabled />
       ) : (
-        <UserTableSelect onChange={onSelectTable} value={catalog.schema && catalog.table ? `${catalog.schema}.${catalog.table}` : ''} />
+        <UserTableSelect onChange={onSelectTable} value={catalog.schema && catalog.table ? `${catalog.schema}.${catalog.table}` : ''} label={catalog.catalog_type === 'cluster' ? 'Select Cluster Table' : 'Select Table'} />
       )}
 
       {catalog.catalog_type === 'cluster' && (
