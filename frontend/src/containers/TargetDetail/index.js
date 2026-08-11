@@ -40,19 +40,21 @@ export default function TargetDetailContainer({ catalog, record }) {
   }
 
   return (
-    <Grid container spacing={2} sx={{ height: '100%' }} >
-      <Grid size={{ md: 6 }}>
+    <Grid container spacing={2} sx={{ height: { xs: 'auto', md: '100%' } }} >
+      <Grid size={{ xs: 12, md: 6 }}>
         <Paper sx={{
-          height: '100%',
-          display: 'flex'
+          height: { xs: 'auto', md: '100%' },
+          display: 'flex',
+          minHeight: { xs: 0, md: 'auto' },
         }}>
           <TargetProperties record={record} />
         </Paper>
       </Grid>
-      <Grid size={{ md: 6 }}>
+      <Grid size={{ xs: 12, md: 6 }} sx={{ height: { xs: 420, md: 'auto' } }}>
         <Paper sx={{
           height: '100%',
-          display: 'flex'
+          display: 'flex',
+          minHeight: 420,
         }}
         >
           <AladinViewer />

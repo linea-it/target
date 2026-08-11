@@ -133,6 +133,51 @@ class Table(models.Model):
         help_text=_("Members table for tables with type cluster."),
     )
 
+    DIAGNOSTIC_STATUS_PENDING = "pending"
+    DIAGNOSTIC_STATUS_RUNNING = "running"
+    DIAGNOSTIC_STATUS_DONE = "done"
+    DIAGNOSTIC_STATUS_ERROR = "error"
+    DIAGNOSTIC_STATUS_CHOICES = (
+        (DIAGNOSTIC_STATUS_PENDING, _("pending")),
+        (DIAGNOSTIC_STATUS_RUNNING, _("running")),
+        (DIAGNOSTIC_STATUS_DONE, _("done")),
+        (DIAGNOSTIC_STATUS_ERROR, _("error")),
+    )
+
+    catalog_diagnostic_status = models.CharField(
+        max_length=10,
+        choices=DIAGNOSTIC_STATUS_CHOICES,
+        blank=True,
+        default="",
+        verbose_name=_("Diagnostic Status"),
+        help_text=_("Status of the catalog diagnostic notebook generation."),
+    )
+    catalog_diagnostic_html = models.TextField(
+        blank=True,
+        default="",
+        verbose_name=_("Diagnostic HTML"),
+        help_text=_("Pre-rendered HTML of the catalog diagnostic notebook."),
+    )
+    catalog_diagnostic_notebook = models.FileField(
+        upload_to="catalog_diagnostics/%Y/%m/",
+        blank=True,
+        null=True,
+        verbose_name=_("Diagnostic Notebook"),
+        help_text=_("Executed notebook (.ipynb) for download."),
+    )
+    catalog_diagnostic_error = models.TextField(
+        blank=True,
+        default="",
+        verbose_name=_("Diagnostic Error"),
+        help_text=_("Error message if diagnostic generation failed."),
+    )
+    catalog_diagnostic_updated_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name=_("Diagnostic Updated At"),
+        help_text=_("Last time the diagnostic was generated or updated."),
+    )
+
     class Meta:
         ordering = ("schema__order", "order", "name")
 

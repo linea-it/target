@@ -1,4 +1,6 @@
 from django.conf import settings
+from django.db import transaction
+from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -9,10 +11,16 @@ from target.metadata.models import Column
 from target.metadata.models import Schema
 from target.metadata.models import Settings
 from target.metadata.models import Table
+from target.metadata.notebook_utils import _meta_field
+from target.metadata.notebook_utils import _notebook_to_ipynb_string
+from target.metadata.notebook_utils import _prepare_cluster_notebook
+from target.metadata.notebook_utils import _render_notebook_html
+from target.metadata.notebook_utils import _sanitize_scalar
+from target.metadata.notebook_utils import sanitize_data
+from target.metadata.tasks import generate_catalog_diagnostic
 
 from .serializers import ColumnSerializer
 from .serializers import NestedTableSerializer
-from .serializers import ResumedColumnSerializer
 from .serializers import SchemaSerializer
 from .serializers import SettingsSerializer
 from .serializers import TableSerializer
@@ -20,8 +28,6 @@ from .serializers import TableSerializer
 
 class TableRegistrationError(Exception):
     """Raised when table registration fails"""
-
-    pass
 
 
 class TableDeletePermissionError(PermissionError):
@@ -149,7 +155,8 @@ class UserTableViewSet(ModelViewSet):
             tablename=data.get("name"),
         ):
             table_name = f"{data.get('schema')}.{data.get('name')}"
-            raise TableRegistrationError(f"Table {table_name} not found in database")
+            msg = f"Table {table_name} not found in database"
+            raise TableRegistrationError(msg)
 
         # Tamanho da tabela e quantidade de linhas estimadas.
         stats = db.get_table_status(
@@ -206,7 +213,7 @@ class UserTableViewSet(ModelViewSet):
             if table.catalog_type == Table.CATALOG_TYPE_CLUSTER:
                 related_tablename = data.get("related_table_name", None)
                 if not related_tablename:
-                    raise MissingRelatedTableError()
+                    raise MissingRelatedTableError  # noqa: TRY301
 
                 # region Register related table if not registered
                 if related_tablename:
@@ -264,7 +271,7 @@ class UserTableViewSet(ModelViewSet):
             data = self.get_serializer(instance=table).data
             return Response(data, status=status.HTTP_201_CREATED)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             content = {"error": str(e)}
             return Response(content, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -356,7 +363,9 @@ class UserTableViewSet(ModelViewSet):
         return Response({}, status=status.HTTP_200_OK)
 
     def check_mandatory_ucds(self, table_ucds, required_ucds):
-        """Verifica se todos os UCDs obrigatórios estão presentes e têm colunas válidas."""
+        """Verifica se todos os UCDs
+        obrigatórios estão presentes e têm colunas válidas.
+        """
         missing = []
         for ucd in required_ucds:
             column = table_ucds.get(ucd)
@@ -379,7 +388,8 @@ class UserTableViewSet(ModelViewSet):
             # Check if related table have all required UCDs assigned
             related_ucds = self.get_table_ucds(table.related_table)
             missing = self.check_mandatory_ucds(
-                related_ucds, Table.RELATED_REQUIRED_UCDS
+                related_ucds,
+                Table.RELATED_REQUIRED_UCDS,
             )
             if len(missing) > 0:
                 return Response(
@@ -409,6 +419,17 @@ class UserTableViewSet(ModelViewSet):
         table.is_completed = True
         table.save()
 
+        # Trigger catalog diagnostic generation for cluster catalogs.
+        if table.catalog_type == Table.CATALOG_TYPE_CLUSTER:
+            table.catalog_diagnostic_status = Table.DIAGNOSTIC_STATUS_PENDING
+            table.save(update_fields=["catalog_diagnostic_status"])
+            # on_commit: só dispara a task após o commit da transação do
+            # request (ATOMIC_REQUESTS), garantindo que o worker leia o
+            # estado já persistido (ex.: is_completed=True).
+            transaction.on_commit(
+                lambda: generate_catalog_diagnostic.delay(table.id),
+            )
+
         table.refresh_from_db()
         data = self.get_serializer(instance=table).data
         return Response(data, status=status.HTTP_200_OK)
@@ -430,7 +451,7 @@ class UserTableViewSet(ModelViewSet):
 
     def perform_destroy(self, instance):
         if instance.schema.owner != self.request.user:
-            raise TableDeletePermissionError()
+            raise TableDeletePermissionError
 
         if instance.related_table:
             instance.related_table.delete()
@@ -438,64 +459,19 @@ class UserTableViewSet(ModelViewSet):
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def convert_bigints_to_string(self, data, bigint_columns):
-        if isinstance(data, dict):
-            return {
-                k: str(v)
-                if k in bigint_columns and isinstance(v, int) and v > 9007199254740991
-                else v
-                for k, v in data.items()
-            }
-        elif isinstance(data, list):
-            return [
-                self.convert_bigints_to_string(item, bigint_columns) for item in data
-            ]
-        return data
+    def sanitize_rows(self, data, bigint_columns=None):
+        return sanitize_data(data, bigint_columns)
 
-    @action(detail=True, methods=["get"])
-    def data(self, request, pk=None):
-        # print("-----------------------------")
-
-        # IMPORTANTE: Não pode ser utilizado o self.get_object()
-        # por que falha se um dos campos de filtro for "id"
-        # pk é a identificação que vem na url /{pk}/data/
-        # e não é afetada pelos filtros.
-        queryset = self.get_queryset()
-        table = queryset.prefetch_related("columns").get(pk=pk)
-
-        # print(table)
-        ucds = self.get_table_ucds(table)
-        # print(ucds)
-
-        # Total de linhas estimado da tabela.
-        count = table.nrows
-
-        # Pagination parameters
-        page = int(request.query_params.get("page", 1))
-        page_size = request.query_params.get(
-            "pageSize",
-            int(settings.REST_FRAMEWORK["PAGE_SIZE"]),
-        )
-        # print("Page: ", page)
-        # print("Page Size: ", page_size)
-
-        limit = int(page_size)
-        offset = (limit * page) - limit
-
-        # print("Offset: ", offset)
-        # print("Limit: ", limit)
-
-        # # TODO: selecionar as colunas que serao utilizadas.
-        # columns = request.query_params.get("columns", "")
-        # columns = columns.split(",")
-
-        # Parse Filters
-        url_filters = self.parse_filters(request.query_params)
-        # print("Filters: ", url_filters)
-
-        ordering = request.query_params.get("ordering", None)
-
-        db = MyDB(username=request.user.username)
+    def query_data(  # noqa: PLR0913
+        self,
+        table,
+        limit,
+        offset,
+        url_filters,
+        ordering,
+        ucds,
+    ):
+        db = MyDB(username=self.request.user.username)
         rows, count = db.query(
             tablename=table.name,
             limit=limit,
@@ -509,10 +485,12 @@ class UserTableViewSet(ModelViewSet):
             row.update(
                 {
                     "meta_catalog_id": table.id,
-                    "meta_id": str(row.get(ucds.get("meta.id;meta.main"))),
-                    "meta_ra": str(row.get(ucds.get("pos.eq.ra;meta.main"))),
-                    "meta_dec": str(row.get(ucds.get("pos.eq.dec;meta.main"))),
-                    "meta_radius_arcmin": row.get(ucds.get("phys.angSize;src")),
+                    "meta_id": _meta_field(row.get(ucds.get("meta.id;meta.main"))),
+                    "meta_ra": _meta_field(row.get(ucds.get("pos.eq.ra;meta.main"))),
+                    "meta_dec": _meta_field(row.get(ucds.get("pos.eq.dec;meta.main"))),
+                    "meta_radius_arcmin": _sanitize_scalar(
+                        row.get(ucds.get("phys.angSize;src")),
+                    ),
                 },
             )
 
@@ -523,18 +501,174 @@ class UserTableViewSet(ModelViewSet):
             if datatype in ["bigint", "int8"]:
                 bigint_columns.append(col.name)
 
-        parsed_rows = self.convert_bigints_to_string(rows, bigint_columns)
+        parsed_rows = self.sanitize_rows(rows, bigint_columns)
+        return parsed_rows, count
 
-        # columns_data = ResumedColumnSerializer(
-        #     table.columns.all(),
-        #     many=True,
-        # ).data
+    @action(detail=True, methods=["get"])
+    def data(self, request, pk=None):
+        # IMPORTANTE: Não pode ser utilizado o self.get_object()
+        # por que falha se um dos campos de filtro for "id"
+        # pk é a identificação que vem na url /{pk}/data/
+        # e não é afetada pelos filtros.
+        queryset = self.get_queryset()
+        table = queryset.prefetch_related("columns").get(pk=pk)
+
+        ucds = self.get_table_ucds(table)
+
+        # Total de linhas estimado da tabela.
+        count = table.nrows
+
+        # Pagination parameters
+        page = int(request.query_params.get("page", 1))
+        page_size = request.query_params.get(
+            "pageSize",
+            int(settings.REST_FRAMEWORK["PAGE_SIZE"]),
+        )
+
+        limit = int(page_size)
+        offset = (limit * page) - limit
+
+        # TODO: selecionar as colunas que serao utilizadas.
+
+        # Parse Filters
+        url_filters = self.parse_filters(request.query_params)
+
+        ordering = request.query_params.get("ordering", None)
+
+        parsed_rows, count = self.query_data(
+            table=table,
+            limit=limit,
+            offset=offset,
+            url_filters=url_filters,
+            ordering=ordering,
+            ucds=ucds,
+        )
 
         results = {
             "results": parsed_rows,
             "count": count,
-            # "columns": columns_data,
             "has_more": (offset + limit) < count,
         }
 
         return Response(results, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["get"])
+    def notebook(self, request, pk=None):
+        """Execute cluster analysis notebook and return rendered HTML."""
+
+        # Não usar self.get_object(): o filtro "id" colide com o
+        # query param ?id=<cluster> usado para selecionar o cluster.
+        table = self.get_queryset().get(pk=pk)
+        context, error_response = _prepare_cluster_notebook(table, request, self)
+        if error_response:
+            return Response(
+                error_response,
+                status=error_response.get("status", status.HTTP_400_BAD_REQUEST),
+            )
+
+        html = _render_notebook_html(context["notebook"])
+        return Response({"html": html}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["get"], url_path="notebook/download")
+    def notebook_download(self, request, pk=None):
+        """Download cluster analysis notebook with hardcoded injected data."""
+
+        # Não usar self.get_object(): o filtro "id" colide com o
+        # query param ?id=<cluster> usado para selecionar o cluster.
+        table = self.get_queryset().get(pk=pk)
+        context, error_response = _prepare_cluster_notebook(table, request, self)
+        if error_response:
+            return Response(
+                error_response,
+                status=error_response.get("status", status.HTTP_400_BAD_REQUEST),
+            )
+
+        cluster_id = (
+            context["main_record"].get("meta_id")
+            or context["main_record"].get("id")
+            or "cluster"
+        )
+
+        content = _notebook_to_ipynb_string(context["notebook"])
+        response = HttpResponse(content, content_type="application/x-ipynb")
+        response["Content-Disposition"] = (
+            f'attachment; filename="cluster_{cluster_id}_analysis.ipynb"'
+        )
+        return response
+
+    @action(detail=True, methods=["get"], url_path="catalog_diagnostic")
+    def catalog_diagnostic(self, request, pk=None):
+        """Return pre-rendered catalog diagnostic HTML if available."""
+
+        table = self.get_object()
+        if (
+            table.catalog_type != Table.CATALOG_TYPE_CLUSTER
+            or not table.related_table
+        ):
+            return Response(
+                {"error": "Diagnostic is only available for CAnVAS cluster catalogs."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {
+                "html": table.catalog_diagnostic_html,
+                "status": table.catalog_diagnostic_status,
+                "error": table.catalog_diagnostic_error,
+                "updated_at": table.catalog_diagnostic_updated_at,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["get"], url_path="catalog_diagnostic/download")
+    def catalog_diagnostic_download(self, request, pk=None):
+        """Download pre-rendered catalog diagnostic notebook."""
+
+        table = self.get_object()
+        if (
+            table.catalog_type != Table.CATALOG_TYPE_CLUSTER
+            or not table.related_table
+        ):
+            return Response(
+                {"error": "Diagnostic is only available for CAnVAS cluster catalogs."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not table.catalog_diagnostic_notebook:
+            return Response(
+                {"error": "Diagnostic notebook not available."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        response = HttpResponse(
+            table.catalog_diagnostic_notebook.read(),
+            content_type="application/x-ipynb",
+        )
+        filename = table.catalog_diagnostic_notebook.name.split("/")[-1]
+        response["Content-Disposition"] = (
+            f'attachment; filename="{filename}"'
+        )
+        return response
+
+    @action(detail=True, methods=["post"], url_path="catalog_diagnostic/regenerate")
+    def catalog_diagnostic_regenerate(self, request, pk=None):
+        """Re-trigger catalog diagnostic generation."""
+
+        table = self.get_object()
+        if (
+            table.catalog_type != Table.CATALOG_TYPE_CLUSTER
+            or not table.related_table
+        ):
+            return Response(
+                {"error": "Diagnostic is only available for CAnVAS cluster catalogs."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        table.catalog_diagnostic_status = Table.DIAGNOSTIC_STATUS_PENDING
+        table.save(update_fields=["catalog_diagnostic_status"])
+        generate_catalog_diagnostic.delay(table.id)
+
+        return Response(
+            {"status": table.catalog_diagnostic_status},
+            status=status.HTTP_202_ACCEPTED,
+        )

@@ -6,7 +6,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useQuery } from '@tanstack/react-query'
 import { availableUserTables } from '@/services/Metadata';
 
-export default function UserTableSelect({ onChange, value }) {
+export default function UserTableSelect({ onChange, value, label }) {
 
   const { isLoading, data } = useQuery({
     queryKey: ['availableUserTables'],
@@ -21,7 +21,7 @@ export default function UserTableSelect({ onChange, value }) {
     <TextField
       id="available-user-tables-select"
       select
-      label="Select Table"
+      label={label}
       fullWidth
       disabled={isLoading}
       slotProps={{
@@ -50,9 +50,11 @@ export default function UserTableSelect({ onChange, value }) {
   )
 }
 UserTableSelect.defaultProps = {
-  value: ''
+  value: '',
+  label: 'Select Table'
 }
 UserTableSelect.propTypes = {
   onChange: PropTypes.func.isRequired,
-  value: PropTypes.string
+  value: PropTypes.string,
+  label: PropTypes.string
 }

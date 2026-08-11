@@ -348,7 +348,7 @@ REST_FRAMEWORK = {
         "rest_framework.filters.SearchFilter",
         "rest_framework.filters.OrderingFilter",
     ],
-    "DEFAULT_PAGINATION_CLASS": "common.pagination.CustomPageNumberPagination",
+    "DEFAULT_PAGINATION_CLASS": "target.common.pagination.CustomPageNumberPagination",
     "PAGE_SIZE": 100,
 }
 

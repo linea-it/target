@@ -23,8 +23,8 @@ export default function RegisterCatalogConfirmation() {
   const mutation = useMutation({
     mutationFn: completeUserTableRegistration,
     onSuccess: (data, variables, context) => {
-      // Redireciona para a Home.
-      router.push('/')
+      // Redireciona para a listagem de catálogos.
+      router.push('/catalogs')
     },
     onError: (error, variables, context) => {
       // TODO: handle Error

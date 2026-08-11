@@ -59,6 +59,7 @@ target-version = "py312"
 extend-exclude = [
     "*/migrations/*.py",
     "staticfiles/*",
+    "target/metadata/notebooks/*.ipynb",
 ]
 
 [tool.ruff.lint]

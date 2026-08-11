@@ -21,7 +21,7 @@ export default function RelatedTableSelect({ onChange, value }) {
     <TextField
       id="available-related-tables-select"
       select
-      label="Select Related Table"
+      label="Select Related Cluster Members Table"
       fullWidth
       disabled={isLoading}
       slotProps={{
