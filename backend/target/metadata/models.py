@@ -58,6 +58,15 @@ class Table(models.Model):
         "meta.id.cross",
     ]
 
+    # Columns added by Canvas to every registered table so users can
+    # evaluate the quality of each record. Reserved names: registration
+    # fails if the user's table already has a column with one of these
+    # names. Kept out of the Column metadata catalog on purpose.
+    RESERVED_ANNOTATION_COLUMNS = {
+        "meta_quality_flag": "boolean",
+        "meta_comment": "text",
+    }
+
     schema = models.ForeignKey(
         Schema,
         related_name="tables",

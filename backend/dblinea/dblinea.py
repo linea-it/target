@@ -218,8 +218,7 @@ class DBBase:
         with self.get_engine().connect() as con:
             if parameters:
                 return con.execute(stm, parameters)
-            else:
-                return con.execute(stm)
+            return con.execute(stm)
 
     def fetchall(self, stm, parameters=None):
         """Executa a query e retorna todos os resultados em uma lista.
@@ -355,8 +354,7 @@ class DBBase:
         with self.get_engine().connect() as con:
             if parameters:
                 return con.execute(stm, parameters).scalar()
-            else:
-                return con.execute(stm).scalar()
+            return con.execute(stm).scalar()
 
     def to_dict(self, row):
         """Converte uma linha de resultado do SQLAlchemy queryset para Dict
@@ -535,14 +533,13 @@ class DBBase:
 
         return conditions, all_values
 
-
     def analyze_table(self, schema, tablename):
         """Executa o comando ANALYZE na tabela especificada.
-        
+
         Args:
             schema (str): Nome do schema onde a tabela está localizada.
             tablename (str): Nome da tabela a ser analisada.
-        
+
         Returns:
             None
         """
@@ -552,6 +549,32 @@ class DBBase:
             self._debug_query(analyze_stm)
             con.execute(analyze_stm)
 
+    def add_columns(self, schema, tablename, columns):
+        """Adiciona colunas em uma tabela existente via ALTER TABLE.
+
+        Assume que os nomes de coluna são constantes internas (não input
+        de usuário) e que schema/tablename já foram validados previamente
+        (ex: table_exists). Não sobrescreve colunas já existentes: usa
+        ADD COLUMN IF NOT EXISTS, então a checagem de colisão de nome deve
+        ser feita pelo chamador antes de invocar este método.
+
+        Args:
+            schema (str): Nome do schema onde a tabela está localizada.
+            tablename (str): Nome da tabela a ser alterada.
+            columns (dict): {nome_da_coluna: tipo_sql} a adicionar.
+
+        Returns:
+            None
+        """
+        clauses = ", ".join(
+            f'ADD COLUMN IF NOT EXISTS "{name}" {sql_type}'
+            for name, sql_type in columns.items()
+        )
+        stm = text(f'ALTER TABLE "{schema}"."{tablename}" {clauses};')
+
+        with self.get_engine().begin() as con:
+            self._debug_query(stm)
+            con.execute(stm)
 
     def drop_table(self, schema, tablename):
         """Remove a tabela especificada do banco de dados.

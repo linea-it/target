@@ -51,6 +51,17 @@ class MissingRelatedTableError(TableRegistrationError):
         super().__init__("Related table must be provided for cluster catalogs.")
 
 
+class ReservedColumnConflictError(TableRegistrationError):
+    """Raised when the user's table already has a column name reserved by Canvas"""
+
+    def __init__(self, columns):
+        cols = ", ".join(sorted(columns))
+        super().__init__(
+            "Table already has column(s) reserved for Canvas annotations: "
+            f"{cols}. Please rename them in Daiquiri before registering.",
+        )
+
+
 class SchemaViewSet(ModelViewSet):
     serializer_class = SchemaSerializer
     queryset = Schema.objects.all()
@@ -137,6 +148,21 @@ class UserTableViewSet(ModelViewSet):
         # check if the table is registered
         return Table.objects.filter(name=tablename, schema__name=schema).exists()
 
+    def ensure_annotation_columns(self, db, tablename):
+        """Garante que a tabela do usuário tenha as colunas reservadas
+        para avaliação (meta_quality_flag, meta_comment).
+
+        Aborta caso a tabela já tenha uma coluna com um desses nomes,
+        para evitar sobrescrever silenciosamente uma coluna do usuário
+        com semântica diferente.
+        """
+        existing_columns = set(db.get_table_columns(tablename))
+        conflicts = existing_columns & set(Table.RESERVED_ANNOTATION_COLUMNS)
+        if conflicts:
+            raise ReservedColumnConflictError(conflicts)
+
+        db.add_columns(tablename, Table.RESERVED_ANNOTATION_COLUMNS)
+
     def register_table(self, user, data):
         # Instancia do MyDB
         db = MyDB(username=user.username)
@@ -157,6 +183,10 @@ class UserTableViewSet(ModelViewSet):
             table_name = f"{data.get('schema')}.{data.get('name')}"
             msg = f"Table {table_name} not found in database"
             raise TableRegistrationError(msg)
+
+        # Garante as colunas de avaliação (meta_quality_flag, meta_comment)
+        # antes de ler o schema da tabela, para que já apareçam no describe.
+        self.ensure_annotation_columns(db, data.get("name"))
 
         # Tamanho da tabela e quantidade de linhas estimadas.
         stats = db.get_table_status(
@@ -189,8 +219,14 @@ class UserTableViewSet(ModelViewSet):
         )
 
         # Criar o registro das colunas da tabela.
+        # As colunas reservadas para avaliação (meta_quality_flag,
+        # meta_comment) ficam de fora do catálogo de Column: não aparecem
+        # no grid nem no mapeamento de UCDs, apenas fluem "de graça" nas
+        # linhas retornadas por MyDB.query() (SELECT *).
         columns = db.describe_table(tablename=table.name)
         for c in columns:
+            if c.get("name") in Table.RESERVED_ANNOTATION_COLUMNS:
+                continue
             Column.objects.create(
                 table=table,
                 name=c.get("name"),
@@ -601,10 +637,7 @@ class UserTableViewSet(ModelViewSet):
         """Return pre-rendered catalog diagnostic HTML if available."""
 
         table = self.get_object()
-        if (
-            table.catalog_type != Table.CATALOG_TYPE_CLUSTER
-            or not table.related_table
-        ):
+        if table.catalog_type != Table.CATALOG_TYPE_CLUSTER or not table.related_table:
             return Response(
                 {"error": "Diagnostic is only available for CAnVAS cluster catalogs."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -625,10 +658,7 @@ class UserTableViewSet(ModelViewSet):
         """Download pre-rendered catalog diagnostic notebook."""
 
         table = self.get_object()
-        if (
-            table.catalog_type != Table.CATALOG_TYPE_CLUSTER
-            or not table.related_table
-        ):
+        if table.catalog_type != Table.CATALOG_TYPE_CLUSTER or not table.related_table:
             return Response(
                 {"error": "Diagnostic is only available for CAnVAS cluster catalogs."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -645,9 +675,7 @@ class UserTableViewSet(ModelViewSet):
             content_type="application/x-ipynb",
         )
         filename = table.catalog_diagnostic_notebook.name.split("/")[-1]
-        response["Content-Disposition"] = (
-            f'attachment; filename="{filename}"'
-        )
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
 
     @action(detail=True, methods=["post"], url_path="catalog_diagnostic/regenerate")
@@ -655,10 +683,7 @@ class UserTableViewSet(ModelViewSet):
         """Re-trigger catalog diagnostic generation."""
 
         table = self.get_object()
-        if (
-            table.catalog_type != Table.CATALOG_TYPE_CLUSTER
-            or not table.related_table
-        ):
+        if table.catalog_type != Table.CATALOG_TYPE_CLUSTER or not table.related_table:
             return Response(
                 {"error": "Diagnostic is only available for CAnVAS cluster catalogs."},
                 status=status.HTTP_400_BAD_REQUEST,
