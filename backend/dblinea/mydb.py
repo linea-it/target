@@ -203,6 +203,26 @@ class MyDB(DBBase):
         """
         super().add_columns(schema=self.schema, tablename=tablename, columns=columns)
 
+    def update_row(self, tablename, id_column, id_value, values):
+        """Atualiza uma linha de uma tabela do schema do usuário.
+
+        Args:
+            tablename (str): Nome da tabela a ser atualizada.
+            id_column (str): Nome da coluna usada para localizar a linha.
+            id_value: Valor da coluna id_column que identifica a linha.
+            values (dict): {nome_da_coluna: novo_valor} a atualizar.
+
+        Returns:
+            int: Número de linhas afetadas (0 ou 1).
+        """
+        return super().update_row(
+            schema=self.schema,
+            tablename=tablename,
+            id_column=id_column,
+            id_value=id_value,
+            values=values,
+        )
+
     # ---------------------------------------------
 
     def get_user_tables_detailed(self):

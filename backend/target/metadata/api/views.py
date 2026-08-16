@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import transaction
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -587,6 +588,93 @@ class UserTableViewSet(ModelViewSet):
         }
 
         return Response(results, status=status.HTTP_200_OK)
+
+    def _validate_annotation_payload(self, data):
+        """Valida o payload de anotação e retorna {coluna_fisica: valor}.
+
+        Lança ValueError com a mensagem de erro caso o payload seja inválido.
+        """
+        values = {}
+
+        if "quality_flag" in data:
+            quality_flag = data.get("quality_flag")
+            if quality_flag is not None and not isinstance(quality_flag, bool):
+                msg = "quality_flag must be a boolean or null."
+                raise ValueError(msg)
+            values["meta_quality_flag"] = quality_flag
+
+        if "comment" in data:
+            comment = data.get("comment")
+            if comment is not None and not isinstance(comment, str):
+                msg = "comment must be a string or null."
+                raise ValueError(msg)
+            values["meta_comment"] = comment
+
+        if not values:
+            msg = "Provide at least one of: quality_flag, comment."
+            raise ValueError(msg)
+
+        return values
+
+    @action(
+        detail=True,
+        methods=["patch"],
+        url_path=r"rows/(?P<row_id>[^/.]+)/annotation",
+    )
+    def annotation(self, request, pk=None, row_id=None):
+        """Grava a avaliação de qualidade (meta_quality_flag) e/ou o
+        comentário (meta_comment) de uma linha da tabela do usuário.
+
+        Body: {"quality_flag": true|false|null, "comment": "..."|null}
+        Ao menos um dos dois campos deve ser enviado.
+        """
+        table = get_object_or_404(self.get_queryset(), pk=pk)
+
+        if table.schema.owner != request.user:
+            return Response(
+                {"error": "You do not have permission to annotate this table."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        id_column = self.get_table_ucds(table).get("meta.id;meta.main")
+        if not id_column:
+            return Response(
+                {
+                    "error": "Table is missing the mandatory id column "
+                    "(meta.id;meta.main) required to annotate rows.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            values = self._validate_annotation_payload(request.data)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        db = MyDB(username=request.user.username)
+        try:
+            updated = db.update_row(
+                tablename=table.name,
+                id_column=id_column,
+                id_value=row_id,
+                values=values,
+            )
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        if updated == 0:
+            return Response(
+                {"error": f"Row {row_id} not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        response_data = {"row_id": row_id}
+        if "meta_quality_flag" in values:
+            response_data["quality_flag"] = values["meta_quality_flag"]
+        if "meta_comment" in values:
+            response_data["comment"] = values["meta_comment"]
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["get"])
     def notebook(self, request, pk=None):

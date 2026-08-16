@@ -5,6 +5,8 @@ class TableNotFoundError(Exception):
         super().__init__(f"Table {tablename} not found in schema {schema}")
 
 
+import re
+
 import pandas as pd
 import sqlalchemy
 from sqlalchemy import MetaData
@@ -549,6 +551,20 @@ class DBBase:
             self._debug_query(analyze_stm)
             con.execute(analyze_stm)
 
+    _SAFE_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+    def _assert_safe_identifier(self, name):
+        """Garante que `name` é um identificador seguro para ser
+        interpolado diretamente em SQL (schema/tabela/coluna).
+
+        Usado em métodos que montam DDL/DML via string porque SqlAlchemy
+        não parametriza identificadores (só valores). Os valores em si
+        sempre devem ir como bind parameters, nunca por aqui.
+        """
+        if not isinstance(name, str) or not self._SAFE_IDENTIFIER_RE.match(name):
+            msg = f"Unsafe SQL identifier: {name!r}"
+            raise ValueError(msg)
+
     def add_columns(self, schema, tablename, columns):
         """Adiciona colunas em uma tabela existente via ALTER TABLE.
 
@@ -566,6 +582,11 @@ class DBBase:
         Returns:
             None
         """
+        self._assert_safe_identifier(schema)
+        self._assert_safe_identifier(tablename)
+        for name in columns:
+            self._assert_safe_identifier(name)
+
         clauses = ", ".join(
             f'ADD COLUMN IF NOT EXISTS "{name}" {sql_type}'
             for name, sql_type in columns.items()
@@ -575,6 +596,42 @@ class DBBase:
         with self.get_engine().begin() as con:
             self._debug_query(stm)
             con.execute(stm)
+
+    def update_row(self, schema, tablename, id_column, id_value, values):
+        """Atualiza uma única linha de uma tabela via UPDATE parametrizado.
+
+        Nomes de coluna (id_column e chaves de values) devem ser constantes
+        controladas pelo chamador, não input direto do usuário — apenas os
+        valores (values, id_value) são passados como bind parameters.
+
+        Args:
+            schema (str): Nome do schema onde a tabela está localizada.
+            tablename (str): Nome da tabela a ser atualizada.
+            id_column (str): Nome da coluna usada para localizar a linha.
+            id_value: Valor da coluna id_column que identifica a linha.
+            values (dict): {nome_da_coluna: novo_valor} a atualizar.
+
+        Returns:
+            int: Número de linhas afetadas (0 ou 1).
+        """
+        self._assert_safe_identifier(schema)
+        self._assert_safe_identifier(tablename)
+        self._assert_safe_identifier(id_column)
+        for name in values:
+            self._assert_safe_identifier(name)
+
+        set_clause = ", ".join(f'"{name}" = :set__{name}' for name in values)
+        stm = text(
+            f'UPDATE "{schema}"."{tablename}" SET {set_clause} '  # noqa: S608
+            f'WHERE "{id_column}" = :id_value',
+        )
+        params = {f"set__{name}": value for name, value in values.items()}
+        params["id_value"] = id_value
+
+        with self.get_engine().begin() as con:
+            self._debug_query(stm)
+            result = con.execute(stm, params)
+            return result.rowcount
 
     def drop_table(self, schema, tablename):
         """Remove a tabela especificada do banco de dados.
