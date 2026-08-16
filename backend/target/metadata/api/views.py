@@ -8,6 +8,10 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from dblinea import MyDB
+from target.metadata.annotation import ReservedColumnConflictError
+from target.metadata.annotation import TableNotInDatabaseError
+from target.metadata.annotation import ensure_annotation_columns
+from target.metadata.annotation import ensure_annotation_columns_lazy
 from target.metadata.models import Column
 from target.metadata.models import Schema
 from target.metadata.models import Settings
@@ -50,17 +54,6 @@ class MissingRelatedTableError(TableRegistrationError):
 
     def __init__(self):
         super().__init__("Related table must be provided for cluster catalogs.")
-
-
-class ReservedColumnConflictError(TableRegistrationError):
-    """Raised when the user's table already has a column name reserved by Canvas"""
-
-    def __init__(self, columns):
-        cols = ", ".join(sorted(columns))
-        super().__init__(
-            "Table already has column(s) reserved for Canvas annotations: "
-            f"{cols}. Please rename them in Daiquiri before registering.",
-        )
 
 
 class SchemaViewSet(ModelViewSet):
@@ -149,21 +142,6 @@ class UserTableViewSet(ModelViewSet):
         # check if the table is registered
         return Table.objects.filter(name=tablename, schema__name=schema).exists()
 
-    def ensure_annotation_columns(self, db, tablename):
-        """Garante que a tabela do usuário tenha as colunas reservadas
-        para avaliação (meta_quality_flag, meta_comment).
-
-        Aborta caso a tabela já tenha uma coluna com um desses nomes,
-        para evitar sobrescrever silenciosamente uma coluna do usuário
-        com semântica diferente.
-        """
-        existing_columns = set(db.get_table_columns(tablename))
-        conflicts = existing_columns & set(Table.RESERVED_ANNOTATION_COLUMNS)
-        if conflicts:
-            raise ReservedColumnConflictError(conflicts)
-
-        db.add_columns(tablename, Table.RESERVED_ANNOTATION_COLUMNS)
-
     def register_table(self, user, data):
         # Instancia do MyDB
         db = MyDB(username=user.username)
@@ -187,7 +165,7 @@ class UserTableViewSet(ModelViewSet):
 
         # Garante as colunas de avaliação (meta_quality_flag, meta_comment)
         # antes de ler o schema da tabela, para que já apareçam no describe.
-        self.ensure_annotation_columns(db, data.get("name"))
+        ensure_annotation_columns(db, data.get("name"))
 
         # Tamanho da tabela e quantidade de linhas estimadas.
         stats = db.get_table_status(
@@ -550,6 +528,17 @@ class UserTableViewSet(ModelViewSet):
         queryset = self.get_queryset()
         table = queryset.prefetch_related("columns").get(pk=pk)
 
+        # Self-healing: garante as colunas de avaliação mesmo em tabelas
+        # registradas antes dessa feature existir, ou se a tabela tiver
+        # sido recriada no Daiquiri depois do registro no Canvas.
+        db = MyDB(username=request.user.username)
+        try:
+            ensure_annotation_columns_lazy(db, table)
+        except TableNotInDatabaseError as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except ReservedColumnConflictError as e:
+            return Response({"error": str(e)}, status=status.HTTP_409_CONFLICT)
+
         ucds = self.get_table_ucds(table)
 
         # Total de linhas estimado da tabela.
@@ -616,6 +605,55 @@ class UserTableViewSet(ModelViewSet):
 
         return values
 
+    def _prepare_annotation_target(self, request, table):
+        """Garante que a tabela esteja pronta para receber anotações
+        (colunas existentes, self-healing se preciso) e resolve a coluna
+        real de id.
+
+        Returns:
+            (db, id_column, error_response). error_response é None quando
+            tudo ok; nesse caso db/id_column já podem ser usados. Quando
+            error_response não é None, db e id_column são None e o
+            chamador deve retornar error_response diretamente.
+        """
+        db = MyDB(username=request.user.username)
+        try:
+            ensure_annotation_columns_lazy(db, table)
+        except TableNotInDatabaseError as e:
+            return (
+                None,
+                None,
+                Response(
+                    {"error": str(e)},
+                    status=status.HTTP_404_NOT_FOUND,
+                ),
+            )
+        except ReservedColumnConflictError as e:
+            return (
+                None,
+                None,
+                Response(
+                    {"error": str(e)},
+                    status=status.HTTP_409_CONFLICT,
+                ),
+            )
+
+        id_column = self.get_table_ucds(table).get("meta.id;meta.main")
+        if not id_column:
+            return (
+                None,
+                None,
+                Response(
+                    {
+                        "error": "Table is missing the mandatory id column "
+                        "(meta.id;meta.main) required to annotate rows.",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                ),
+            )
+
+        return db, id_column, None
+
     @action(
         detail=True,
         methods=["patch"],
@@ -636,22 +674,15 @@ class UserTableViewSet(ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        id_column = self.get_table_ucds(table).get("meta.id;meta.main")
-        if not id_column:
-            return Response(
-                {
-                    "error": "Table is missing the mandatory id column "
-                    "(meta.id;meta.main) required to annotate rows.",
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        db, id_column, error_response = self._prepare_annotation_target(request, table)
+        if error_response:
+            return error_response
 
         try:
             values = self._validate_annotation_payload(request.data)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        db = MyDB(username=request.user.username)
         try:
             updated = db.update_row(
                 tablename=table.name,
