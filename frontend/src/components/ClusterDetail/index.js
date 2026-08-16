@@ -25,6 +25,7 @@ import { getClusterMembers } from '@/services/Metadata';
 
 import AladinViewer from '@/components/Aladin/AladinViewer';
 import MapsDialog from '@/components/Aladin/MapsDialog';
+import AnnotationPanel from '@/components/AnnotationPanel';
 
 export default function ClusterDetail(props) {
   const pathname = usePathname()
@@ -188,6 +189,7 @@ export default function ClusterDetail(props) {
           </Box>
         )}
       </Box>
+      <AnnotationPanel />
 
       <MapsDialog open={mapsOpen} onClose={() => setMapsOpen(false)} surveyId={defaultImage} />
     </Stack>

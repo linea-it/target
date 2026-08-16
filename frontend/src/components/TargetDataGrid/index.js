@@ -1,12 +1,32 @@
 'use client';
 import * as React from 'react';
-import { DataGrid } from '@mui/x-data-grid';
-import { getTableData } from '@/services/Metadata';
+import { DataGrid, useGridApiRef } from '@mui/x-data-grid';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import { useMutation } from '@tanstack/react-query';
+import { getTableData, annotateTableRow } from '@/services/Metadata';
 import { useCatalog } from '@/contexts/CatalogContext'
+
+// Cicla o valor tri-state ao clicar: não avaliado -> bom -> ruim -> não avaliado
+const nextQualityFlag = (current) => {
+  if (current === true) return false;
+  if (current === false) return null;
+  return true;
+};
+
+const QUALITY_FLAG_META = {
+  true: { icon: CheckCircleIcon, color: 'success', label: 'Good' },
+  false: { icon: CancelIcon, color: 'error', label: 'Bad' },
+  null: { icon: HelpOutlineIcon, color: 'disabled', label: 'Not reviewed' },
+};
 
 export default function TargetDataGrid(props) {
 
-  const { selectedRecord } = useCatalog()
+  const { selectedRecord, setSelectedRecord, catalog } = useCatalog()
+  const apiRef = useGridApiRef();
 
 
   // ids das rows atualmente carregadas/visíveis (atualizado no dataSource.getRows)
@@ -29,6 +49,96 @@ export default function TargetDataGrid(props) {
 
   }, [selectedRecord, visibleRowIds])
 
+  // Nesta aplicação só existe seleção de linha, nunca de célula. O grid,
+  // por padrão, trata o foco de célula (clique ou navegação por setas) como
+  // algo separado da seleção de linha, o que exigia um segundo clique ou o
+  // Shift+seta pra realmente selecionar. Sincronizando aqui, qualquer célula
+  // que ganhe foco (por clique ou teclado) já seleciona a linha inteira.
+  //
+  // Importante: atualiza o rowSelectionModel controlado diretamente (mesmo
+  // caminho que um clique normal já usa via onRowSelectionModelChange), em
+  // vez de chamar apiRef.current.selectRow(). Como o componente é
+  // totalmente controlado, selectRow() mexe no estado interno do grid mas
+  // fica sem efeito visual (o destaque da linha some) porque o próximo
+  // render reconcilia com o rowSelectionModel controlado.
+  React.useEffect(() => {
+    return apiRef.current.subscribeEvent('cellFocusIn', (params) => {
+      setRowSelectionModel({ type: 'include', ids: new Set([params.id]) })
+      const row = apiRef.current.getRow(params.id)
+      props.onChangeSelection(row ? [row] : [])
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiRef])
+
+  // Mutation usada pelo clique direto na coluna "Quality" do grid
+  const qualityMutation = useMutation({
+    mutationFn: ({ rowId, quality_flag }) =>
+      annotateTableRow({ tableId: props.tableId, rowId, quality_flag }),
+  })
+
+  const handleQualityClick = (row) => {
+    const newFlag = nextQualityFlag(row.meta_quality_flag)
+    qualityMutation.mutate(
+      { rowId: row.meta_id, quality_flag: newFlag },
+      {
+        onSuccess: () => {
+          // updateRows() não repinta a célula quando o grid usa `dataSource`
+          // (o valor exibido vem do cache interno do dataSource, não do
+          // client row model). Invalida o cache e refaz o fetch da página
+          // atual, que é o jeito suportado de refletir a mudança.
+          apiRef.current.dataSource.cache.clear()
+          apiRef.current.dataSource.fetchRows()
+
+          // Mantém o AnnotationPanel em sincronia se essa for a linha selecionada
+          if (selectedRecord && String(selectedRecord.meta_id) === String(row.meta_id)) {
+            setSelectedRecord({ ...selectedRecord, meta_quality_flag: newFlag })
+          }
+        },
+      },
+    )
+  }
+
+  // Colunas de avaliação (meta_quality_flag, meta_comment): não fazem parte
+  // do catálogo de Column do metadata, mas já vêm nas linhas (SELECT *),
+  // então são adicionadas manualmente aqui, no final do grid. "Quality" é
+  // clicável (cicla o valor); "Comment" é somente leitura (editado no
+  // AnnotationPanel).
+  const annotationColumns = [
+    {
+      field: 'meta_quality_flag',
+      headerName: 'Quality',
+      width: 110,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => {
+        const meta = QUALITY_FLAG_META[String(params.value)] ?? QUALITY_FLAG_META.null
+        const Icon = meta.icon
+        const isSelectedRow =
+          !!selectedRecord && String(selectedRecord.meta_id) === String(params.row.meta_id)
+        const title = isSelectedRow ? `${meta.label} — click to change` : `${meta.label} — select this row to rate it`
+        return (
+          <Tooltip title={title}>
+            <span>
+              <IconButton
+                size="small"
+                disabled={!isSelectedRow}
+                onClick={() => handleQualityClick(params.row)}
+              >
+                <Icon fontSize="small" color={meta.color} />
+              </IconButton>
+            </span>
+          </Tooltip>
+        )
+      },
+    },
+    {
+      field: 'meta_comment',
+      headerName: 'Comment',
+      width: 220,
+      sortable: false,
+      filterable: false,
+    },
+  ]
 
   const makeColumns = () => {
     const mainUcds = ['meta.id;meta.main;meta.ref', 'pos.eq.ra;meta.main', 'pos.eq.dec;meta.main']
@@ -53,7 +163,7 @@ export default function TargetDataGrid(props) {
     })
   }
 
-  const columns = makeColumns();
+  const columns = [...makeColumns(), ...annotationColumns];
 
   const dataSource = React.useMemo(
     () => ({
@@ -97,11 +207,23 @@ export default function TargetDataGrid(props) {
     <DataGrid
       showToolbar
 
+      // O tom padrão do Mui-selected é sutil demais e se confunde com o
+      // hover. Deixa o fundo da linha selecionada bem mais evidente.
+      sx={{
+        '& .MuiDataGrid-row.Mui-selected': {
+          backgroundColor: 'primary.light',
+        },
+        '& .MuiDataGrid-row.Mui-selected:hover': {
+          backgroundColor: 'primary.light',
+        },
+      }}
+
+      apiRef={apiRef}
       columns={columns}
       dataSource={dataSource}
       getRowId={(row) => BigInt(row.meta_id)}
       // Disable datasouce Cache for tests
-      // dataSourceCache={null}      
+      // dataSourceCache={null}
       onDataSourceError={(error) => {
         console.log('Data source error:', error);
       }}
@@ -115,10 +237,23 @@ export default function TargetDataGrid(props) {
       onRowSelectionModelChange={handleSelectionChange}
       disableMultipleRowSelection
       keepNonExistentRowsSelected
+      // A seleção de linha é toda controlada pelo listener de cellFocusIn
+      // (cobre clique e teclado). Desabilita o clique-para-selecionar
+      // nativo do grid pra evitar as duas lógicas brigando entre si no
+      // mesmo clique (uma seleciona, a outra desfaz por comportamento de
+      // toggle).
+      disableRowSelectionOnClick
       // checkboxSelection
 
       initialState={{
         pagination: { paginationModel: { pageSize: 50, page: 0 }, rowCount: 0 },
+        // Ordena por padrão pela coluna real de id (property_id, mapeada
+        // via UCD meta.id;meta.main) — sem isso o Postgres retorna as
+        // linhas em ordem física/não garantida e nenhuma seta de
+        // ordenação aparecia no cabeçalho.
+        sorting: catalog?.property_id
+          ? { sortModel: [{ field: catalog.property_id, sort: 'asc' }] }
+          : undefined,
       }}
 
       slotProps={{
