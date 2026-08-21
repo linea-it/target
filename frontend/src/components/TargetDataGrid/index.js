@@ -26,7 +26,7 @@ const QUALITY_FLAG_META = {
 
 export default function TargetDataGrid(props) {
 
-  const { selectedRecord, setSelectedRecord, catalog } = useCatalog()
+  const { selectedRecord, setSelectedRecord, catalog, refreshGridToken } = useCatalog()
   const apiRef = useGridApiRef();
 
 
@@ -58,6 +58,19 @@ export default function TargetDataGrid(props) {
     );
 
   }, [selectedRecord, visibleRowIds])
+
+  // Recarrega as linhas visíveis quando algo edita um registro fora do grid
+  // (ex: comentário salvo no AnnotationPanel). Ignora o disparo inicial
+  // (refreshGridToken começa em 0 e não deve gerar um fetch extra no mount).
+  const isFirstRefresh = React.useRef(true)
+  React.useEffect(() => {
+    if (isFirstRefresh.current) {
+      isFirstRefresh.current = false
+      return
+    }
+    apiRef.current.dataSource.cache.clear()
+    apiRef.current.dataSource.fetchRows()
+  }, [apiRef, refreshGridToken])
 
   // Nesta aplicação só existe seleção de linha, nunca de célula. O grid,
   // por padrão, trata o foco de célula (clique ou navegação por setas) como
