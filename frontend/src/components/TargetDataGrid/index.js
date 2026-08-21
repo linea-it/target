@@ -37,15 +37,24 @@ export default function TargetDataGrid(props) {
 
   // quando o contexto mudar (por ex: voltou do detalhe)
   // reaplica seleção quando o selectedRecord é conhecido e quando as linhas visíveis mudam
+  //
+  // getRowId (abaixo) usa BigInt(row.meta_id), mas selectedRecord.meta_id
+  // vem do JSON da API (ou do sessionStorage) como string. Sem o BigInt()
+  // aqui, o Set ficava com uma string que nunca bate com os ids BigInt do
+  // grid, e a linha nunca era marcada como selecionada — mesmo com o
+  // painel de detalhe e o rodapé "N row selected" corretos, porque esses
+  // usam o próprio selectedRecord, não o rowSelectionModel do grid.
   React.useEffect(() => {
 
     if (!selectedRecord) {
-      setRowSelectionModel({ type: 'include', ids: new Set(), })
+      setRowSelectionModel((prev) => (prev.ids.size === 0 ? prev : { type: 'include', ids: new Set() }));
       return;
     }
 
-    const id = selectedRecord.meta_id;
-    setRowSelectionModel({ type: 'include', ids: new Set([id]) });
+    const id = BigInt(selectedRecord.meta_id);
+    setRowSelectionModel((prev) =>
+      (prev.ids.size === 1 && prev.ids.has(id)) ? prev : { type: 'include', ids: new Set([id]) }
+    );
 
   }, [selectedRecord, visibleRowIds])
 
