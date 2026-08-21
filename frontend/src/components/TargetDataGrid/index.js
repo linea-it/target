@@ -7,6 +7,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { useMutation } from '@tanstack/react-query';
+import { alpha } from '@mui/material/styles';
 import { getTableData, annotateTableRow } from '@/services/Metadata';
 import { useCatalog } from '@/contexts/CatalogContext'
 
@@ -217,15 +218,17 @@ export default function TargetDataGrid(props) {
       showToolbar
 
       // O tom padrão do Mui-selected é sutil demais e se confunde com o
-      // hover. Deixa o fundo da linha selecionada bem mais evidente.
-      sx={{
+      // hover. Deixa o fundo da linha selecionada evidente, mas com um
+      // azul claro (alpha sobre primary.main) em vez do primary.light
+      // saturado.
+      sx={(theme) => ({
         '& .MuiDataGrid-row.Mui-selected': {
-          backgroundColor: 'primary.light',
+          backgroundColor: alpha(theme.palette.primary.main, 0.16),
         },
         '& .MuiDataGrid-row.Mui-selected:hover': {
-          backgroundColor: 'primary.light',
+          backgroundColor: alpha(theme.palette.primary.main, 0.16),
         },
-      }}
+      })}
 
       apiRef={apiRef}
       columns={columns}
