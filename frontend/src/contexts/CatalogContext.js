@@ -6,6 +6,12 @@ export const CatalogProvider = ({ children }) => {
   const [catalog, setCatalog] = useState({})
   const [selectedRecord, setSelectedRecord] = useState(undefined)
 
+  // Incrementado sempre que um registro é editado fora do grid (ex: comentário
+  // salvo no AnnotationPanel), para o TargetDataGrid saber que precisa
+  // recarregar as linhas visíveis.
+  const [refreshGridToken, setRefreshGridToken] = useState(0)
+  const refreshGrid = () => setRefreshGridToken((t) => t + 1)
+
 
   // Restaura o selectedRecord do sessionStorage
   useEffect(() => {
@@ -31,7 +37,7 @@ export const CatalogProvider = ({ children }) => {
   }, [selectedRecord])
 
   return (
-    <CatalogContext.Provider value={{ catalog, setCatalog, selectedRecord, setSelectedRecord }}>
+    <CatalogContext.Provider value={{ catalog, setCatalog, selectedRecord, setSelectedRecord, refreshGridToken, refreshGrid }}>
       {children}
     </CatalogContext.Provider>
   )

@@ -15,6 +15,7 @@ import { useAladinContext } from '@/components/Aladin/AladinContext';
 import { useCatalog } from '@/contexts/CatalogContext';
 
 import AladinViewer from '@/components/Aladin/AladinViewer';
+import AnnotationPanel from '@/components/AnnotationPanel';
 
 
 export default function TargetDetail(props) {
@@ -109,7 +110,7 @@ export default function TargetDetail(props) {
 
         {(!selectedRecord || selectedRecord.meta_catalog_id !== catalog.id) && (
           //  Overlay para previnir que o Aladin fique visivel
-          // Sem nenhum registro selecionado 
+          // Sem nenhum registro selecionado
           <Box
             sx={(theme) => ({
               position: 'absolute',
@@ -125,6 +126,7 @@ export default function TargetDetail(props) {
           </Box>
         )}
       </Box>
+      <AnnotationPanel />
     </Stack>
 
   );

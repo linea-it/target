@@ -188,39 +188,68 @@ class MyDB(DBBase):
 
     def drop_user_table(self, tablename):
         """Remove uma tabela do schema do usuário.
-        
+
         Args:
             tablename (str): Nome da tabela a ser removida.
         """
         super().drop_table(schema=self.schema, tablename=tablename)
-        
-# ---------------------------------------------
+
+    def add_columns(self, tablename, columns):
+        """Adiciona colunas em uma tabela do schema do usuário.
+
+        Args:
+            tablename (str): Nome da tabela a ser alterada.
+            columns (dict): {nome_da_coluna: tipo_sql} a adicionar.
+        """
+        super().add_columns(schema=self.schema, tablename=tablename, columns=columns)
+
+    def update_row(self, tablename, id_column, id_value, values):
+        """Atualiza uma linha de uma tabela do schema do usuário.
+
+        Args:
+            tablename (str): Nome da tabela a ser atualizada.
+            id_column (str): Nome da coluna usada para localizar a linha.
+            id_value: Valor da coluna id_column que identifica a linha.
+            values (dict): {nome_da_coluna: novo_valor} a atualizar.
+
+        Returns:
+            int: Número de linhas afetadas (0 ou 1).
+        """
+        return super().update_row(
+            schema=self.schema,
+            tablename=tablename,
+            id_column=id_column,
+            id_value=id_value,
+            values=values,
+        )
+
+    # ---------------------------------------------
 
     def get_user_tables_detailed(self):
         """Retorna informações detalhadas sobre todas as tabelas do schema do usuário.
-        
+
         Returns:
             list: Lista de dicionários com informações detalhadas de cada tabela
         """
-        
+
         # Query para obter informações detalhadas das tabelas
         stm = text("""
-            SELECT 
+            SELECT
                 n.nspname as table_schema,
                 c.relname as table_name,
                 'BASE TABLE' as table_type,
                 COALESCE(pg_catalog.obj_description(c.oid, 'pg_class'), '') as description,
-                CASE 
+                CASE
                     WHEN c.reltuples >= 0 THEN c.reltuples::bigint
-                    ELSE 0 
+                    ELSE 0
                 END as rows,
                 pg_size_pretty(pg_total_relation_size(c.oid)) as total_size,
                 pg_total_relation_size(c.oid) as total_bytes,
                 pg_table_size(c.oid) as table_bytes,
                 pg_indexes_size(c.oid) as index_bytes,
-                CASE 
+                CASE
                     WHEN c.reltuples >= 0 THEN c.reltuples::bigint
-                    ELSE 0 
+                    ELSE 0
                 END as row_estimate,
                 c.relpages as pages,
                 c.relhasindex as has_indexes,
@@ -233,10 +262,10 @@ class MyDB(DBBase):
                 (SELECT count(*) FROM pg_catalog.pg_constraint co WHERE co.conrelid = c.oid AND co.contype = 'c') as check_constraints_count,
                 -- Conta foreign keys
                 (SELECT count(*) FROM pg_catalog.pg_constraint co WHERE co.conrelid = c.oid AND co.contype = 'f') as foreign_keys,
-                (SELECT count(*) 
-                FROM pg_catalog.pg_attribute a 
-                WHERE a.attrelid = c.oid 
-                AND a.attnum > 0 
+                (SELECT count(*)
+                FROM pg_catalog.pg_attribute a
+                WHERE a.attrelid = c.oid
+                AND a.attnum > 0
                 AND NOT a.attisdropped) as column_count,
                 pg_catalog.pg_stat_get_last_analyze_time(c.oid) as last_analyzed,
                 pg_catalog.pg_stat_get_last_autoanalyze_time(c.oid) as last_autoanalyzed,
@@ -248,46 +277,43 @@ class MyDB(DBBase):
             AND c.relkind = 'r'
             ORDER BY pg_total_relation_size(c.oid) DESC;
         """)
-        
+
         # Executa a query
         results = self.fetchall_dict(stm, {"schema": self.schema})
-        
+
         # Processa os resultados para formatar as informações
         detailed_tables = []
         for table_info in results:
             detailed_table = {
-                'schema': table_info['table_schema'],
-                'table_name': table_info['table_name'],
-                'table_type': table_info['table_type'],
-                'description': table_info['description'] or None,
-
-                'rows': table_info['rows'] or table_info['rows'] or 0,
-                'row_estimate': table_info['rows'] or table_info['row_estimate'] or 0,
-                'columns': table_info['column_count'] or 0,                    
-                'total_bytes': table_info['total_bytes'] or 0,
-                'table_bytes': table_info['table_bytes'] or 0,
-                'index_bytes': table_info['index_bytes'] or 0,
-                'pages': table_info['pages'] or 0,
-                'has_indexes': table_info['has_indexes'],
-                'has_primary_key': table_info['has_primary_key'],
-                'check_constraints': table_info['check_constraints'],
-                'unique_constraints': table_info['unique_constraints'],
-                'check_constraints_count': table_info['check_constraints_count'],
-                'foreign_keys': table_info['foreign_keys'],
-
-                'last_analyzed': table_info['last_analyzed'],
-                'last_autoanalyzed': table_info['last_autoanalyzed'],
-                'last_vacuum': table_info['last_vacuum'],
-                'last_autovacuum': table_info['last_autovacuum'],
+                "schema": table_info["table_schema"],
+                "table_name": table_info["table_name"],
+                "table_type": table_info["table_type"],
+                "description": table_info["description"] or None,
+                "rows": table_info["rows"] or table_info["rows"] or 0,
+                "row_estimate": table_info["rows"] or table_info["row_estimate"] or 0,
+                "columns": table_info["column_count"] or 0,
+                "total_bytes": table_info["total_bytes"] or 0,
+                "table_bytes": table_info["table_bytes"] or 0,
+                "index_bytes": table_info["index_bytes"] or 0,
+                "pages": table_info["pages"] or 0,
+                "has_indexes": table_info["has_indexes"],
+                "has_primary_key": table_info["has_primary_key"],
+                "check_constraints": table_info["check_constraints"],
+                "unique_constraints": table_info["unique_constraints"],
+                "check_constraints_count": table_info["check_constraints_count"],
+                "foreign_keys": table_info["foreign_keys"],
+                "last_analyzed": table_info["last_analyzed"],
+                "last_autoanalyzed": table_info["last_autoanalyzed"],
+                "last_vacuum": table_info["last_vacuum"],
+                "last_autovacuum": table_info["last_autovacuum"],
             }
             detailed_tables.append(detailed_table)
-        
+
         return detailed_tables
-            
 
     def get_tables_without_stats(self):
         """Retorna tabelas que não possuem estatísticas atualizadas no schema do usuário.
-        
+
         Returns:
             list: Lista de dicionários com informações das tabelas sem estatísticas atualizadas
             [{
@@ -298,9 +324,9 @@ class MyDB(DBBase):
                 'last_autoanalyzed': None
             }]
         """
-        
+
         stm = text("""
-                SELECT 
+                SELECT
                     n.nspname as schema_name,
                     c.relname as table_name,
                     c.reltuples as estimated_rows,
@@ -313,40 +339,38 @@ class MyDB(DBBase):
                 AND (c.reltuples < 0 OR pg_catalog.pg_stat_get_last_analyze_time(c.oid) IS NULL)
                 ORDER BY c.relname;
             """)
-        
+
         # Executa a query
         results = self.fetchall_dict(stm, {"schema": self.schema})
 
         return results
 
-
     def analyze_tables_without_stats(self):
         """Executa o comando ANALYZE nas tabelas que não possuem estatísticas atualizadas no schema do usuário.
-        
+
         Returns:
             list: Lista de nomes das tabelas que foram analisadas
         """
-        
+
         tables_without_stats = self.get_tables_without_stats()
         analyzed_tables = []
-        
+
         for table in tables_without_stats:
-            table_name = table['table_name']
+            table_name = table["table_name"]
             self.analyze_table(self.schema, table_name)
             analyzed_tables.append(table_name)
 
         return analyzed_tables
 
-
     def total_size_tables(self):
         """Calcula o tamanho total ocupado por todas as tabelas no schema do usuário.
-        
+
         Returns:
             int: Tamanho total em bytes
         """
-        
+
         # stm = text("""
-        #     SELECT 
+        #     SELECT
         #         SUM(pg_total_relation_size(c.oid)) as total_bytes
         #     FROM pg_catalog.pg_class c
         #     JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
@@ -368,8 +392,7 @@ class MyDB(DBBase):
                 nspname;
         """)
 
-
         result = self.fetchone_dict(stm, {"schema": self.schema})
-        total_bytes = result['total_bytes'] if result['total_bytes'] is not None else 0
-        
+        total_bytes = result["total_bytes"] if result["total_bytes"] is not None else 0
+
         return total_bytes

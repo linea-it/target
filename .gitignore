@@ -289,3 +289,5 @@ docker-compose.yml
 docker-compose-canvas.yml
 .cursor/
 
+# playwright-mcp
+.playwright-mcp/

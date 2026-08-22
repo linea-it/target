@@ -140,3 +140,8 @@ export const downloadCatalogDiagnostic = async ({ tableId }) => {
 export const regenerateCatalogDiagnostic = ({ tableId }) => {
     return api.post(`metadata/user_tables/${tableId}/catalog_diagnostic/regenerate/`)
 }
+
+export const annotateTableRow = ({ tableId, rowId, ...data }) => {
+    // data pode ter quality_flag e/ou comment. Só envia os campos presentes.
+    return api.patch(`metadata/user_tables/${tableId}/rows/${rowId}/annotation/`, data);
+}

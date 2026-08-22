@@ -1,12 +1,17 @@
 from django.conf import settings
 from django.db import transaction
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from dblinea import MyDB
+from target.metadata.annotation import ReservedColumnConflictError
+from target.metadata.annotation import TableNotInDatabaseError
+from target.metadata.annotation import ensure_annotation_columns
+from target.metadata.annotation import ensure_annotation_columns_lazy
 from target.metadata.models import Column
 from target.metadata.models import Schema
 from target.metadata.models import Settings
@@ -158,6 +163,10 @@ class UserTableViewSet(ModelViewSet):
             msg = f"Table {table_name} not found in database"
             raise TableRegistrationError(msg)
 
+        # Garante as colunas de avaliação (meta_quality_flag, meta_comment)
+        # antes de ler o schema da tabela, para que já apareçam no describe.
+        ensure_annotation_columns(db, data.get("name"))
+
         # Tamanho da tabela e quantidade de linhas estimadas.
         stats = db.get_table_status(
             tablename=data.get("name"),
@@ -189,8 +198,14 @@ class UserTableViewSet(ModelViewSet):
         )
 
         # Criar o registro das colunas da tabela.
+        # As colunas reservadas para avaliação (meta_quality_flag,
+        # meta_comment) ficam de fora do catálogo de Column: não aparecem
+        # no grid nem no mapeamento de UCDs, apenas fluem "de graça" nas
+        # linhas retornadas por MyDB.query() (SELECT *).
         columns = db.describe_table(tablename=table.name)
         for c in columns:
+            if c.get("name") in Table.RESERVED_ANNOTATION_COLUMNS:
+                continue
             Column.objects.create(
                 table=table,
                 name=c.get("name"),
@@ -513,6 +528,17 @@ class UserTableViewSet(ModelViewSet):
         queryset = self.get_queryset()
         table = queryset.prefetch_related("columns").get(pk=pk)
 
+        # Self-healing: garante as colunas de avaliação mesmo em tabelas
+        # registradas antes dessa feature existir, ou se a tabela tiver
+        # sido recriada no Daiquiri depois do registro no Canvas.
+        db = MyDB(username=request.user.username)
+        try:
+            ensure_annotation_columns_lazy(db, table)
+        except TableNotInDatabaseError as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except ReservedColumnConflictError as e:
+            return Response({"error": str(e)}, status=status.HTTP_409_CONFLICT)
+
         ucds = self.get_table_ucds(table)
 
         # Total de linhas estimado da tabela.
@@ -551,6 +577,135 @@ class UserTableViewSet(ModelViewSet):
         }
 
         return Response(results, status=status.HTTP_200_OK)
+
+    def _validate_annotation_payload(self, data):
+        """Valida o payload de anotação e retorna {coluna_fisica: valor}.
+
+        Lança ValueError com a mensagem de erro caso o payload seja inválido.
+        """
+        values = {}
+
+        if "quality_flag" in data:
+            quality_flag = data.get("quality_flag")
+            if quality_flag is not None and not isinstance(quality_flag, bool):
+                msg = "quality_flag must be a boolean or null."
+                raise ValueError(msg)
+            values["meta_quality_flag"] = quality_flag
+
+        if "comment" in data:
+            comment = data.get("comment")
+            if comment is not None and not isinstance(comment, str):
+                msg = "comment must be a string or null."
+                raise ValueError(msg)
+            values["meta_comment"] = comment
+
+        if not values:
+            msg = "Provide at least one of: quality_flag, comment."
+            raise ValueError(msg)
+
+        return values
+
+    def _prepare_annotation_target(self, request, table):
+        """Garante que a tabela esteja pronta para receber anotações
+        (colunas existentes, self-healing se preciso) e resolve a coluna
+        real de id.
+
+        Returns:
+            (db, id_column, error_response). error_response é None quando
+            tudo ok; nesse caso db/id_column já podem ser usados. Quando
+            error_response não é None, db e id_column são None e o
+            chamador deve retornar error_response diretamente.
+        """
+        db = MyDB(username=request.user.username)
+        try:
+            ensure_annotation_columns_lazy(db, table)
+        except TableNotInDatabaseError as e:
+            return (
+                None,
+                None,
+                Response(
+                    {"error": str(e)},
+                    status=status.HTTP_404_NOT_FOUND,
+                ),
+            )
+        except ReservedColumnConflictError as e:
+            return (
+                None,
+                None,
+                Response(
+                    {"error": str(e)},
+                    status=status.HTTP_409_CONFLICT,
+                ),
+            )
+
+        id_column = self.get_table_ucds(table).get("meta.id;meta.main")
+        if not id_column:
+            return (
+                None,
+                None,
+                Response(
+                    {
+                        "error": "Table is missing the mandatory id column "
+                        "(meta.id;meta.main) required to annotate rows.",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                ),
+            )
+
+        return db, id_column, None
+
+    @action(
+        detail=True,
+        methods=["patch"],
+        url_path=r"rows/(?P<row_id>[^/.]+)/annotation",
+    )
+    def annotation(self, request, pk=None, row_id=None):
+        """Grava a avaliação de qualidade (meta_quality_flag) e/ou o
+        comentário (meta_comment) de uma linha da tabela do usuário.
+
+        Body: {"quality_flag": true|false|null, "comment": "..."|null}
+        Ao menos um dos dois campos deve ser enviado.
+        """
+        table = get_object_or_404(self.get_queryset(), pk=pk)
+
+        if table.schema.owner != request.user:
+            return Response(
+                {"error": "You do not have permission to annotate this table."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        db, id_column, error_response = self._prepare_annotation_target(request, table)
+        if error_response:
+            return error_response
+
+        try:
+            values = self._validate_annotation_payload(request.data)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            updated = db.update_row(
+                tablename=table.name,
+                id_column=id_column,
+                id_value=row_id,
+                values=values,
+            )
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        if updated == 0:
+            return Response(
+                {"error": f"Row {row_id} not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        response_data = {"row_id": row_id}
+        if "meta_quality_flag" in values:
+            response_data["quality_flag"] = values["meta_quality_flag"]
+        if "meta_comment" in values:
+            response_data["comment"] = values["meta_comment"]
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["get"])
     def notebook(self, request, pk=None):
@@ -601,10 +756,7 @@ class UserTableViewSet(ModelViewSet):
         """Return pre-rendered catalog diagnostic HTML if available."""
 
         table = self.get_object()
-        if (
-            table.catalog_type != Table.CATALOG_TYPE_CLUSTER
-            or not table.related_table
-        ):
+        if table.catalog_type != Table.CATALOG_TYPE_CLUSTER or not table.related_table:
             return Response(
                 {"error": "Diagnostic is only available for CAnVAS cluster catalogs."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -625,10 +777,7 @@ class UserTableViewSet(ModelViewSet):
         """Download pre-rendered catalog diagnostic notebook."""
 
         table = self.get_object()
-        if (
-            table.catalog_type != Table.CATALOG_TYPE_CLUSTER
-            or not table.related_table
-        ):
+        if table.catalog_type != Table.CATALOG_TYPE_CLUSTER or not table.related_table:
             return Response(
                 {"error": "Diagnostic is only available for CAnVAS cluster catalogs."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -645,9 +794,7 @@ class UserTableViewSet(ModelViewSet):
             content_type="application/x-ipynb",
         )
         filename = table.catalog_diagnostic_notebook.name.split("/")[-1]
-        response["Content-Disposition"] = (
-            f'attachment; filename="{filename}"'
-        )
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
 
     @action(detail=True, methods=["post"], url_path="catalog_diagnostic/regenerate")
@@ -655,10 +802,7 @@ class UserTableViewSet(ModelViewSet):
         """Re-trigger catalog diagnostic generation."""
 
         table = self.get_object()
-        if (
-            table.catalog_type != Table.CATALOG_TYPE_CLUSTER
-            or not table.related_table
-        ):
+        if table.catalog_type != Table.CATALOG_TYPE_CLUSTER or not table.related_table:
             return Response(
                 {"error": "Diagnostic is only available for CAnVAS cluster catalogs."},
                 status=status.HTTP_400_BAD_REQUEST,
