@@ -120,6 +120,7 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
 
     owner = serializers.SerializerMethodField()
     is_owner = serializers.SerializerMethodField()
+    is_public = serializers.SerializerMethodField()
     schema = serializers.SerializerMethodField()
     table = serializers.SerializerMethodField()
     property_id = serializers.SerializerMethodField()
@@ -135,6 +136,7 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
             "id",
             "owner",
             "is_owner",
+            "is_public",
             "schema",
             "table",
             "order",
@@ -159,11 +161,16 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
         ]
 
     def get_owner(self, obj):
+        if obj.schema.is_public:
+            return "Public"
         return obj.schema.owner.username
 
     def get_is_owner(self, obj):
         current_user = self.context["request"].user
         return obj.schema.owner.pk == current_user.pk
+
+    def get_is_public(self, obj):
+        return obj.schema.is_public
 
     def get_schema(self, obj):
         return obj.schema.name

@@ -9,6 +9,14 @@ export const availableUserTables = () => {
     return api.get("metadata/user_tables/mydb_tables/");
 }
 
+export const publicSchemas = () => {
+    return api.get("metadata/user_tables/public_schemas/");
+}
+
+export const registrableSchemaTables = (schema) => {
+    return api.get("metadata/user_tables/registrable_schema_tables/", { params: { schema } });
+}
+
 export const registerUserTable = (data) => {
     return api.post("metadata/user_tables/", {
         ...data,

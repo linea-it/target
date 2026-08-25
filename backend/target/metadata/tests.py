@@ -1,11 +1,10 @@
 import json
-import math
 
 import numpy as np
 
-from target.metadata.api.views import _is_nullish
 from target.metadata.api.views import _meta_field
 from target.metadata.api.views import sanitize_data
+from target.metadata.notebook_utils import _is_nullish
 
 
 def test_is_nullish_strings_and_floats():
@@ -25,9 +24,10 @@ def test_is_nullish_numpy():
 
 
 def test_sanitize_data_normalizes_nullish_values():
+    zphot = 0.66
     row = {
         "zspec": "nan",
-        "zphot": 0.66,
+        "zphot": zphot,
         "ra": "28.23",
         "bad": float("nan"),
         "nested": {"x": "null"},
@@ -36,7 +36,7 @@ def test_sanitize_data_normalizes_nullish_values():
     assert clean["zspec"] is None
     assert clean["bad"] is None
     assert clean["nested"]["x"] is None
-    assert clean["zphot"] == 0.66
+    assert clean["zphot"] == zphot
     assert clean["ra"] == "28.23"
     json.dumps(clean, allow_nan=False)
 

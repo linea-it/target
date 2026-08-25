@@ -10,7 +10,7 @@ from dblinea import DBBase
 
 
 class MyDB(DBBase):
-    def __init__(self, username):
+    def __init__(self, username=None, schema=None):
         db_settings = settings.DATABASES["mydb"]
         super().__init__(
             dbhost=db_settings["HOST"],
@@ -22,7 +22,9 @@ class MyDB(DBBase):
             debug=True,
         )
 
-        self.schema = self.get_user_schema_name(username)
+        self.schema = (
+            schema if schema is not None else self.get_user_schema_name(username)
+        )
 
     def get_user_schema_name(self, username):
         return f"{settings.USER_SCHEMA_PREFIX}{username}"
@@ -57,7 +59,7 @@ class MyDB(DBBase):
 
         return stm, values
 
-    def create_stm(
+    def create_stm(  # noqa: PLR0913
         self,
         tbl,
         columns=None,
@@ -67,8 +69,8 @@ class MyDB(DBBase):
         offset=None,
     ):
         """
-        Cria a SqlAlchemy Statement, este metdo pode ser sobrescrito para criar querys diferentes.
-        mais sempre deve retornar um statement.
+        Cria a SqlAlchemy Statement, este metdo pode ser sobrescrito para
+        criar querys diferentes. mais sempre deve retornar um statement.
         :return: statement
         """
         values = None
@@ -81,8 +83,6 @@ class MyDB(DBBase):
 
         if len(filters) > 0:
             clauses, values = self.do_filter(tbl, filters)
-            # print(clauses)
-            # print(values)
             stm = stm.where(and_(*clauses))
 
         # Ordenacao
@@ -102,7 +102,7 @@ class MyDB(DBBase):
 
         return stm, values
 
-    def query(
+    def query(  # noqa: PLR0913
         self,
         tablename,
         columns=None,
@@ -121,8 +121,6 @@ class MyDB(DBBase):
             url_filters = self.parse_url_filters(tbl, url_filters)
             filters.extend(url_filters)
 
-        print(filters)
-
         # Cria o Statement para a query
         stm, values = self.create_stm(
             tbl=tbl,
@@ -132,9 +130,6 @@ class MyDB(DBBase):
             limit=limit,
             offset=offset,
         )
-
-        # print("Statement:", stm)
-        # print("Values:", values)
 
         # Cria o Statement para o count total de linhas da tabela.
         stm_count, _ = self.create_total_count_stm(tbl, filters)
@@ -150,10 +145,8 @@ class MyDB(DBBase):
             # Run main query statement
             self._debug_query(stm, with_parameters=False, values=values)
             queryset = con.execute(stm, values)
-            for row in queryset:
-                rows.append(self.to_dict(row))
+            rows.extend(self.to_dict(row) for row in queryset)
 
-        print("=" * 40)
         return rows, count
 
     def get_count(self, tablename):
@@ -176,9 +169,6 @@ class MyDB(DBBase):
 
             # Recupera a coluna sqlalchemy
             tbl_col = tbl.c.get(field_name)
-            print(f"Column: {tbl_col}")
-
-            print(f"Operator: {operator}")
 
             filters.append(
                 {"column": tbl_col, "operator": operator, "value": value},
@@ -226,7 +216,8 @@ class MyDB(DBBase):
     # ---------------------------------------------
 
     def get_user_tables_detailed(self):
-        """Retorna informações detalhadas sobre todas as tabelas do schema do usuário.
+        """Retorna informações detalhadas sobre todas as tabelas do schema
+        do usuário.
 
         Returns:
             list: Lista de dicionários com informações detalhadas de cada tabela
@@ -238,7 +229,9 @@ class MyDB(DBBase):
                 n.nspname as table_schema,
                 c.relname as table_name,
                 'BASE TABLE' as table_type,
-                COALESCE(pg_catalog.obj_description(c.oid, 'pg_class'), '') as description,
+                COALESCE(
+                    pg_catalog.obj_description(c.oid, 'pg_class'), ''
+                ) as description,
                 CASE
                     WHEN c.reltuples >= 0 THEN c.reltuples::bigint
                     ELSE 0
@@ -255,20 +248,34 @@ class MyDB(DBBase):
                 c.relhasindex as has_indexes,
                 c.relchecks as check_constraints,
                 -- Verifica se tem chave primária
-                EXISTS (SELECT 1 FROM pg_catalog.pg_index i WHERE i.indrelid = c.oid AND i.indisprimary) as has_primary_key,
+                EXISTS (
+                    SELECT 1 FROM pg_catalog.pg_index i
+                    WHERE i.indrelid = c.oid AND i.indisprimary
+                ) as has_primary_key,
                 -- Conta constraints únicas (incluindo PK)
-                (SELECT count(*) FROM pg_catalog.pg_constraint co WHERE co.conrelid = c.oid AND co.contype IN ('p', 'u')) as unique_constraints,
+                (
+                    SELECT count(*) FROM pg_catalog.pg_constraint co
+                    WHERE co.conrelid = c.oid AND co.contype IN ('p', 'u')
+                ) as unique_constraints,
                 -- Conta constraints de verificação
-                (SELECT count(*) FROM pg_catalog.pg_constraint co WHERE co.conrelid = c.oid AND co.contype = 'c') as check_constraints_count,
+                (
+                    SELECT count(*) FROM pg_catalog.pg_constraint co
+                    WHERE co.conrelid = c.oid AND co.contype = 'c'
+                ) as check_constraints_count,
                 -- Conta foreign keys
-                (SELECT count(*) FROM pg_catalog.pg_constraint co WHERE co.conrelid = c.oid AND co.contype = 'f') as foreign_keys,
+                (
+                    SELECT count(*) FROM pg_catalog.pg_constraint co
+                    WHERE co.conrelid = c.oid AND co.contype = 'f'
+                ) as foreign_keys,
                 (SELECT count(*)
                 FROM pg_catalog.pg_attribute a
                 WHERE a.attrelid = c.oid
                 AND a.attnum > 0
                 AND NOT a.attisdropped) as column_count,
                 pg_catalog.pg_stat_get_last_analyze_time(c.oid) as last_analyzed,
-                pg_catalog.pg_stat_get_last_autoanalyze_time(c.oid) as last_autoanalyzed,
+                pg_catalog.pg_stat_get_last_autoanalyze_time(
+                    c.oid
+                ) as last_autoanalyzed,
                 pg_catalog.pg_stat_get_last_autovacuum_time(c.oid) as last_autovacuum,
                 pg_catalog.pg_stat_get_last_vacuum_time(c.oid) as last_vacuum
             FROM pg_catalog.pg_class c
@@ -312,10 +319,12 @@ class MyDB(DBBase):
         return detailed_tables
 
     def get_tables_without_stats(self):
-        """Retorna tabelas que não possuem estatísticas atualizadas no schema do usuário.
+        """Retorna tabelas que não possuem estatísticas atualizadas no
+        schema do usuário.
 
         Returns:
-            list: Lista de dicionários com informações das tabelas sem estatísticas atualizadas
+            list: Lista de dicionários com informações das tabelas sem
+            estatísticas atualizadas
             [{
                 'schema_name': 'nome_do_schema',
                 'table_name': 'nome_da_tabela',
@@ -331,22 +340,26 @@ class MyDB(DBBase):
                     c.relname as table_name,
                     c.reltuples as estimated_rows,
                     pg_catalog.pg_stat_get_last_analyze_time(c.oid) as last_analyzed,
-                    pg_catalog.pg_stat_get_last_autoanalyze_time(c.oid) as last_autoanalyzed
+                    pg_catalog.pg_stat_get_last_autoanalyze_time(
+                        c.oid
+                    ) as last_autoanalyzed
                 FROM pg_catalog.pg_class c
                 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
                 WHERE n.nspname = :schema
                 AND c.relkind = 'r'
-                AND (c.reltuples < 0 OR pg_catalog.pg_stat_get_last_analyze_time(c.oid) IS NULL)
+                AND (
+                    c.reltuples < 0
+                    OR pg_catalog.pg_stat_get_last_analyze_time(c.oid) IS NULL
+                )
                 ORDER BY c.relname;
             """)
 
         # Executa a query
-        results = self.fetchall_dict(stm, {"schema": self.schema})
-
-        return results
+        return self.fetchall_dict(stm, {"schema": self.schema})
 
     def analyze_tables_without_stats(self):
-        """Executa o comando ANALYZE nas tabelas que não possuem estatísticas atualizadas no schema do usuário.
+        """Executa o comando ANALYZE nas tabelas que não possuem
+        estatísticas atualizadas no schema do usuário.
 
         Returns:
             list: Lista de nomes das tabelas que foram analisadas
@@ -387,12 +400,11 @@ class MyDB(DBBase):
                 JOIN pg_namespace ON relnamespace = pg_namespace.oid
             WHERE
                 nspname = :schema  -- substitua pelo seu schema
-                AND relkind IN ('r', 'm', 't', 'p')  -- tabelas, materialized views, TOAST, partitions
+                -- tabelas, materialized views, TOAST, partitions
+                AND relkind IN ('r', 'm', 't', 'p')
             GROUP BY
                 nspname;
         """)
 
         result = self.fetchone_dict(stm, {"schema": self.schema})
-        total_bytes = result["total_bytes"] if result["total_bytes"] is not None else 0
-
-        return total_bytes
+        return result["total_bytes"] if result["total_bytes"] is not None else 0

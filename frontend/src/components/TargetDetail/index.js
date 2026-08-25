@@ -126,7 +126,7 @@ export default function TargetDetail(props) {
           </Box>
         )}
       </Box>
-      <AnnotationPanel />
+      {catalog?.is_owner && (<AnnotationPanel />)}
     </Stack>
 
   );

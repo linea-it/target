@@ -7,9 +7,11 @@ import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 
 import RegisterCatalogToolbar from "./Toolbar";
+import AdminSchemaSelect from "./AdminSchemaSelect";
 import { useRegisterCatalog } from "@/contexts/RegisterCatalogContext";
 import UserTableSelect from "@/components/UserTableSelect";
 import RelatedTableSelect from "@/components/RelatedTableSelect";
+import RegistrableSchemaTableSelect from "@/components/RegistrableSchemaTableSelect";
 import { useMutation } from '@tanstack/react-query'
 import { registerUserTable, updateUserTable } from "@/services/Metadata";
 
@@ -18,6 +20,7 @@ import { registerUserTable, updateUserTable } from "@/services/Metadata";
 export default function RegisterCatalogBasicInformation() {
 
   const { catalog, setCatalog, setActiveStep } = useRegisterCatalog();
+  const [adminSchema, setAdminSchema] = React.useState('');
 
   const mutation = useMutation({
     mutationFn: (data) => {
@@ -75,8 +78,17 @@ export default function RegisterCatalogBasicInformation() {
       noValidate
       autoComplete="off"
     >
+      {!catalog.id && (<AdminSchemaSelect value={adminSchema} onChange={setAdminSchema} />)}
+
       {catalog.id ? (
         <TextField label="Table" variant="outlined" fullWidth value={`${catalog.schema}.${catalog.table}`} disabled />
+      ) : adminSchema ? (
+        <RegistrableSchemaTableSelect
+          schema={adminSchema}
+          onChange={onSelectTable}
+          value={catalog.schema && catalog.table ? `${catalog.schema}.${catalog.table}` : ''}
+          label={catalog.catalog_type === 'cluster' ? 'Select Cluster Table' : 'Select Table'}
+        />
       ) : (
         <UserTableSelect onChange={onSelectTable} value={catalog.schema && catalog.table ? `${catalog.schema}.${catalog.table}` : ''} label={catalog.catalog_type === 'cluster' ? 'Select Cluster Table' : 'Select Table'} />
       )}
@@ -84,7 +96,15 @@ export default function RegisterCatalogBasicInformation() {
       {catalog.catalog_type === 'cluster' && (
         <>
           {catalog.related_table && (<TextField label="Table" variant="outlined" fullWidth value={`${catalog.related_table_name}`} disabled />)}
-          {!catalog.related_table && (<RelatedTableSelect onChange={onSelectRelatedTable} value={catalog.related_table_name ? `${catalog.related_table_name}` : ''} />)}
+          {!catalog.related_table && adminSchema && (
+            <RegistrableSchemaTableSelect
+              schema={adminSchema}
+              onChange={onSelectRelatedTable}
+              value={catalog.related_table_name ? `${catalog.related_table_name}` : ''}
+              label="Select Related Cluster Members Table"
+            />
+          )}
+          {!catalog.related_table && !adminSchema && (<RelatedTableSelect onChange={onSelectRelatedTable} value={catalog.related_table_name ? `${catalog.related_table_name}` : ''} />)}
         </>
       )}
 

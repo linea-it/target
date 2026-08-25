@@ -1,7 +1,9 @@
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from rest_framework import permissions
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -12,6 +14,8 @@ from target.metadata.annotation import ReservedColumnConflictError
 from target.metadata.annotation import TableNotInDatabaseError
 from target.metadata.annotation import ensure_annotation_columns
 from target.metadata.annotation import ensure_annotation_columns_lazy
+from target.metadata.catalog_admin import PublicSchemaPermissionError
+from target.metadata.catalog_admin import resolve_schema_owner
 from target.metadata.models import Column
 from target.metadata.models import Schema
 from target.metadata.models import Settings
@@ -22,6 +26,7 @@ from target.metadata.notebook_utils import _prepare_cluster_notebook
 from target.metadata.notebook_utils import _render_notebook_html
 from target.metadata.notebook_utils import _sanitize_scalar
 from target.metadata.notebook_utils import sanitize_data
+from target.metadata.public_catalogs import PUBLIC_CATALOGS
 from target.metadata.tasks import generate_catalog_diagnostic
 
 from .serializers import ColumnSerializer
@@ -107,28 +112,48 @@ class UserTableViewSet(ModelViewSet):
     ]
     ordering = ["-created_at"]
 
+    def get_permissions(self):
+        if self.action in ("public_schemas", "registrable_schema_tables"):
+            return [permissions.IsAdminUser()]
+        return super().get_permissions()
+
+    def _get_reader_db(self, table):
+        if table.schema.is_public:
+            return MyDB(schema=table.schema.name)
+        return MyDB(username=self.request.user.username)
+
     def list(self, request):
         # https://www.cdrf.co/3.9/rest_framework.viewsets/ReadOnlyModelViewSet.html#list
         queryset = self.get_queryset()
         queryset = queryset.filter(
-            schema__owner=self.request.user,
+            Q(schema__owner=self.request.user) | Q(schema__is_public=True),
             is_completed=True,
             is_removed=False,
             catalog_type__in=[Table.CATALOG_TYPE_TARGET, Table.CATALOG_TYPE_CLUSTER],
         )
         queryset = self.filter_queryset(queryset)
 
-        # MyDB instance
-        db = MyDB(username=request.user.username)
-        # List of tables in the database that the user has access to
-        db_tables = db.get_user_tables()
+        # List of tables in the user's own schema.
+        own_tables = set(MyDB(username=request.user.username).get_user_tables())
+
+        # List of tables in each distinct public schema present in the result.
+        public_schema_names = {t.schema.name for t in queryset if t.schema.is_public}
+        public_tables_by_schema = {
+            name: set(MyDB(schema=name).get_user_tables())
+            for name in public_schema_names
+        }
+
+        def _exists_in_db(t):
+            if t.schema.is_public:
+                return t.name in public_tables_by_schema.get(t.schema.name, set())
+            return t.name in own_tables
 
         # Checks if any registered table has been deleted from the database.
-        to_exclude = [table.name for table in queryset if table.name not in db_tables]
+        to_exclude = [table.id for table in queryset if not _exists_in_db(table)]
 
         # Mark the records as removed and remove them from the result.
         if len(to_exclude) > 0:
-            queryset = queryset.exclude(name__in=to_exclude)
+            queryset = queryset.exclude(id__in=to_exclude)
 
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -143,9 +168,14 @@ class UserTableViewSet(ModelViewSet):
         return Table.objects.filter(name=tablename, schema__name=schema).exists()
 
     def register_table(self, user, data):
+        owner, is_public = resolve_schema_owner(user, data.get("schema"))
+
         # Instancia do MyDB
-        db = MyDB(username=user.username)
-        # TODO: Verificar a permissão do usuario sobre a tabela
+        db = (
+            MyDB(schema=data.get("schema"))
+            if is_public
+            else MyDB(username=user.username)
+        )
 
         is_registered = self.is_table_registered(
             data.get("name"),
@@ -165,7 +195,10 @@ class UserTableViewSet(ModelViewSet):
 
         # Garante as colunas de avaliação (meta_quality_flag, meta_comment)
         # antes de ler o schema da tabela, para que já apareçam no describe.
-        ensure_annotation_columns(db, data.get("name"))
+        # Não faz sentido ALTER TABLE num schema público compartilhado para
+        # adicionar colunas de anotação pessoal.
+        if not is_public:
+            ensure_annotation_columns(db, data.get("name"))
 
         # Tamanho da tabela e quantidade de linhas estimadas.
         stats = db.get_table_status(
@@ -183,8 +216,9 @@ class UserTableViewSet(ModelViewSet):
             )
 
         schema = Schema.objects.get_or_create(
-            owner=user,
+            owner=owner,
             name=data.get("schema"),
+            defaults={"is_public": is_public},
         )[0]
 
         table = Table.objects.create(
@@ -237,10 +271,14 @@ class UserTableViewSet(ModelViewSet):
 
                     if self.is_table_registered(table_name, schema_name):
                         # Related table already registered, fetch it
+                        related_owner, _is_public = resolve_schema_owner(
+                            user,
+                            schema_name,
+                        )
                         related_table = Table.objects.get(
                             name=table_name,
                             schema__name=schema_name,
-                            schema__owner=user,
+                            schema__owner=related_owner,
                         )
                         table.related_table = related_table
                         table.save()
@@ -286,6 +324,10 @@ class UserTableViewSet(ModelViewSet):
             data = self.get_serializer(instance=table).data
             return Response(data, status=status.HTTP_201_CREATED)
 
+        except PublicSchemaPermissionError as e:
+            content = {"error": str(e)}
+            return Response(content, status=status.HTTP_403_FORBIDDEN)
+
         except Exception as e:  # noqa: BLE001
             content = {"error": str(e)}
             return Response(content, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -311,10 +353,14 @@ class UserTableViewSet(ModelViewSet):
 
                 if self.is_table_registered(table_name, schema_name):
                     # Related table already registered, fetch it
+                    related_owner, _is_public = resolve_schema_owner(
+                        request.user,
+                        schema_name,
+                    )
                     related_table = Table.objects.get(
                         name=table_name,
                         schema__name=schema_name,
-                        schema__owner=request.user,
+                        schema__owner=related_owner,
                     )
                     instance.related_table = related_table
                     instance.save()
@@ -358,6 +404,29 @@ class UserTableViewSet(ModelViewSet):
 
         # Order by tablename
         results.sort(key=lambda x: x["table"].lower())
+        return Response(results, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["get"])
+    def public_schemas(self, request):
+        return Response(sorted(PUBLIC_CATALOGS.keys()), status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["get"])
+    def registrable_schema_tables(self, request):
+        schema = request.query_params.get("schema")
+        allowed_tables = set(PUBLIC_CATALOGS.get(schema, []))
+        if not allowed_tables:
+            return Response(
+                {"error": "Unknown or unauthorized schema."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        db = MyDB(schema=schema)
+        live_tables = set(db.get_user_tables())
+        results = [
+            {"table": t, "schema": schema}
+            for t in sorted(allowed_tables & live_tables)
+            if not self.is_table_registered(t, schema)
+        ]
         return Response(results, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["get"])
@@ -465,7 +534,10 @@ class UserTableViewSet(ModelViewSet):
         return filters
 
     def perform_destroy(self, instance):
-        if instance.schema.owner != self.request.user:
+        if (
+            instance.schema.owner != self.request.user
+            and not self.request.user.is_staff
+        ):
             raise TableDeletePermissionError
 
         if instance.related_table:
@@ -486,7 +558,7 @@ class UserTableViewSet(ModelViewSet):
         ordering,
         ucds,
     ):
-        db = MyDB(username=self.request.user.username)
+        db = self._get_reader_db(table)
         rows, count = db.query(
             tablename=table.name,
             limit=limit,
@@ -530,14 +602,17 @@ class UserTableViewSet(ModelViewSet):
 
         # Self-healing: garante as colunas de avaliação mesmo em tabelas
         # registradas antes dessa feature existir, ou se a tabela tiver
-        # sido recriada no Daiquiri depois do registro no Canvas.
-        db = MyDB(username=request.user.username)
-        try:
-            ensure_annotation_columns_lazy(db, table)
-        except TableNotInDatabaseError as e:
-            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
-        except ReservedColumnConflictError as e:
-            return Response({"error": str(e)}, status=status.HTTP_409_CONFLICT)
+        # sido recriada no Daiquiri depois do registro no Canvas. Tabelas
+        # públicas não têm meta_quality_flag/meta_comment (schema externo
+        # compartilhado, sem anotação pessoal), então pula essa checagem.
+        if not table.schema.is_public:
+            db = MyDB(username=request.user.username)
+            try:
+                ensure_annotation_columns_lazy(db, table)
+            except TableNotInDatabaseError as e:
+                return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+            except ReservedColumnConflictError as e:
+                return Response({"error": str(e)}, status=status.HTTP_409_CONFLICT)
 
         ucds = self.get_table_ucds(table)
 

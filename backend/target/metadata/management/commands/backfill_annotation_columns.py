@@ -25,6 +25,10 @@ class Command(BaseCommand):
         conflicts = []
 
         for table in tables:
+            if table.schema.is_public:
+                # Tabelas públicas não têm colunas de anotação pessoal.
+                continue
+
             full_name = f"{table.schema.name}.{table.name}"
             db = MyDB(username=table.schema.owner.username)
 
