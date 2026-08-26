@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from target.metadata.catalog_admin import can_manage_table
 from target.metadata.models import Column
 from target.metadata.models import Schema
 from target.metadata.models import Settings
@@ -175,11 +176,11 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
         return obj.schema.is_public
 
     def get_can_manage(self, obj):
-        # Settings page gate: real owner, or staff on a public schema.
-        if self.get_is_owner(obj):
-            return True
+        # Settings page gate. The same rule is enforced server-side on the
+        # write endpoints too — this alone is not a security boundary,
+        # just what decides what the frontend shows.
         current_user = self.context["request"].user
-        return obj.schema.is_public and current_user.is_staff
+        return can_manage_table(current_user, obj)
 
     def get_schema(self, obj):
         return obj.schema.name

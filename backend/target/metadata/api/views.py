@@ -15,6 +15,8 @@ from target.metadata.annotation import TableNotInDatabaseError
 from target.metadata.annotation import ensure_annotation_columns
 from target.metadata.annotation import ensure_annotation_columns_lazy
 from target.metadata.catalog_admin import PublicSchemaPermissionError
+from target.metadata.catalog_admin import TableManagePermissionError
+from target.metadata.catalog_admin import can_manage_table
 from target.metadata.catalog_admin import resolve_schema_owner
 from target.metadata.models import Column
 from target.metadata.models import Schema
@@ -38,13 +40,6 @@ from .serializers import TableSerializer
 
 class TableRegistrationError(Exception):
     """Raised when table registration fails"""
-
-
-class TableDeletePermissionError(PermissionError):
-    """Raised when a user tries to delete a table without permission"""
-
-    def __init__(self):
-        super().__init__("You do not have permission to delete this table.")
 
 
 class TableAlreadyExistsError(TableRegistrationError):
@@ -333,6 +328,13 @@ class UserTableViewSet(ModelViewSet):
             return Response(content, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs):
+        # Checagem no backend: o gate can_manage do frontend (Settings só
+        # acessível pro dono real ou staff em schema público) não é uma
+        # fronteira de segurança sozinho — qualquer cliente autenticado
+        # pode chamar PATCH/PUT direto sabendo só o id da tabela.
+        if not can_manage_table(request.user, self.get_object()):
+            raise TableManagePermissionError
+
         super().update(request, *args, **kwargs)
         instance = self.get_object()
 
@@ -469,6 +471,8 @@ class UserTableViewSet(ModelViewSet):
     @action(detail=True, methods=["post"])
     def complete_registration(self, request, pk=None):
         table = self.get_object()
+        if not can_manage_table(request.user, table):
+            raise TableManagePermissionError
 
         # Check if table have related table when is a cluster catalog
         if table.catalog_type == Table.CATALOG_TYPE_CLUSTER:
@@ -543,11 +547,8 @@ class UserTableViewSet(ModelViewSet):
         return filters
 
     def perform_destroy(self, instance):
-        if (
-            instance.schema.owner != self.request.user
-            and not self.request.user.is_staff
-        ):
-            raise TableDeletePermissionError
+        if not can_manage_table(self.request.user, instance):
+            raise TableManagePermissionError
 
         if instance.related_table:
             instance.related_table.delete()
@@ -886,6 +887,9 @@ class UserTableViewSet(ModelViewSet):
         """Re-trigger catalog diagnostic generation."""
 
         table = self.get_object()
+        if not can_manage_table(request.user, table):
+            raise TableManagePermissionError
+
         if table.catalog_type != Table.CATALOG_TYPE_CLUSTER or not table.related_table:
             return Response(
                 {"error": "Diagnostic is only available for CAnVAS cluster catalogs."},

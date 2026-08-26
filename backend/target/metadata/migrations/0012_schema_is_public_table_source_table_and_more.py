@@ -23,8 +23,4 @@ class Migration(migrations.Migration):
             name='source_table',
             field=models.ForeignKey(blank=True, help_text='Public table this table was derived/materialized from, if any.', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='derived_tables', to='metadata.table', verbose_name='Source Table'),
         ),
-        migrations.AlterUniqueTogether(
-            name='schema',
-            unique_together={('owner', 'name')},
-        ),
     ]
