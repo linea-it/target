@@ -11,11 +11,9 @@ import { deleteUserTable } from "@/services/Metadata";
 
 import { useMutation } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
-import { useAuth } from "@/contexts/AuthContext";
 
 
 export default function CatalogSettingsRemove({ catalog }) {
-  const { user } = useAuth();
   const router = useRouter()
 
   const mutation = useMutation({
@@ -63,11 +61,12 @@ export default function CatalogSettingsRemove({ catalog }) {
                 </Typography>
                 <Typography variant="body1" gutterBottom>
                   This action does not delete the underlying table from the database. The table remains intact and can be re-added later.
+                  {catalog.is_public && " This is a public catalog: removing it only unregisters it from Canvas for every user, it never affects the shared table."}
                 </Typography>
               </Box>
               <Box sx={{ flexGrow: 1 }} />
               <Box sx={{ minWidth: 200 }}>
-                <Button color="error" onClick={deleteCatalog} variant="outlined" disabled={user?.username !== catalog.owner || mutation.isPending}>
+                <Button color="error" onClick={deleteCatalog} variant="outlined" disabled={!catalog.can_manage || mutation.isPending}>
                   Remove Catalog
                 </Button>
               </Box>

@@ -19,6 +19,7 @@ Fase 1 implementada e validada ponta a ponta (issue #196). Todas as decisões de
 - **Correção incidental**: `backend/target/metadata/tests.py` tinha um import quebrado pré-existente (`_is_nullish` importado de `views.py`, mas definido em `notebook_utils.py`), que impedia toda a suíte de testes do backend de rodar. Corrigido apontando o import para `notebook_utils` diretamente (não foi criado um re-export em `views.py`, pois o ruff o marca como import não utilizado).
 - **Limpeza incidental de lint**: `backend/dblinea/mydb.py` tinha débito de lint pré-existente (prints de debug, código comentado morto, linhas de SQL longas, `return`s redundantes) que bloqueava o `pre-commit` por o arquivo inteiro ser lintado quando qualquer parte dele é tocada — não só a mudança de `__init__`. Removido o que era código morto/debug; `create_stm`/`query` mantiveram a assinatura com muitos parâmetros (`# noqa: PLR0913`) para não alterar a API e todos os chamadores.
 - `backfill_annotation_columns.py` ganhou um `continue` para pular tabelas de schemas públicos (evita tentar `ALTER TABLE` num schema externo compartilhado).
+- **Follow-up (2026-08-26)**: dúvida do usuário sobre remoção de catálogo público (risco de `DROP TABLE`, acesso restrito a admin) levou à Decisão 10 (`can_manage`) — ver detalhes lá. Backend `perform_destroy` não mudou (já tinha o `is_staff` bypass); a lacuna era só de frontend (Settings inacessível para todo mundo em público).
 
 ### Verificação executada
 
@@ -215,7 +216,22 @@ O wizard de 3 passos é reaproveitável quase 1:1. Mudanças:
 
 **Ajuste extra necessário** (achado ao investigar o fluxo): `frontend/src/components/AnnotationPanel/index.js` é renderizado incondicionalmente hoje em `TargetDetail`/`ClusterDetail` (faz sentido porque hoje o usuário só vê as próprias tabelas). Para tabela pública, o backend devolve 403 em qualquer tentativa de salvar comentário/flag, e a UI hoje mostraria isso como erro em vez de simplesmente esconder o controle. Gatear a renderização do painel por `catalog.is_owner` (já disponível via `CatalogContext`) em `frontend/src/components/TargetDetail/index.js` e `frontend/src/components/ClusterDetail/index.js`.
 
-### 10. Ambiente local — schema `des_y6_gold` no `postgres-18`
+### 10. Remoção de catálogos públicos — `can_manage` gateia o Settings, nunca `DROP TABLE`
+
+Remover o registro de um catálogo (público ou privado) **nunca** dá `DROP TABLE` na tabela física — `perform_destroy` só apaga a linha de metadados via ORM (`instance.delete()` + `related_table.delete()`). O `DROP TABLE` de verdade só existe numa feature separada, "My Database" (`backend/target/mydb/api/views.py`, app `target.mydb`), hardcoded em `MyDB(username=request.user.username)` — não enxerga nem consegue tocar em schemas públicos, então esse risco não existe estruturalmente.
+
+`perform_destroy` já checava `is_staff` como bypass de dono (Decisão 3), permitindo a um admin remover o registro de um catálogo público via API. Mas o frontend não deixava ninguém chegar nesse botão: a página inteira de Settings (onde mora "Remove Catalog", além de rename/descrição/remapeamento de UCD) é gateada por `catalog.is_owner`, que por desenho (Decisão 1) é sempre `False` em catálogos públicos — inclusive para o admin que registrou.
+
+Solução — campo novo `NestedTableSerializer.get_can_manage`: `is_owner OR (is_public AND user.is_staff)`. `is_owner` continua intocado e segue controlando exclusivamente o `AnnotationPanel` (edição de Quality/Comment continua bloqueada em público para todo mundo — Decisão 3, não confundir com `can_manage`, que é sobre metadados do catálogo, não sobre linhas). `catalog.can_manage` substitui `catalog.is_owner` nos 3 pontos de gate do frontend:
+- `frontend/src/containers/CatalogSettings/index.js` — acesso à página `/settings` inteira (rename, descrição, remapeamento de UCD, Danger Zone).
+- `frontend/src/app/(authenticated)/catalog/[schema]/[table]/page.js` — visibilidade do ícone de Settings.
+- `frontend/src/components/CatalogSettingsRemove/index.js` — habilita o botão "Remove Catalog" (antes comparava `user.username` com a string `"Public"`, que nunca batia com ninguém — o botão ficava sempre desabilitado, mesmo para admin).
+
+Decisão explícita do usuário: admin tem acesso à página de Settings **inteira** em catálogos públicos (não só o Danger Zone) — trata o admin como dono efetivo para fins de edição de metadados do catálogo, mas não de anotação de linha (que segue tecnicamente impossível: `meta_quality_flag`/`meta_comment` nunca existem fisicamente em tabelas de schema público, já que `register_table` pula `ensure_annotation_columns` para elas).
+
+Arquivo: `backend/target/metadata/api/serializers.py` (`NestedTableSerializer.get_can_manage`).
+
+### 11. Ambiente local — schema `des_y6_gold` no `postgres-18`
 
 Novo arquivo `compose/local/postgresql_18/seed_des_y6_gold.sql`, idempotente:
 
@@ -277,7 +293,7 @@ docker compose exec -T postgres-18 psql -U postgres -d canvas_catalogs \
 - `backend/target/metadata/catalog_admin.py` — novo, `resolve_schema_owner`/`get_catalog_system_user`/`PublicSchemaPermissionError`.
 - `backend/target/metadata/api/views.py` — `UserTableViewSet`: `_get_reader_db`, `public_schemas`, `registrable_schema_tables`, `get_permissions`, ajustes em `register_table`/`register`/`create`/`update`/`list`/`data`/`query_data`/`perform_destroy`.
 - `backend/dblinea/mydb.py` — `MyDB.__init__` aceita `schema=` explícito.
-- `backend/target/metadata/api/serializers.py` — `NestedTableSerializer.get_owner`/`get_is_public`.
+- `backend/target/metadata/api/serializers.py` — `NestedTableSerializer.get_owner`/`get_is_public`/`get_can_manage`.
 - `backend/target/users/api/serializers.py` — expor `is_staff`.
 - `frontend/src/services/Metadata.js` — `publicSchemas`, `registrableSchemaTables`.
 - `frontend/src/components/RegistrableSchemaTableSelect/index.js` — novo.
@@ -285,6 +301,7 @@ docker compose exec -T postgres-18 psql -U postgres -d canvas_catalogs \
 - `frontend/src/containers/RegisterCatalog/BasicInformation.js` — seleção condicional.
 - `frontend/src/components/CatalogDataGrid/index.js` — chip "Public" na coluna Owner.
 - `frontend/src/components/TargetDetail/index.js`, `frontend/src/components/ClusterDetail/index.js` — gatear `AnnotationPanel` por `catalog.is_owner`.
+- `frontend/src/containers/CatalogSettings/index.js`, `frontend/src/components/CatalogSettingsRemove/index.js` — gatear acesso ao Settings e habilitar "Remove Catalog" por `catalog.can_manage` em vez de `catalog.is_owner` (Decisão 10).
 - `frontend/src/components/TargetDataGrid/index.js`, `frontend/src/containers/RegisterCatalog/Confirmation.js` — omitir colunas "Quality"/"Comment" quando `isPublic`/`catalog.is_public` (adição pós-implementação, não estava no plano original).
 - `compose/local/postgresql_18/seed_des_y6_gold.sql` — novo, seed local.
 - `backend/target/metadata/tests.py` — corrige import pré-existente quebrado de `_is_nullish` (não fazia parte do escopo da feature, mas bloqueava a suíte de testes).
