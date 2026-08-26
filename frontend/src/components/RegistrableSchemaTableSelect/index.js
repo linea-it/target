@@ -6,7 +6,9 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useQuery } from '@tanstack/react-query'
 import { registrableSchemaTables } from '@/services/Metadata';
 
-export default function RegistrableSchemaTableSelect({ schema, onChange, value, label }) {
+export default function RegistrableSchemaTableSelect({ schema, onChange, value, label, exclude }) {
+
+  const id = React.useId()
 
   const { isLoading, data } = useQuery({
     queryKey: ['registrableSchemaTables', schema],
@@ -18,9 +20,11 @@ export default function RegistrableSchemaTableSelect({ schema, onChange, value, 
     onChange(e.target.value)
   }
 
+  const options = data?.data.filter((option) => `${option.schema}.${option.table}` !== exclude)
+
   return (
     <TextField
-      id="registrable-schema-tables-select"
+      id={`registrable-schema-tables-select-${id}`}
       select
       label={label}
       fullWidth
@@ -38,7 +42,7 @@ export default function RegistrableSchemaTableSelect({ schema, onChange, value, 
       onChange={handleChange}
     >
       {!data && <MenuItem value="" />}
-      {data?.data.map((option) => {
+      {options?.map((option) => {
         let value = `${option.schema}.${option.table}`
         return (
           <MenuItem key={value} value={value}>
@@ -52,11 +56,13 @@ export default function RegistrableSchemaTableSelect({ schema, onChange, value, 
 }
 RegistrableSchemaTableSelect.defaultProps = {
   value: '',
-  label: 'Select Table'
+  label: 'Select Table',
+  exclude: ''
 }
 RegistrableSchemaTableSelect.propTypes = {
   schema: PropTypes.string.isRequired,
   onChange: PropTypes.func.isRequired,
   value: PropTypes.string,
-  label: PropTypes.string
+  label: PropTypes.string,
+  exclude: PropTypes.string
 }

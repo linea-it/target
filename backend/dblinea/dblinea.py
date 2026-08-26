@@ -1,10 +1,3 @@
-class TableNotFoundError(Exception):
-    def __init__(self, tablename, schema):
-        self.tablename = tablename
-        self.schema = schema
-        super().__init__(f"Table {tablename} not found in schema {schema}")
-
-
 import re
 
 import pandas as pd
@@ -20,26 +13,31 @@ from dblinea.db_postgresql import DBPostgresql
 from dblinea.operator_mapper import OperatorMapper
 
 
+class TableNotFoundError(Exception):
+    def __init__(self, tablename, schema):
+        self.tablename = tablename
+        self.schema = schema
+        super().__init__(f"Table {tablename} not found in schema {schema}")
+
+
 class DBBase:
     _database = None
     _engine = None
     _debug = False
 
     # TODO: OS dados de coneção com o banco devem vir de outro lugar!
-    _available_databases = dict(
-        {
-            "gavo": {
-                "ENGINE": "postgresql_psycopg2",
-                "HOST": "desdb4.linea.gov.br",
-                "PORT": "5432",
-                "USER": "untrustedprod",
-                "PASSWORD": "untrusted",
-                "DATABASE": "prod_gavo",
-            },
+    _available_databases = {
+        "gavo": {
+            "ENGINE": "postgresql_psycopg2",
+            "HOST": "desdb4.linea.gov.br",
+            "PORT": "5432",
+            "USER": "untrustedprod",
+            "PASSWORD": "untrusted",
+            "DATABASE": "prod_gavo",
         },
-    )
+    }
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         database="gavo",
         dbhost=None,
@@ -48,7 +46,7 @@ class DBBase:
         dbpass=None,
         dbport=None,
         dbengine="postgresql_psycopg2",
-        debug: bool = False,
+        debug: bool = False,  # noqa: FBT001, FBT002
     ):
         self._debug = debug
 
@@ -61,7 +59,7 @@ class DBBase:
             self.__set_database(database)
         else:
             # Se ao menos umas dessas variaveis
-            # [dbhost, dbname, dbuser, dbpass, dbport]
+            # [dbhost, dbname, dbuser, dbpass, dbport]  # noqa: ERA001
             # For diferente de None, vai tentar criar uma conexão
             # usando os dados que o usuario passou.
             # Util para:
@@ -79,7 +77,7 @@ class DBBase:
 
             self._database = DBPostgresql(db_settings)
 
-    def _setdebug(self, debug: bool):
+    def _setdebug(self, debug: bool):  # noqa: FBT001
         self._debug = debug
 
     def __set_database(self, database):
@@ -98,18 +96,13 @@ class DBBase:
         """
 
         if database not in self._available_databases:
-            raise ValueError("Database not available.")
+            msg = "Database not available."
+            raise ValueError(msg)
 
         db_settings = self._available_databases[database]
 
         if db_settings["ENGINE"] == "postgresql_psycopg2":
             self._database = DBPostgresql(db_settings)
-
-        # if db["ENGINE"] == "sqlite3":
-        #     return DBSqlite(db)
-
-        # if db_settings["ENGINE"] == "oracle":
-        #     return DBOracle(db_settings)
 
     def available_databases(self):
         """Lista os bancos de dados disponiveis
@@ -123,20 +116,15 @@ class DBBase:
             'host': '<database_host.linea.gov.br>', 'engine': 'postgresql_psycopg2'}]
         """
 
-        dbs = []
-        for config_name in self._available_databases:
-            dbs.append(
-                dict(
-                    {
-                        "config_name": config_name,
-                        "dbname": self._available_databases[config_name]["DATABASE"],
-                        "host": self._available_databases[config_name]["HOST"],
-                        "engine": self._available_databases[config_name]["ENGINE"],
-                    },
-                ),
-            )
-
-        return dbs
+        return [
+            {
+                "config_name": config_name,
+                "dbname": self._available_databases[config_name]["DATABASE"],
+                "host": self._available_databases[config_name]["HOST"],
+                "engine": self._available_databases[config_name]["ENGINE"],
+            }
+            for config_name in self._available_databases
+        ]
 
     def get_engine(self):
         """Retorna uma sqlalchemy.Engine
@@ -154,8 +142,13 @@ class DBBase:
 
         return self._engine
 
-    def sa_table(self, tablename: str, schema: str = None) -> sqlalchemy.schema.Table:
-        """Retona uma instancia de sqlalchemy.schema.Table que representa uma tabela no database.
+    def sa_table(
+        self,
+        tablename: str,
+        schema: str | None = None,
+    ) -> sqlalchemy.schema.Table:
+        """Retona uma instancia de sqlalchemy.schema.Table que representa
+        uma tabela no database.
 
         https://docs.sqlalchemy.org/en/14/core/metadata.html#sqlalchemy.schema.Table
 
@@ -172,7 +165,7 @@ class DBBase:
                 return Table(tablename, MetaData(schema=schema), autoload_with=engine)
             raise TableNotFoundError(tablename, schema)
 
-    def table_exists(self, tablename: str, schema: str = None) -> bool:
+    def table_exists(self, tablename: str, schema: str | None = None) -> bool:
         """Verifica se a tabela existe no schema informado.
 
         Args:
@@ -187,7 +180,8 @@ class DBBase:
             return engine.dialect.has_table(con, tablename, schema=schema)
 
     def get_tables(self, schema: str | None = None):
-        """Retorna uma lista de tabelas no schema informado.
+        """Retorna uma lista de tabelas (incluindo views e materialized
+        views) no schema informado.
 
         Args:
             schema (str, optional): Nome do schema. Defaults to None.
@@ -195,10 +189,12 @@ class DBBase:
         Returns:
             list: Lista de tabelas no schema.
         """
-        engine = self.get_engine()
-        with engine.connect() as con:
-            insp = inspect(engine)
-            return insp.get_table_names(schema=schema)
+        insp = inspect(self.get_engine())
+        return [
+            *insp.get_table_names(schema=schema),
+            *insp.get_view_names(schema=schema),
+            *insp.get_materialized_view_names(schema=schema),
+        ]
 
     def execute(self, stm, parameters=None):
         """Executa a query usando con.execute,
@@ -263,16 +259,9 @@ class DBBase:
         self._debug_query(stm)
 
         with self.get_engine().connect() as con:
-            if parameters:
-                queryset = con.execute(stm, parameters)
-            else:
-                queryset = con.execute(stm)
+            queryset = con.execute(stm, parameters) if parameters else con.execute(stm)
 
-            rows = []
-            for row in queryset:
-                rows.append(self.to_dict(row))
-
-            return rows
+            return [self.to_dict(row) for row in queryset]
 
     def fetchall_df(self, stm):
         """Executa a query usando Pandas e retorna um Dataframe com o resultado.
@@ -286,9 +275,7 @@ class DBBase:
         """
         self._debug_query(stm)
 
-        df = pd.read_sql(stm, con=self.get_engine())
-
-        return df
+        return pd.read_sql(stm, con=self.get_engine())
 
     def fetchone(self, stm, parameters=None):
         """Executa a query retorna a primeira linha do resultado
@@ -434,7 +421,8 @@ class DBBase:
 
     def get_table_status(self, tablename, schema=None):
         """
-        This will return size information for table, in both raw bytes and "pretty" form.
+        This will return size information for table, in both raw bytes
+        and "pretty" form.
 
         Args:
             tablename (string): Nome da tabela sem schema.
@@ -456,35 +444,39 @@ class DBBase:
                 'table': '416 kB'
             }
         """
-        and_schema = ""
-        if schema != None:
-            and_schema = "AND nspname = '%s'" % schema
-
+        # relkind: 'r' tabela comum, 'v' view, 'm' materialized view.
+        # Tabelas públicas (schema des_y6_gold, etc.) podem ser views —
+        # sem storage próprio, por isso pg_total_relation_size/pg_indexes_size
+        # não se aplicam e são zeradas nesse caso (senão o Postgres levanta
+        # erro ao tentar medir o tamanho físico de uma view comum).
         stm = text(
-            str(
-                "SELECT *, pg_size_pretty(total_bytes) AS total"
-                " , pg_size_pretty(index_bytes) AS INDEX"
-                " , pg_size_pretty(toast_bytes) AS toast"
-                " , pg_size_pretty(table_bytes) AS TABLE"
-                " FROM ("
-                " SELECT *, total_bytes-index_bytes-COALESCE(toast_bytes,0) AS table_bytes FROM ("
-                " SELECT c.oid,nspname AS table_schema, relname AS TABLE_NAME"
-                " , c.reltuples AS row_estimate"
-                " , pg_total_relation_size(c.oid) AS total_bytes"
-                " , pg_indexes_size(c.oid) AS index_bytes"
-                " , pg_total_relation_size(reltoastrelid) AS toast_bytes"
-                " FROM pg_class c"
-                " LEFT JOIN pg_namespace n ON n.oid = c.relnamespace"
-                " WHERE relkind = 'r'"
-                f" {and_schema} AND relname = '{tablename}'"
-                " ) a"
-                " ) a;",
-            ),
+            "SELECT *, pg_size_pretty(total_bytes) AS total"
+            " , pg_size_pretty(index_bytes) AS INDEX"
+            " , pg_size_pretty(toast_bytes) AS toast"
+            " , pg_size_pretty(table_bytes) AS TABLE"
+            " FROM ("
+            " SELECT *, total_bytes-index_bytes-COALESCE(toast_bytes,0)"
+            " AS table_bytes FROM ("
+            " SELECT c.oid,nspname AS table_schema, relname AS TABLE_NAME"
+            " , c.reltuples AS row_estimate"
+            " , CASE WHEN c.relkind = 'v' THEN 0"
+            "        ELSE pg_total_relation_size(c.oid) END AS total_bytes"
+            " , CASE WHEN c.relkind = 'v' THEN 0"
+            "        ELSE pg_indexes_size(c.oid) END AS index_bytes"
+            " , CASE WHEN c.relkind = 'v' THEN NULL"
+            "        ELSE pg_total_relation_size(reltoastrelid) END AS toast_bytes"
+            " FROM pg_class c"
+            " LEFT JOIN pg_namespace n ON n.oid = c.relnamespace"
+            " WHERE relkind IN ('r', 'v', 'm')"
+            " AND (CAST(:schema AS text) IS NULL OR nspname = :schema)"
+            " AND relname = :tablename"
+            " ) a"
+            " ) a;",
         )
 
-        return self.fetchone_dict(stm)
+        return self.fetchone_dict(stm, {"tablename": tablename, "schema": schema})
 
-    def stm_to_str(self, stm, with_parameters=True):
+    def stm_to_str(self, stm, with_parameters=True):  # noqa: FBT002
         sql = str(
             stm.compile(
                 dialect=self._database.get_dialect(),
@@ -495,20 +487,21 @@ class DBBase:
         )
 
         # Remove new lines
-        sql = sql.replace("\n", " ").replace("\r", "")
+        return sql.replace("\n", " ").replace("\r", "")
 
-        return sql
-
-    def _debug_query(self, stm, with_parameters: bool = True, values=None):
+    def _debug_query(self, stm, with_parameters: bool = True, values=None):  # noqa: FBT001, FBT002
         # https://docs.sqlalchemy.org/en/20/faq/sqlexpressions.html#rendering-bound-parameters-inline
         if not isinstance(stm, str):
             stm = self.stm_to_str(stm, with_parameters)
 
         if self._debug:
+            # Log opcional da query executada (habilitado por MyDB, ver
+            # debug=True em mydb.py) — não é debug residual, é o único
+            # jeito hoje de inspecionar o SQL de fato enviado ao Postgres.
             if with_parameters is False and values is not None:
-                print(str(stm) % values)
+                print(str(stm) % values)  # noqa: T201
             else:
-                print(stm)
+                print(stm)  # noqa: T201
 
     def get_column_obj(self, tbl, column_name):
         return getattr(tbl.c, column_name)

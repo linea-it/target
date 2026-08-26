@@ -70,6 +70,7 @@ export default function RegisterCatalogBasicInformation() {
   }
 
   const isValid = catalog.title && catalog.schema && catalog.table ? true : false
+  const mainTableValue = catalog.schema && catalog.table ? `${catalog.schema}.${catalog.table}` : ''
 
   return (
     <Box
@@ -86,11 +87,12 @@ export default function RegisterCatalogBasicInformation() {
         <RegistrableSchemaTableSelect
           schema={adminSchema}
           onChange={onSelectTable}
-          value={catalog.schema && catalog.table ? `${catalog.schema}.${catalog.table}` : ''}
+          value={mainTableValue}
+          exclude={catalog.related_table_name}
           label={catalog.catalog_type === 'cluster' ? 'Select Cluster Table' : 'Select Table'}
         />
       ) : (
-        <UserTableSelect onChange={onSelectTable} value={catalog.schema && catalog.table ? `${catalog.schema}.${catalog.table}` : ''} label={catalog.catalog_type === 'cluster' ? 'Select Cluster Table' : 'Select Table'} />
+        <UserTableSelect onChange={onSelectTable} value={mainTableValue} exclude={catalog.related_table_name} label={catalog.catalog_type === 'cluster' ? 'Select Cluster Table' : 'Select Table'} />
       )}
 
       {catalog.catalog_type === 'cluster' && (
@@ -101,10 +103,11 @@ export default function RegisterCatalogBasicInformation() {
               schema={adminSchema}
               onChange={onSelectRelatedTable}
               value={catalog.related_table_name ? `${catalog.related_table_name}` : ''}
+              exclude={mainTableValue}
               label="Select Related Cluster Members Table"
             />
           )}
-          {!catalog.related_table && !adminSchema && (<RelatedTableSelect onChange={onSelectRelatedTable} value={catalog.related_table_name ? `${catalog.related_table_name}` : ''} />)}
+          {!catalog.related_table && !adminSchema && (<RelatedTableSelect onChange={onSelectRelatedTable} value={catalog.related_table_name ? `${catalog.related_table_name}` : ''} exclude={mainTableValue} />)}
         </>
       )}
 

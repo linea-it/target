@@ -6,7 +6,9 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useQuery } from '@tanstack/react-query'
 import { availableUserTables } from '@/services/Metadata';
 
-export default function RelatedTableSelect({ onChange, value }) {
+export default function RelatedTableSelect({ onChange, value, exclude }) {
+
+  const id = React.useId()
 
   const { isLoading, data } = useQuery({
     queryKey: ['availableUserTables'],
@@ -17,9 +19,11 @@ export default function RelatedTableSelect({ onChange, value }) {
     onChange(e.target.value)
   }
 
+  const options = data?.data.filter((option) => `${option.schema}.${option.table}` !== exclude)
+
   return (
     <TextField
-      id="available-related-tables-select"
+      id={`available-related-tables-select-${id}`}
       select
       label="Select Related Cluster Members Table"
       fullWidth
@@ -37,7 +41,7 @@ export default function RelatedTableSelect({ onChange, value }) {
       onChange={handleChange}
     >
       {!data && <MenuItem value="" />}
-      {data?.data.map((option) => {
+      {options?.map((option) => {
         let value = `${option.schema}.${option.table}`
         return (
           <MenuItem key={value} value={value}>
@@ -50,9 +54,11 @@ export default function RelatedTableSelect({ onChange, value }) {
   )
 }
 RelatedTableSelect.defaultProps = {
-  value: ''
+  value: '',
+  exclude: ''
 }
 RelatedTableSelect.propTypes = {
   onChange: PropTypes.func.isRequired,
-  value: PropTypes.string
+  value: PropTypes.string,
+  exclude: PropTypes.string
 }

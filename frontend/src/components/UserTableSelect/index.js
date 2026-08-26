@@ -6,7 +6,9 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useQuery } from '@tanstack/react-query'
 import { availableUserTables } from '@/services/Metadata';
 
-export default function UserTableSelect({ onChange, value, label }) {
+export default function UserTableSelect({ onChange, value, label, exclude }) {
+
+  const id = React.useId()
 
   const { isLoading, data } = useQuery({
     queryKey: ['availableUserTables'],
@@ -17,9 +19,11 @@ export default function UserTableSelect({ onChange, value, label }) {
     onChange(e.target.value)
   }
 
+  const options = data?.data.filter((option) => `${option.schema}.${option.table}` !== exclude)
+
   return (
     <TextField
-      id="available-user-tables-select"
+      id={`available-user-tables-select-${id}`}
       select
       label={label}
       fullWidth
@@ -37,7 +41,7 @@ export default function UserTableSelect({ onChange, value, label }) {
       onChange={handleChange}
     >
       {!data && <MenuItem value="" />}
-      {data?.data.map((option) => {
+      {options?.map((option) => {
         let value = `${option.schema}.${option.table}`
         return (
           <MenuItem key={value} value={value}>
@@ -51,10 +55,12 @@ export default function UserTableSelect({ onChange, value, label }) {
 }
 UserTableSelect.defaultProps = {
   value: '',
-  label: 'Select Table'
+  label: 'Select Table',
+  exclude: ''
 }
 UserTableSelect.propTypes = {
   onChange: PropTypes.func.isRequired,
   value: PropTypes.string,
-  label: PropTypes.string
+  label: PropTypes.string,
+  exclude: PropTypes.string
 }

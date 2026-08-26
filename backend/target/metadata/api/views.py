@@ -432,8 +432,17 @@ class UserTableViewSet(ModelViewSet):
     @action(detail=False, methods=["get"])
     def pending_registration(self, request):
         user = request.user
+
+        # Schema.owner de um catálogo público é sempre o usuário de sistema
+        # (Decisão 1), nunca o admin que o está registrando de fato — por
+        # isso staff também precisa ver pendências em schemas públicos,
+        # não só as suas próprias.
+        visibility = Q(schema__owner=user)
+        if user.is_staff:
+            visibility |= Q(schema__is_public=True)
+
         table = Table.objects.filter(
-            schema__owner=user,
+            visibility,
             is_completed=False,
             catalog_type__in=[
                 Table.CATALOG_TYPE_TARGET,
