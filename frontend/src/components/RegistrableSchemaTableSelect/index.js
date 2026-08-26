@@ -4,15 +4,16 @@ import TextField from '@mui/material/TextField';
 import PropTypes from 'prop-types'
 import CircularProgress from '@mui/material/CircularProgress';
 import { useQuery } from '@tanstack/react-query'
-import { availableUserTables } from '@/services/Metadata';
+import { registrableSchemaTables } from '@/services/Metadata';
 
-export default function RelatedTableSelect({ onChange, value, exclude }) {
+export default function RegistrableSchemaTableSelect({ schema, onChange, value, label, exclude }) {
 
   const id = React.useId()
 
   const { isLoading, data } = useQuery({
-    queryKey: ['availableUserTables'],
-    queryFn: availableUserTables
+    queryKey: ['registrableSchemaTables', schema],
+    queryFn: () => registrableSchemaTables(schema),
+    enabled: !!schema,
   })
 
   const handleChange = e => {
@@ -23,9 +24,9 @@ export default function RelatedTableSelect({ onChange, value, exclude }) {
 
   return (
     <TextField
-      id={`available-related-tables-select-${id}`}
+      id={`registrable-schema-tables-select-${id}`}
       select
-      label="Select Related Cluster Members Table"
+      label={label}
       fullWidth
       disabled={isLoading}
       slotProps={{
@@ -53,12 +54,15 @@ export default function RelatedTableSelect({ onChange, value, exclude }) {
     </TextField>
   )
 }
-RelatedTableSelect.defaultProps = {
+RegistrableSchemaTableSelect.defaultProps = {
   value: '',
+  label: 'Select Table',
   exclude: ''
 }
-RelatedTableSelect.propTypes = {
+RegistrableSchemaTableSelect.propTypes = {
+  schema: PropTypes.string.isRequired,
   onChange: PropTypes.func.isRequired,
   value: PropTypes.string,
+  label: PropTypes.string,
   exclude: PropTypes.string
 }

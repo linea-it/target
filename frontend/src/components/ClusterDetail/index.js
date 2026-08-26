@@ -189,7 +189,7 @@ export default function ClusterDetail(props) {
           </Box>
         )}
       </Box>
-      <AnnotationPanel />
+      {catalog?.is_owner && (<AnnotationPanel />)}
 
       <MapsDialog open={mapsOpen} onClose={() => setMapsOpen(false)} surveyId={defaultImage} />
     </Stack>

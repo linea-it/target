@@ -9,7 +9,15 @@ from .models import Table
 @admin.register(Schema)
 class SchemaAdmin(admin.ModelAdmin):
     search_fields = ["name"]
-    list_display = ["id", "name", "owner", "order", "created_at", "updated_at"]
+    list_display = [
+        "id",
+        "name",
+        "owner",
+        "is_public",
+        "order",
+        "created_at",
+        "updated_at",
+    ]
 
 
 @admin.register(Table)

@@ -90,7 +90,7 @@ export default function CatalogDetail({ params }) {
           <Typography variant="h5" mt={2}>
             {catalog.title}
           </Typography>
-          {catalog.is_owner && (
+          {catalog.can_manage && (
             <IconButton href={`/catalog/${catalog.schema}/${catalog.table}/settings`}>
               <SettingsIcon />
             </IconButton>
@@ -108,7 +108,7 @@ export default function CatalogDetail({ params }) {
         // https://cds-astro.github.io/aladin-lite/global.html#AladinOptions
         aladinParams={{
           fov: 1.5,
-          // target: "04 08 35.53 -37 06 27.6", // Coordenadas DES. 
+          // target: "04 08 35.53 -37 06 27.6", // Coordenadas DES.
           // target: "12 26 53.27 +08 56 49.0",
           projection: "AIT",
           // cooFrame: "gal",

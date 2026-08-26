@@ -1,6 +1,7 @@
 'use client';
 import React from 'react';
 import { DataGrid } from '@mui/x-data-grid';
+import Chip from '@mui/material/Chip';
 import Link from 'next/link'
 import { userTables } from '@/services/Metadata';
 export default function CatalogDataGrid() {
@@ -38,7 +39,12 @@ export default function CatalogDataGrid() {
       field: 'owner',
       headerName: 'Owner',
       width: 300,
-      sortable: false
+      sortable: false,
+      renderCell: params => (
+        params.row.is_public
+          ? <Chip label="Public" size="small" color="primary" variant="outlined" />
+          : params.value
+      )
     },
     {
       field: 'nrows',

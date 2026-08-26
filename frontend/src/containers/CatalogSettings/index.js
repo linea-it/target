@@ -52,9 +52,9 @@ export default function CatalogSettingsContainer({ schema, table }) {
     return <div>Not found</div>
   }
 
-  if (!catalog.is_owner) {
+  if (!catalog.can_manage) {
     return (
-      <AccessRestricted message="You don't have permission to edit this catalog. Only the catalog owner can modify its settings." />
+      <AccessRestricted message="You don't have permission to edit this catalog. Only the catalog owner or an admin can modify its settings." />
     );
   }
 

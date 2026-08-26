@@ -186,7 +186,13 @@ export default function TargetDataGrid(props) {
     })
   }
 
-  const columns = [...makeColumns(), ...annotationColumns];
+  // Tabelas públicas não têm as colunas meta_quality_flag/meta_comment (o
+  // registro pula ensure_annotation_columns para não alterar um schema
+  // externo compartilhado), então essas colunas ficariam sempre vazias.
+  // props.isPublic cobre o preview do wizard de registro (Confirmation.js),
+  // que usa RegisterCatalogContext em vez do CatalogContext global.
+  const isPublic = props.isPublic ?? catalog?.is_public;
+  const columns = isPublic ? makeColumns() : [...makeColumns(), ...annotationColumns];
 
   const dataSource = React.useMemo(
     () => ({

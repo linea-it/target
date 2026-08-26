@@ -21,11 +21,20 @@ class Schema(models.Model):
         verbose_name=_("Order"),
         help_text=_("Order in which the schema should be displayed."),
     )
+    is_public = models.BooleanField(
+        default=False,
+        verbose_name=_("Is Public"),
+        help_text=_(
+            "Indicates whether this schema is visible to every authenticated "
+            "user, not just its owner.",
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ("order", "name")
+        unique_together = ("owner", "name")
 
         verbose_name = _("Schema")
         verbose_name_plural = _("Schemas")
@@ -140,6 +149,21 @@ class Table(models.Model):
         related_name="related_members",  # nome reverso mais claro
         verbose_name=_("Related Table"),
         help_text=_("Members table for tables with type cluster."),
+    )
+
+    # Reservado para a Fase 2 (catálogos públicos): aponta para a tabela
+    # pública original da qual esta tabela foi derivada (subset materializado
+    # em mydb_<username> via TAP). Não usado ainda.
+    source_table = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="derived_tables",
+        verbose_name=_("Source Table"),
+        help_text=_(
+            "Public table this table was derived/materialized from, if any.",
+        ),
     )
 
     DIAGNOSTIC_STATUS_PENDING = "pending"

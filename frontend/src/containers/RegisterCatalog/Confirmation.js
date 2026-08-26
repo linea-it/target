@@ -76,6 +76,7 @@ export default function RegisterCatalogConfirmation() {
             schema={catalog.schema}
             table={catalog.table}
             tableColumns={catalog.columns}
+            isPublic={catalog.is_public}
             onChangeSelection={() => { }}
           />
         </Box>
