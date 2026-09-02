@@ -24,13 +24,24 @@ jobs:
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       # Consider using pre-commit.ci for open source project
-      - name: Run pre-commit
+      # PRs: only files in the diff. --all-files fails on pre-existing debt
+      # (old/, SAML templates, generated attribute-maps) and has been red on main.
+      - name: Run pre-commit on PR diff
+        if: github.event_name == 'pull_request'
+        uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: --from-ref ${{ github.event.pull_request.base.sha }} --to-ref HEAD
+
+      - name: Run pre-commit on all files
+        if: github.event_name != 'pull_request'
         uses: pre-commit/action@v3.0.1
 
   # With no caching at all the entire ci process takes 3m to complete!
@@ -41,20 +52,26 @@ jobs:
       - name: Checkout Code Repository
         uses: actions/checkout@v4
 
+      - name: Prepare env files
+        run: |
+          cp .envs/.local/.django.example .envs/.local/.django
+          cp .envs/.local/.postgres.example .envs/.local/.postgres
+          cp env_template .env
+
       - name: Build the Stack
-        run: docker compose -f docker-compose.local.yml build django
+        run: docker compose -f docker-compose.canvas.yml build backend
 
       - name: Build the docs
         run: docker compose -f docker-compose.docs.yml build docs
 
       - name: Check DB Migrations
-        run: docker compose -f docker-compose.local.yml run --rm django python manage.py makemigrations --check
+        run: docker compose -f docker-compose.canvas.yml run --rm backend python manage.py makemigrations --check
 
       - name: Run DB Migrations
-        run: docker compose -f docker-compose.local.yml run --rm django python manage.py migrate
+        run: docker compose -f docker-compose.canvas.yml run --rm backend python manage.py migrate
 
       - name: Run Django Tests
-        run: docker compose -f docker-compose.local.yml run django pytest
+        run: docker compose -f docker-compose.canvas.yml run backend pytest
 
       - name: Tear down the Stack
-        run: docker compose -f docker-compose.local.yml down
+        run: docker compose -f docker-compose.canvas.yml down

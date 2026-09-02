@@ -330,3 +330,107 @@ class Settings(models.Model):
 
     def __str__(self):
         return f"{self.table.schema.name}.{self.table.name}.settings"
+
+
+class MaterializationJob(models.Model):
+    """Tracks one "filter a public catalog -> materialize as my own table"
+    request (issue #197): a Celery task submits the filtered query to
+    Daiquiri's TAP service, polls it, and auto-registers the resulting
+    table(s) - the same materialization it starts. filter_model is kept
+    for audit/retry even after the job finishes.
+    """
+
+    STATUS_PENDING = "pending"
+    STATUS_RUNNING = "running"
+    STATUS_DONE = "done"
+    STATUS_ERROR = "error"
+    STATUS_CHOICES = (
+        (STATUS_PENDING, _("pending")),
+        (STATUS_RUNNING, _("running")),
+        (STATUS_DONE, _("done")),
+        (STATUS_ERROR, _("error")),
+    )
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="materialization_jobs",
+        on_delete=models.CASCADE,
+        verbose_name=_("Owner"),
+        help_text=_("User who requested the materialization."),
+    )
+    source_table = models.ForeignKey(
+        Table,
+        related_name="materialization_jobs",
+        on_delete=models.CASCADE,
+        verbose_name=_("Source Table"),
+        help_text=_("Public catalog table being filtered."),
+    )
+    filter_model = models.JSONField(
+        verbose_name=_("Filter Model"),
+        help_text=_(
+            "Raw MUI DataGrid filterModel used to build the SQL sent to Daiquiri.",
+        ),
+    )
+    result_table_name = models.CharField(
+        max_length=255,
+        verbose_name=_("Result Table Name"),
+        help_text=_(
+            "Auto-generated name of the materialized table in the user's mydb.",
+        ),
+    )
+    related_result_table_name = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name=_("Related Result Table Name"),
+        help_text=_(
+            "Auto-generated name of the materialized members table, "
+            "for cluster catalogs.",
+        ),
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        verbose_name=_("Status"),
+    )
+    error = models.TextField(
+        blank=True,
+        default="",
+        verbose_name=_("Error"),
+        help_text=_("Error message if the job failed."),
+    )
+    daiquiri_job_id_primary = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        verbose_name=_("Daiquiri Job Id (primary)"),
+    )
+    daiquiri_job_id_related = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        verbose_name=_("Daiquiri Job Id (related)"),
+        help_text=_("Only set for cluster catalogs, once the primary job succeeds."),
+    )
+    result_table = models.ForeignKey(
+        Table,
+        related_name="+",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        verbose_name=_("Result Table"),
+        help_text=_(
+            "The Table row created once materialization + auto-registration succeed.",
+        ),
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        verbose_name = _("Materialization Job")
+        verbose_name_plural = _("Materialization Jobs")
+
+    def __str__(self):
+        return f"{self.owner.username}:{self.source_table}:{self.status}"

@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from target.metadata.catalog_admin import can_manage_table
 from target.metadata.models import Column
+from target.metadata.models import MaterializationJob
 from target.metadata.models import Schema
 from target.metadata.models import Settings
 from target.metadata.models import Table
@@ -152,6 +153,7 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
             "related_table",
             "related_table_name",
             "related_property_id",
+            "source_table",
             "created_at",
             "updated_at",
             "is_completed",
@@ -221,3 +223,21 @@ class NestedTableSerializer(serializers.ModelSerializer[Table]):
     def get_ucds(self, obj):
         columns = obj.columns.filter(ucd__isnull=False)
         return {c.ucd: c.name for c in columns if c.ucd and c.name}
+
+
+class MaterializationJobSerializer(serializers.ModelSerializer[MaterializationJob]):
+    class Meta:
+        model = MaterializationJob
+        fields = [
+            "id",
+            "source_table",
+            "filter_model",
+            "result_table_name",
+            "related_result_table_name",
+            "status",
+            "error",
+            "result_table",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields

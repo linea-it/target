@@ -201,7 +201,7 @@ TEMPLATES = [
                 "django.template.context_processors.tz",
                 "django.contrib.messages.context_processors.messages",
                 "target.users.context_processors.allauth_settings",
-                "django_settings_export.settings_export"
+                "django_settings_export.settings_export",
             ],
         },
     },
@@ -373,12 +373,29 @@ APPLICATION_TITLE = env("APPLICATION_TITLE", default="Target Viewer")
 # LINEA MYDB
 # ------------------------------------------------------------------------------
 USER_SCHEMA_PREFIX = env("MYDB_SCHEMA_PREFIX", default="mydb_")
-MYDB_QUOTA_MB = env.int("MYDB_QUOTA_MB", default=10240) # 10 GB
+MYDB_QUOTA_MB = env.int("MYDB_QUOTA_MB", default=10240)  # 10 GB
+
+# LINEA Daiquiri (TAP service integration, issue #197)
+# ------------------------------------------------------------------------------
+# Base URL of the Daiquiri instance backing the public catalogs' TAP service.
+DAIQUIRI_BASE_URL = env("DAIQUIRI_BASE_URL", default="http://daiquiri-nginx")
+# Shared secret used to mint service-to-service JWTs for Daiquiri's TAP API
+# (see target.metadata.daiquiri_auth.mint_service_token). No default on
+# purpose: minting a token with an empty secret should fail loudly, not
+# silently produce a token nobody can validate.
+DAIQUIRI_SERVICE_JWT_SECRET = env("DAIQUIRI_SERVICE_JWT_SECRET", default=None)
+# How long (seconds) the Celery task polling a Daiquiri TAP job waits for a
+# single status check before giving up on that request (not the overall job
+# timeout, which is bounded by the task's own time_limit/soft_time_limit).
+DAIQUIRI_JOB_POLL_TIMEOUT_S = env.int("DAIQUIRI_JOB_POLL_TIMEOUT_S", default=10)
+# How long (seconds) run_materialization_job sleeps between two status
+# checks of the same Daiquiri job while polling for completion.
+DAIQUIRI_JOB_POLL_INTERVAL_S = env.int("DAIQUIRI_JOB_POLL_INTERVAL_S", default=3)
 
 # LINEA Canvas
 # ------------------------------------------------------------------------------
-# Define se a funcionalidade de visualização de clusters está habilitada ou não. 
-# Diferencia entre target e canvas. 
+# Define se a funcionalidade de visualização de clusters está habilitada ou não.
+# Diferencia entre target e canvas.
 ENABLE_CLUSTER = env.bool("ENABLE_CLUSTER", default=False)
 
 
@@ -386,7 +403,7 @@ ENVIRONMENT_NAME = env("ENVIRONMENT_NAME", default="development").lower()
 
 # Complete URL of the production server with protocol and port
 BASE_HOST = env("BASE_HOST", default="http://localhost")
-# URL de login utilizada pelo frontend. 
+# URL de login utilizada pelo frontend.
 # Em dev: /admin/login/?next=/
 # Em produção: /api/login/
 LOGIN_URL = "/admin/login/?next=/"
@@ -399,14 +416,19 @@ LINEA_LOGIN_URL = env("LINEA_LOGIN_URL", default="/admin/login/?next=/")
 RUBIN_LOGIN_URL = env("RUBIN_LOGIN_URL", default="/admin/login/?next=/")
 
 # Url de registro para os diferentes idps.
-LINEA_REGISTER_URL = env("LINEA_REGISTER_URL", default="https://register-dev.linea.org.br/Shibboleth.sso/Login?SAMLDS=1&target=https://register-dev.linea.org.br/registry/co_petitions/start/coef:155&entityID=https://satosa.linea.org.br/linea/proxy/aHR0cHM6Ly9jaWxvZ29uLm9yZw==")
-RUBIN_REGISTER_URL = env("RUBIN_REGISTER_URL", default="https://register-dev.linea.org.br/Shibboleth.sso/Login?SAMLDS=1&target=https://register-dev.linea.org.br/registry/co_petitions/start/coef:231&entityID=https://satosa-dev.linea.org.br/linea_saml_mirror/proxy/aHR0cHM6Ly9kYXRhLmxzc3QuY2xvdWQ=")
+LINEA_REGISTER_URL = env(
+    "LINEA_REGISTER_URL",
+    default="https://register-dev.linea.org.br/Shibboleth.sso/Login?SAMLDS=1&target=https://register-dev.linea.org.br/registry/co_petitions/start/coef:155&entityID=https://satosa.linea.org.br/linea/proxy/aHR0cHM6Ly9jaWxvZ29uLm9yZw==",
+)
+RUBIN_REGISTER_URL = env(
+    "RUBIN_REGISTER_URL",
+    default="https://register-dev.linea.org.br/Shibboleth.sso/Login?SAMLDS=1&target=https://register-dev.linea.org.br/registry/co_petitions/start/coef:231&entityID=https://satosa-dev.linea.org.br/linea_saml_mirror/proxy/aHR0cHM6Ly9kYXRhLmxzc3QuY2xvdWQ=",
+)
 
 # Lista de grupos internos do sistema.
 # Esses grupos são gerenciados no django admin.
-# Quando o usuario faz login pelo saml2 esses grupos não serão removidos. 
+# Quando o usuario faz login pelo saml2 esses grupos não serão removidos.
 INTERNAL_GROUPS = []
-
 
 
 SETTINGS_EXPORT = [
@@ -415,5 +437,5 @@ SETTINGS_EXPORT = [
     "LINEA_LOGIN_URL",
     "LINEA_REGISTER_URL",
     "RUBIN_LOGIN_URL",
-    "RUBIN_REGISTER_URL"
+    "RUBIN_REGISTER_URL",
 ]
