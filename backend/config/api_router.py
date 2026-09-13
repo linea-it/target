@@ -3,12 +3,13 @@ from rest_framework.routers import DefaultRouter
 from rest_framework.routers import SimpleRouter
 
 from target.metadata.api.views import ColumnViewSet
+from target.metadata.api.views import MaterializationJobViewSet
 from target.metadata.api.views import SchemaViewSet
 from target.metadata.api.views import SettingsViewSet
 from target.metadata.api.views import TableViewSet
 from target.metadata.api.views import UserTableViewSet
-from target.users.api.views import UserViewSet
 from target.mydb.api.views import MydbViewSet
+from target.users.api.views import UserViewSet
 
 router = DefaultRouter() if settings.DEBUG else SimpleRouter()
 
@@ -18,6 +19,11 @@ router.register("metadata/tables", TableViewSet)
 router.register("metadata/columns", ColumnViewSet)
 router.register("metadata/settings", SettingsViewSet, basename="settings")
 router.register("metadata/user_tables", UserTableViewSet, basename="user_tables")
+router.register(
+    "metadata/materialization_jobs",
+    MaterializationJobViewSet,
+    basename="materialization_jobs",
+)
 
 router.register("mydb", MydbViewSet, basename="mydb")
 

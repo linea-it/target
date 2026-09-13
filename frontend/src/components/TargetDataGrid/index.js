@@ -26,7 +26,7 @@ const QUALITY_FLAG_META = {
 
 export default function TargetDataGrid(props) {
 
-  const { selectedRecord, setSelectedRecord, catalog, refreshGridToken } = useCatalog()
+  const { selectedRecord, setSelectedRecord, catalog, refreshGridToken, setLastFilterModel } = useCatalog()
   const apiRef = useGridApiRef();
 
 
@@ -204,6 +204,11 @@ export default function TargetDataGrid(props) {
 
           // atualiza o conjunto de ids visíveis
           setVisibleRowIds(new Set(rows.map((r) => BigInt(r.meta_id))));
+
+          // guarda o filterModel que efetivamente teve sucesso no servidor,
+          // pra "Save filtered subset" (issue #197) sem precisar assinar um
+          // evento novo do grid.
+          setLastFilterModel?.(params.filterModel);
 
           return {
             rows,

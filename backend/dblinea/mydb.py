@@ -406,5 +406,10 @@ class MyDB(DBBase):
                 nspname;
         """)
 
+        # No rows at all when the schema has no tables yet (GROUP BY with
+        # nothing to group), not just a NULL total_bytes - result itself is
+        # None then, not a dict with a None value.
         result = self.fetchone_dict(stm, {"schema": self.schema})
+        if result is None:
+            return 0
         return result["total_bytes"] if result["total_bytes"] is not None else 0

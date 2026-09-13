@@ -149,6 +149,26 @@ export const regenerateCatalogDiagnostic = ({ tableId }) => {
     return api.post(`metadata/user_tables/${tableId}/catalog_diagnostic/regenerate/`)
 }
 
+export const previewFilterSql = ({ tableId, filterModel }) => {
+    // Envia o filterModel bruto do MUI DataGrid (items/logicOperator), não
+    // achatado via parseQueryOptions - o backend (filter_to_sql.py) espera
+    // esse formato para montar o SQL, diferente do endpoint /data/.
+    return api.post(`metadata/user_tables/${tableId}/filter_preview/`, {
+        filter_model: filterModel,
+    })
+}
+
+export const materializeTable = ({ tableId, filterModel, tableName }) => {
+    return api.post(`metadata/user_tables/${tableId}/materialize/`, {
+        filter_model: filterModel,
+        table_name: tableName,
+    })
+}
+
+export const getMaterializationJob = ({ jobId }) => {
+    return api.get(`metadata/materialization_jobs/${jobId}/`)
+}
+
 export const annotateTableRow = ({ tableId, rowId, ...data }) => {
     // data pode ter quality_flag e/ou comment. Só envia os campos presentes.
     return api.patch(`metadata/user_tables/${tableId}/rows/${rowId}/annotation/`, data);

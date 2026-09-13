@@ -1,24 +1,35 @@
+import re
+
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone as django_timezone
+from rest_framework import mixins
 from rest_framework import permissions
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet
 from rest_framework.viewsets import ModelViewSet
 
 from dblinea import MyDB
 from target.metadata.annotation import ReservedColumnConflictError
 from target.metadata.annotation import TableNotInDatabaseError
-from target.metadata.annotation import ensure_annotation_columns
 from target.metadata.annotation import ensure_annotation_columns_lazy
 from target.metadata.catalog_admin import PublicSchemaPermissionError
 from target.metadata.catalog_admin import TableManagePermissionError
+from target.metadata.catalog_admin import TableRegistrationError
 from target.metadata.catalog_admin import can_manage_table
+from target.metadata.catalog_admin import is_table_registered
+from target.metadata.catalog_admin import register
+from target.metadata.catalog_admin import register_table
 from target.metadata.catalog_admin import resolve_schema_owner
+from target.metadata.filter_to_sql import FilterToSqlError
+from target.metadata.filter_to_sql import build_select_sql
 from target.metadata.models import Column
+from target.metadata.models import MaterializationJob
 from target.metadata.models import Schema
 from target.metadata.models import Settings
 from target.metadata.models import Table
@@ -30,30 +41,14 @@ from target.metadata.notebook_utils import _sanitize_scalar
 from target.metadata.notebook_utils import sanitize_data
 from target.metadata.public_catalogs import PUBLIC_CATALOGS
 from target.metadata.tasks import generate_catalog_diagnostic
+from target.metadata.tasks import run_materialization_job
 
 from .serializers import ColumnSerializer
+from .serializers import MaterializationJobSerializer
 from .serializers import NestedTableSerializer
 from .serializers import SchemaSerializer
 from .serializers import SettingsSerializer
 from .serializers import TableSerializer
-
-
-class TableRegistrationError(Exception):
-    """Raised when table registration fails"""
-
-
-class TableAlreadyExistsError(TableRegistrationError):
-    """Raised when attempting to register an existing table"""
-
-    def __init__(self, schema, name):
-        super().__init__(f"Table {schema}.{name} already registered")
-
-
-class MissingRelatedTableError(TableRegistrationError):
-    """Raised when required related table is missing"""
-
-    def __init__(self):
-        super().__init__("Related table must be provided for cluster catalogs.")
 
 
 class SchemaViewSet(ModelViewSet):
@@ -92,6 +87,29 @@ class SettingsViewSet(ModelViewSet):
     filterset_fields = ["id", "table"]
 
 
+# Base name only - "_members" (8 chars) may still be appended for the
+# cluster+members case, so this is capped well under Postgres's 63-byte
+# identifier limit.
+RESULT_TABLE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,49}$")
+
+
+def _validate_result_table_name(name, *, owner_username):
+    """Returns an error message if `name` can't be used as a materialized
+    table name, or None if it's fine. Checked synchronously at request time
+    (rather than left to fail inside the Celery task) so the user gets
+    immediate feedback instead of a job that silently ends up in `error`.
+    """
+    if not RESULT_TABLE_NAME_RE.match(name):
+        return (
+            "Table name must start with a letter or underscore, contain only "
+            "letters, digits and underscores, and be at most 50 characters."
+        )
+    schema_name = f"{settings.USER_SCHEMA_PREFIX}{owner_username}"
+    if is_table_registered(name, schema_name):
+        return f"You already have a table named '{name}'."
+    return None
+
+
 class UserTableViewSet(ModelViewSet):
     serializer_class = NestedTableSerializer
     queryset = Table.objects.all()
@@ -117,15 +135,50 @@ class UserTableViewSet(ModelViewSet):
             return MyDB(schema=table.schema.name)
         return MyDB(username=self.request.user.username)
 
-    def list(self, request):
-        # https://www.cdrf.co/3.9/rest_framework.viewsets/ReadOnlyModelViewSet.html#list
-        queryset = self.get_queryset()
-        queryset = queryset.filter(
+    def _owned_or_public_queryset(self):
+        """Tables the current user may *read*: their own, or any public
+        schema's - regardless of completion state, since edit/complete
+        flows (update/complete_registration) need to reach an in-progress
+        registration too. Excludes soft-removed rows.
+
+        This is the single source of truth for read-visibility, used by
+        get_object() (so retrieve/update/complete_registration/destroy all
+        get it "for free") and by any detail action that deliberately
+        avoids self.get_object() (see data(), which predates this helper
+        and has its own reason to bypass filter_queryset).
+        """
+        return self.get_queryset().filter(
             Q(schema__owner=self.request.user) | Q(schema__is_public=True),
-            is_completed=True,
             is_removed=False,
+        )
+
+    def _listable_queryset(self):
+        """Narrower than _owned_or_public_queryset(): only tables that
+        belong on a catalog listing/grid - completed, not removed, and of
+        a browsable type. Used by list() and by anything that treats a
+        table as a materialization source (filter_preview/materialize),
+        since a source table must already be a real, navigable catalog.
+        """
+        return self._owned_or_public_queryset().filter(
+            is_completed=True,
             catalog_type__in=[Table.CATALOG_TYPE_TARGET, Table.CATALOG_TYPE_CLUSTER],
         )
+
+    def get_object(self):
+        # Deliberately does not use self.filter_queryset() here (unlike the
+        # DRF default) - same reason data() avoids it: filterset_fields
+        # would apply query params like ?id=... on top of the pk lookup,
+        # which can 404 a legitimate request. See data()'s comment below.
+        queryset = self._owned_or_public_queryset()
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        filter_kwargs = {self.lookup_field: self.kwargs[lookup_url_kwarg]}
+        obj = get_object_or_404(queryset, **filter_kwargs)
+        self.check_object_permissions(self.request, obj)
+        return obj
+
+    def list(self, request):
+        # https://www.cdrf.co/3.9/rest_framework.viewsets/ReadOnlyModelViewSet.html#list
+        queryset = self._listable_queryset()
         queryset = self.filter_queryset(queryset)
 
         # List of tables in the user's own schema.
@@ -158,149 +211,6 @@ class UserTableViewSet(ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
-    def is_table_registered(self, tablename, schema):
-        # check if the table is registered
-        return Table.objects.filter(name=tablename, schema__name=schema).exists()
-
-    def register_table(self, user, data):
-        owner, is_public = resolve_schema_owner(user, data.get("schema"))
-
-        # Instancia do MyDB
-        db = (
-            MyDB(schema=data.get("schema"))
-            if is_public
-            else MyDB(username=user.username)
-        )
-
-        is_registered = self.is_table_registered(
-            data.get("name"),
-            data.get("schema"),
-        )
-        if is_registered:
-            raise TableAlreadyExistsError(data.get("schema"), data.get("name"))
-
-        # Verifica se a tabela existe
-        if not db.table_exists(
-            schema=data.get("schema"),
-            tablename=data.get("name"),
-        ):
-            table_name = f"{data.get('schema')}.{data.get('name')}"
-            msg = f"Table {table_name} not found in database"
-            raise TableRegistrationError(msg)
-
-        # Garante as colunas de avaliação (meta_quality_flag, meta_comment)
-        # antes de ler o schema da tabela, para que já apareçam no describe.
-        # Não faz sentido ALTER TABLE num schema público compartilhado para
-        # adicionar colunas de anotação pessoal.
-        if not is_public:
-            ensure_annotation_columns(db, data.get("name"))
-
-        # Tamanho da tabela e quantidade de linhas estimadas.
-        stats = db.get_table_status(
-            tablename=data.get("name"),
-        )
-
-        # Tenta usar o total de linhas estimado pelo postgres
-        # para evitar a query count que pode ser demorada em tabelas grandes.
-        nrows = stats.get("row_estimate")
-
-        if nrows in (0, None, -1):
-            # Total de linhas na tabela.
-            nrows = db.get_count(
-                tablename=data.get("name"),
-            )
-
-        schema = Schema.objects.get_or_create(
-            owner=owner,
-            name=data.get("schema"),
-            defaults={"is_public": is_public},
-        )[0]
-
-        table = Table.objects.create(
-            schema=schema,
-            name=data.get("name"),
-            title=data.get("title"),
-            description=data.get("description"),
-            catalog_type=data.get("catalog_type"),
-            nrows=nrows,
-            size=stats.get("total_bytes"),
-        )
-
-        # Criar o registro das colunas da tabela.
-        # As colunas reservadas para avaliação (meta_quality_flag,
-        # meta_comment) ficam de fora do catálogo de Column: não aparecem
-        # no grid nem no mapeamento de UCDs, apenas fluem "de graça" nas
-        # linhas retornadas por MyDB.query() (SELECT *).
-        columns = db.describe_table(tablename=table.name)
-        for c in columns:
-            if c.get("name") in Table.RESERVED_ANNOTATION_COLUMNS:
-                continue
-            Column.objects.create(
-                table=table,
-                name=c.get("name"),
-                datatype=str(c.get("type").__repr__()),
-                pythontype=str(c.get("python_type").__name__),
-                order=c.get("order"),
-            )
-
-        table.refresh_from_db()
-
-        return table
-
-    def register(self, user, data):
-        # Register main table
-        table = self.register_table(user, data)
-
-        try:
-            # region Check related table
-            # Check if the table is typed as 'cluster' and has related_table set
-            if table.catalog_type == Table.CATALOG_TYPE_CLUSTER:
-                related_tablename = data.get("related_table_name", None)
-                if not related_tablename:
-                    raise MissingRelatedTableError  # noqa: TRY301
-
-                # region Register related table if not registered
-                if related_tablename:
-                    schema_name = related_tablename.split(".")[0]
-                    table_name = related_tablename.split(".")[-1]
-
-                    if self.is_table_registered(table_name, schema_name):
-                        # Related table already registered, fetch it
-                        related_owner, _is_public = resolve_schema_owner(
-                            user,
-                            schema_name,
-                        )
-                        related_table = Table.objects.get(
-                            name=table_name,
-                            schema__name=schema_name,
-                            schema__owner=related_owner,
-                        )
-                        table.related_table = related_table
-                        table.save()
-
-                    else:
-                        # Related table not registered,
-                        # register it now
-                        data = {
-                            "schema": schema_name,
-                            "name": table_name,
-                            "title": f"Auto registered {table_name}",
-                            "description": "",
-                            "catalog_type": Table.CATALOG_TYPE_MEMBER,
-                        }
-
-                        related_table = self.register_table(user, data)
-                        table.related_table = related_table
-                        table.save()
-            # endregion
-        except Exception:
-            if table:
-                table.delete()
-            raise
-
-        table.refresh_from_db()
-        return table
-
     def create(self, request):
         try:
             data = {
@@ -312,7 +222,7 @@ class UserTableViewSet(ModelViewSet):
                 "related_table_name": request.data.get("related_table_name", None),
             }
 
-            table = self.register(request.user, data)
+            table = register(request.user, data)
 
             table.refresh_from_db()
 
@@ -353,7 +263,7 @@ class UserTableViewSet(ModelViewSet):
                 schema_name = related_tablename.split(".")[0]
                 table_name = related_tablename.split(".")[-1]
 
-                if self.is_table_registered(table_name, schema_name):
+                if is_table_registered(table_name, schema_name):
                     # Related table already registered, fetch it
                     related_owner, _is_public = resolve_schema_owner(
                         request.user,
@@ -379,7 +289,7 @@ class UserTableViewSet(ModelViewSet):
                             "catalog_type": Table.CATALOG_TYPE_MEMBER,
                         }
 
-                        table = self.register_table(request.user, data)
+                        table = register_table(request.user, data)
                         instance.related_table = table
                         instance.save()
                     except TableRegistrationError as e:
@@ -401,7 +311,7 @@ class UserTableViewSet(ModelViewSet):
         results = [
             {"table": table, "schema": db.schema}
             for table in tables
-            if not self.is_table_registered(table, db.schema)
+            if not is_table_registered(table, db.schema)
         ]
 
         # Order by tablename
@@ -427,7 +337,7 @@ class UserTableViewSet(ModelViewSet):
         results = [
             {"table": t, "schema": schema}
             for t in sorted(allowed_tables & live_tables)
-            if not self.is_table_registered(t, schema)
+            if not is_table_registered(t, schema)
         ]
         return Response(results, status=status.HTTP_200_OK)
 
@@ -606,9 +516,12 @@ class UserTableViewSet(ModelViewSet):
         # IMPORTANTE: Não pode ser utilizado o self.get_object()
         # por que falha se um dos campos de filtro for "id"
         # pk é a identificação que vem na url /{pk}/data/
-        # e não é afetada pelos filtros.
-        queryset = self.get_queryset()
-        table = queryset.prefetch_related("columns").get(pk=pk)
+        # e não é afetada pelos filtros. Usa _owned_or_public_queryset()
+        # (não self.get_queryset() puro) para não deixar um usuário
+        # autenticado ler dados de tabela privada de outro usuário só por
+        # saber o id.
+        queryset = self._owned_or_public_queryset()
+        table = get_object_or_404(queryset.prefetch_related("columns"), pk=pk)
 
         # Self-healing: garante as colunas de avaliação mesmo em tabelas
         # registradas antes dessa feature existir, ou se a tabela tiver
@@ -662,6 +575,21 @@ class UserTableViewSet(ModelViewSet):
         }
 
         return Response(results, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="filter_preview")
+    def filter_preview(self, request, pk=None):
+        # Same visibility rule as list()/data(): a materialization source
+        # must be a real, browsable catalog table (own or public), not just
+        # any row readable via _owned_or_public_queryset().
+        table = get_object_or_404(self._listable_queryset(), pk=pk)
+
+        filter_model = request.data.get("filter_model") or {}
+        try:
+            sql = build_select_sql(table, filter_model)
+        except FilterToSqlError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"sql": sql}, status=status.HTTP_200_OK)
 
     def _validate_annotation_payload(self, data):
         """Valida o payload de anotação e retorna {coluna_fisica: valor}.
@@ -904,3 +832,89 @@ class UserTableViewSet(ModelViewSet):
             {"status": table.catalog_diagnostic_status},
             status=status.HTTP_202_ACCEPTED,
         )
+
+    @action(detail=True, methods=["post"])
+    def materialize(self, request, pk=None):
+        """Filters `pk` (a public/own catalog table) by `filter_model` and
+        materializes the result as a new table in the caller's own mydb,
+        via a background MaterializationJob (issue #197). `pk` is always
+        the *source* table. `table_name` is the name the user wants for the
+        result table; if omitted, one is auto-generated.
+        """
+        table = get_object_or_404(self._listable_queryset(), pk=pk)
+
+        in_progress = MaterializationJob.objects.filter(
+            owner=request.user,
+            source_table=table,
+            status__in=[
+                MaterializationJob.STATUS_PENDING,
+                MaterializationJob.STATUS_RUNNING,
+            ],
+        ).exists()
+        if in_progress:
+            return Response(
+                {"error": "A materialization for this table is already in progress."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        filter_model = request.data.get("filter_model") or {}
+        requested_name = (request.data.get("table_name") or "").strip()
+
+        if requested_name:
+            error = _validate_result_table_name(
+                requested_name,
+                owner_username=request.user.username,
+            )
+            if error:
+                return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
+            result_table_name = requested_name
+        else:
+            timestamp = django_timezone.now().strftime("%Y%m%d%H%M%S")
+            result_table_name = f"{table.name}_subset_{timestamp}"
+
+        related_result_table_name = ""
+        if table.catalog_type == Table.CATALOG_TYPE_CLUSTER and table.related_table:
+            related_result_table_name = f"{result_table_name}_members"
+            if requested_name:
+                error = _validate_result_table_name(
+                    related_result_table_name,
+                    owner_username=request.user.username,
+                )
+                if error:
+                    return Response(
+                        {"error": f"Members table name: {error}"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+        job = MaterializationJob.objects.create(
+            owner=request.user,
+            source_table=table,
+            filter_model=filter_model,
+            result_table_name=result_table_name,
+            related_result_table_name=related_result_table_name,
+        )
+        # on_commit: garante que o worker só veja o job depois que a
+        # transação do request tiver sido persistida (mesmo padrão de
+        # catalog_diagnostic_regenerate/complete_registration).
+        transaction.on_commit(lambda: run_materialization_job.delay(job.id))
+
+        return Response(
+            {"id": job.id, "status": job.status},
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+
+class MaterializationJobViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    GenericViewSet,
+):
+    """Read-only: status polling for a user's own materialization jobs.
+    Never exposes another user's jobs - there's no public-schema concept
+    here, unlike UserTableViewSet's visibility rule.
+    """
+
+    serializer_class = MaterializationJobSerializer
+
+    def get_queryset(self):
+        return MaterializationJob.objects.filter(owner=self.request.user)

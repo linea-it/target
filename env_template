@@ -8,6 +8,13 @@ DJANGO_UWSGI_WORKER_PROCESSES=4
 DJANGO_UWSGI_WORKER_THREADS=2
 DATABASE_URL=postgres://debug:debug@postgres-14:5432/target
 DATABASE_MYDB_URL=postgres://debug:debug@postgres-18:5432/catalogsdb
+# To test issue #197's materialization end-to-end locally, Canvas needs to
+# read the same Postgres Daiquiri writes to (in staging/production they
+# already share one physical server; in local dev each repo has its own).
+# Point at the lsp_daiquiri catalog-database container's host-published
+# port instead of the line above (adjust host/port/credentials/db name to
+# match your local lsp_daiquiri/.env):
+# DATABASE_MYDB_URL=postgres://postgres:postgres@host.docker.internal:5435/daiquiri_data
 MYDB_SCHEMA_PREFIX=mydb_
 
 # Redis
@@ -30,3 +37,22 @@ BASE_HOST=http://localhost
 # Urls de login SAML/CILogon
 LINEA_LOGIN_URL=$BASE_HOST/saml2/login/?idp=https://satosa.linea.org.br/linea/proxy/aHR0cHM6Ly9jaWxvZ29uLm9yZw==
 RUBIN_LOGIN_URL=$BASE_HOST/saml2/login/?idp=https://satosa-dev.linea.org.br/linea_saml_mirror/proxy/aHR0cHM6Ly9kYXRhLmxzc3QuY2xvdWQ=&next=/
+
+# Daiquiri (TAP service integration, issue #197)
+# ------------------------------------------------------------------------------
+# Base URL of the Daiquiri instance backing the public catalogs' TAP service.
+# Local dev: the Daiquiri nginx container's host-published port (see
+# lsp_daiquiri/docker-compose.yml), reached via host.docker.internal since
+# it's a separate docker-compose project on its own network.
+DAIQUIRI_BASE_URL=http://host.docker.internal:81
+# Shared secret used to mint/validate service-to-service JWTs between Canvas
+# and Daiquiri (target.metadata.daiquiri_auth.mint_service_token on this
+# side, linea.authentication.ServiceJWTAuthentication on Daiquiri's). No
+# default - must be set, and must match CANVAS_SERVICE_JWT_SECRET in
+# Daiquiri's own .env exactly (same value, variable name differs by design).
+DAIQUIRI_SERVICE_JWT_SECRET=
+# Optional - HTTP timeout (seconds) for a single Daiquiri TAP request, and
+# the sleep interval (seconds) between two status checks of the same
+# Daiquiri job while polling. Defaults: 10 and 3.
+# DAIQUIRI_JOB_POLL_TIMEOUT_S=10
+# DAIQUIRI_JOB_POLL_INTERVAL_S=3

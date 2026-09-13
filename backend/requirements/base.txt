@@ -11,6 +11,7 @@ uvicorn[standard]==0.32.1  # https://github.com/encode/uvicorn
 uvicorn-worker==0.2.0  # https://github.com/Kludex/uvicorn-worker
 uwsgi==2.0.28 #https://uwsgi-docs.readthedocs.io/en/latest/index.html
 SQLAlchemy==2.0.37  # https://github.com/sqlalchemy/sqlalchemy
+PyJWT==2.10.1  # https://github.com/jpadilla/pyjwt
 pandas==2.2.3 # https://github.com/pandas-dev/pandas
 astropy>=6.1 # https://github.com/astropy/astropy
 psycopg2==2.9.10 # https://github.com/psycopg/psycopg2
