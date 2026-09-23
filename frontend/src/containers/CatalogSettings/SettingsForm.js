@@ -91,6 +91,10 @@ export default function SettingsForm() {
     value: "LSST_DP1_IRG_LIneA",
     label: "LSST DP1 IRG at LIneA",
     requireGroup: "lsst_dp1"
+  }, {
+    value: "LSST_DP2_IRG_LIneA",
+    label: "LSST DP2 IRG at LIneA",
+    requireGroup: "lsst_dp2"
   }
   ]
 
