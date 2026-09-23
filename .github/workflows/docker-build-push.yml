@@ -18,8 +18,11 @@ env:
   IMAGE_REPO: linea/target
 
 jobs:
-  build-push:
+  setup:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.vars.outputs.tag }}
+      matrix: ${{ steps.vars.outputs.matrix }}
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v4
@@ -27,9 +30,31 @@ jobs:
           # git describe needs the full history and tags
           fetch-depth: 0
 
-      - name: Compute tag
+      - name: Compute tag and image matrix
         id: vars
-        run: echo "tag=$(git describe --always)" >> "$GITHUB_OUTPUT"
+        env:
+          SELECTION: ${{ inputs.image }}
+        run: |
+          images='[
+            {"name": "backend", "file": "compose/production/django/Dockerfile"},
+            {"name": "frontend", "file": "compose/production/frontend/Dockerfile"},
+            {"name": "mydb_frontend", "file": "mydb/compose/production/frontend/Dockerfile"}
+          ]'
+          matrix=$(jq -c --arg sel "$SELECTION" '[.[] | select($sel == "all" or .name == $sel)]' <<< "$images")
+          echo "tag=$(git describe --always)" >> "$GITHUB_OUTPUT"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  build-push:
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.setup.outputs.matrix) }}
+    name: build-push (${{ matrix.name }})
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -40,85 +65,81 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push backend
-        id: backend
-        if: inputs.image == 'all' || inputs.image == 'backend'
+      - name: Build and push ${{ matrix.name }}
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: compose/production/django/Dockerfile
+          file: ${{ matrix.file }}
           push: true
-          tags: ${{ env.IMAGE_REPO }}:backend_${{ steps.vars.outputs.tag }}
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,mode=max,scope=backend
+          tags: ${{ env.IMAGE_REPO }}:${{ matrix.name }}_${{ needs.setup.outputs.tag }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
 
-      - name: Build and push frontend
-        id: frontend
-        if: inputs.image == 'all' || inputs.image == 'frontend'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: compose/production/frontend/Dockerfile
-          push: true
-          tags: ${{ env.IMAGE_REPO }}:frontend_${{ steps.vars.outputs.tag }}
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,mode=max,scope=frontend
-
-      - name: Build and push mydb_frontend
-        id: mydb_frontend
-        if: inputs.image == 'all' || inputs.image == 'mydb_frontend'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: mydb/compose/production/frontend/Dockerfile
-          push: true
-          tags: ${{ env.IMAGE_REPO }}:mydb_frontend_${{ steps.vars.outputs.tag }}
-          cache-from: type=gha,scope=mydb_frontend
-          cache-to: type=gha,mode=max,scope=mydb_frontend
-
-      - name: Summary
+      - name: Record result
         if: always()
         env:
+          NAME: ${{ matrix.name }}
+          IMAGE: ${{ env.IMAGE_REPO }}:${{ matrix.name }}_${{ needs.setup.outputs.tag }}
+          OUTCOME: ${{ steps.build.outcome }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p result
+          jq -n --arg name "$NAME" --arg image "$IMAGE" --arg outcome "$OUTCOME" --arg digest "$DIGEST" \
+            '{name: $name, image: $image, outcome: $outcome, digest: $digest}' > "result/${NAME}.json"
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ matrix.name }}
+          path: result/
+          retention-days: 1
+
+  summary:
+    needs: [setup, build-push]
+    if: always() && needs.setup.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: result-*
+          merge-multiple: true
+          path: results
+        continue-on-error: true
+
+      - name: Write summary
+        env:
           SELECTION: ${{ inputs.image }}
-          TAG: ${{ steps.vars.outputs.tag }}
+          TAG: ${{ needs.setup.outputs.tag }}
+          MATRIX: ${{ needs.setup.outputs.matrix }}
           REF_NAME: ${{ github.ref_name }}
           SHA: ${{ github.sha }}
-          BACKEND_OUTCOME: ${{ steps.backend.outcome }}
-          BACKEND_DIGEST: ${{ steps.backend.outputs.digest }}
-          FRONTEND_OUTCOME: ${{ steps.frontend.outcome }}
-          FRONTEND_DIGEST: ${{ steps.frontend.outputs.digest }}
-          MYDB_FRONTEND_OUTCOME: ${{ steps.mydb_frontend.outcome }}
-          MYDB_FRONTEND_DIGEST: ${{ steps.mydb_frontend.outputs.digest }}
         run: |
           pushed=()
           rows=""
-          add_row() {
-            local name="$1" outcome="$2" digest="$3"
-            local image="${IMAGE_REPO}:${name}_${TAG}"
+          for name in $(jq -r '.[].name' <<< "$MATRIX"); do
+            image="${IMAGE_REPO}:${name}_${TAG}"
+            file="results/${name}.json"
+            outcome=$([ -f "$file" ] && jq -r '.outcome' "$file" || echo "unknown")
+            digest=$([ -f "$file" ] && jq -r '.digest' "$file" || echo "")
             case "$outcome" in
               success) icon="✅ pushed"; pushed+=("$image") ;;
               failure) icon="❌ failed" ;;
-              cancelled) icon="⚠️ cancelled" ;;
-              *) return ;;  # skipped / not selected
+              *) icon="⚠️ ${outcome}" ;;
             esac
             rows+="| ${name} | **\`${image}\`** | ${icon} | \`${digest:--}\` |"$'\n'
-          }
-          add_row backend "$BACKEND_OUTCOME" "$BACKEND_DIGEST"
-          add_row frontend "$FRONTEND_OUTCOME" "$FRONTEND_DIGEST"
-          add_row mydb_frontend "$MYDB_FRONTEND_OUTCOME" "$MYDB_FRONTEND_DIGEST"
+          done
 
           {
             echo "## 🐳 Docker images pushed"
             echo
             echo "**Selection:** \`${SELECTION}\` · **Branch:** \`${REF_NAME}\` · **Commit:** \`${SHA:0:7}\` · **Tag suffix:** \`${TAG}\`"
             echo
-            if [ -n "$rows" ]; then
-              echo "| Image | Name | Status | Digest |"
-              echo "|---|---|---|---|"
-              printf '%s' "$rows"
-            else
-              echo "_No image was built._"
-            fi
+            echo "| Image | Name | Status | Digest |"
+            echo "|---|---|---|---|"
+            printf '%s' "$rows"
             if [ ${#pushed[@]} -gt 0 ]; then
               echo
               echo "### Pushed images"
