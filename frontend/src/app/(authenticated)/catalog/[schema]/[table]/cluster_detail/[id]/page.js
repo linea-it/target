@@ -126,6 +126,7 @@ export default function SingleClusterDetail({ params }) {
         }}
         userGroups={user?.groups || []}
         baseHost={settings?.base_host}
+        default_survey={tableRecord?.settings?.default_image}
       >
         <ClusterDetailContainer catalog={tableRecord} record={record} />
       </AladinProvider>

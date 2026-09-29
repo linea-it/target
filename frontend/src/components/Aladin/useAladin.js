@@ -2,10 +2,14 @@
 import A from 'aladin-lite';
 import { useEffect, useRef, useCallback, useState } from 'react';
 
+// Imagem base usada quando o catálogo não define uma (ou define uma que o
+// usuário não pode acessar). Mesmo default do model Settings no backend.
+export const DEFAULT_SURVEY_ID = 'DES_DR2_IRG_LIneA';
+
 /**
  * Hook para controlar o Aladin Lite, aguardando a lib A estar disponível.
  */
-export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
+export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultSurvey) {
   const containerRef = useRef(null);
   const aladinRef = useRef(null);
   const [isReady, setIsReady] = useState(false);
@@ -19,6 +23,10 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
   const [currentSurveyId, setCurrentSurveyId] = useState(null);
   // Espelha mapLayersRef para a UI: { [surveyKey]: { mapId, opacity } }
   const [mapOverlays, setMapOverlays] = useState({});
+  // Catálogo HiPS de clusters ativo e seu estado para a UI:
+  // { catalogId, color, opacity, lineWidth, visible }
+  const clusterCatalogRef = useRef(null);
+  const [clusterOverlay, setClusterOverlay] = useState(null);
 
   const surveys = [
     // Adiciona imagem do DES DR2 (pública)
@@ -147,6 +155,27 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     }
   ]
 
+  // Catálogos HiPScat de clusters (céu inteiro). Diferente dos catálogos acima,
+  // não são pré-carregados: são criados sob demanda pelo ClusterCatalogDialog
+  // e cada fonte é desenhada como um círculo com o raio do cluster.
+  const clusterCatalogs = [
+    {
+      id: 'y6a2_dnf_wazp_v5_clusters',
+      name: 'DES Y6 WaZP v5 clusters',
+      // url: 'https://datasets.linea.org.br/data/releases/des/dr2/catalogs/hips/', // TODO: temporária, trocar pela url com baseHost
+      // radiusColumn: 'MAG_AUTO_G_DERED',
+      url: `${baseHost}/data/releases/des/dr2/catalogs/y6a2_dnf_wazp_v5_clusters/hips`,
+      radiusColumn: 'radius_amin', // Coluna com o raio do cluster
+      radiusUnit: 'arcmin', // Unidade da coluna de raio: 'deg' | 'arcmin' | 'arcsec'
+      defaultRadiusArcmin: 1, // Usado quando a fonte não tem valor de raio
+      options: {
+        requestCredentials: 'include',
+        requestMode: 'cors',
+      },
+      // requireGroup: 'TODO',
+    },
+  ]
+
   // Mapas sistemáticos (HiPS) — pré-registrados no init para aparecerem
   // no menu nativo "+ Surveys" do Aladin como layers de overlay.
   const maps = [
@@ -206,6 +235,15 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
         return;
       }
 
+      // Nova instância: evita reusar layers órfãs de uma instância anterior.
+      // O reset fica aqui (e não no cleanup do effect) porque aladinParams
+      // costuma ser um objeto inline, então o cleanup roda a cada re-render
+      // do componente pai sem que o Aladin seja recriado.
+      mapLayersRef.current = {};
+      setMapOverlays({});
+      clusterCatalogRef.current = null;
+      setClusterOverlay(null);
+
       aladinRef.current = A.aladin(containerRef.current, aladinParams);
       // setIsReady(true);
 
@@ -257,13 +295,20 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
           return; // Não adiciona o survey se não estiver em modo dev
         }
 
+        // Só registra (hipsCache + menu "+ Surveys"), sem trocar a imagem base.
         const hips_survey = aladinRef.current.createImageSurvey(survey.id, survey.name, survey.url, survey.cooFrame);
-
-        aladinRef.current.setImageSurvey(hips_survey, survey.options || {});
+        aladinRef.current.addHiPSToFavorites(hips_survey);
 
         surveysRef.current[survey.id] = hips_survey;
         // console.log(`${survey.name} HIPS IMAGE added`);
       })
+
+      // Uma única troca de imagem base no init. Chamar setImageSurvey para
+      // cada survey (como era antes) deixava a base com a última da lista e
+      // dependia da fila de layers do aladin-lite para a default "vencer";
+      // essa fila remove promises por índice desatualizado (splice(i, 1)) e
+      // pode perder a ordem quando várias trocas estão pendentes.
+      aladinRef.current.setImageSurvey(resolveSurveyId(defaultSurvey));
 
 
       // Adiciona os catálogos HiPScat
@@ -322,9 +367,6 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
 
     return () => {
       isCancelled = true;
-      // Evita reusar layers órfãs de uma instância anterior do Aladin.
-      mapLayersRef.current = {};
-      setMapOverlays({});
     };
   }, [aladinParams]);
 
@@ -388,8 +430,21 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     }
   }, []);
 
-  const setImageSurvey = useCallback((survey) => {
-    aladinRef.current?.setImageSurvey(survey);
+  // Garante que o id de survey (ex.: catalog.settings.default_image) está
+  // registrado. Id vazio ou não registrado (sem acesso ao grupo) cai na
+  // DEFAULT_SURVEY_ID, em vez de o Aladin tentar resolvê-lo como um id do CDS.
+  // Retorna o id (não a instância): com o id o Aladin cria uma HiPS nova a
+  // partir do hipsCache, sem reaproveitar uma instância que já esteve na view.
+  function resolveSurveyId(surveyId) {
+    return surveysRef.current[surveyId] ? surveyId : DEFAULT_SURVEY_ID;
+  }
+
+  const setImageSurvey = useCallback((surveyId) => {
+    if (!aladinRef.current) return;
+    const id = resolveSurveyId(surveyId);
+    // Evita reenfileirar a mesma imagem que já é a base.
+    if (aladinRef.current.getBaseImageLayer()?.id === id) return;
+    aladinRef.current.setImageSurvey(id);
   }, []);
 
   const toggleCatalogVisibility = useCallback((id) => {
@@ -529,6 +584,67 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     });
   }, []);
 
+  // ---------------------------------------------------------------------
+  // Catálogo HiPS de clusters (círculo com o raio de cada cluster)
+  // ---------------------------------------------------------------------
+
+  const getClusterCatalogs = useCallback(() => {
+    return clusterCatalogs
+      .filter(cat => cat.url)
+      .filter(cat => !cat.requireGroup || userGroups.includes(cat.requireGroup))
+      .map(({ id, name }) => ({ id, name }));
+  }, [userGroups]);
+
+  // Catálogos HiPS (ProgressiveCat) não têm removeAll(); basta removeOverlay.
+  const detachClusterCatalog = () => {
+    if (clusterCatalogRef.current && aladinRef.current) {
+      aladinRef.current.removeOverlay(clusterCatalogRef.current);
+    }
+    clusterCatalogRef.current = null;
+  };
+
+  const removeClusterCatalog = useCallback(() => {
+    detachClusterCatalog();
+    setClusterOverlay(null);
+  }, []);
+
+  // Aplica (ou substitui) o catálogo de clusters com o estilo informado.
+  // Mudanças de estilo também passam por aqui: recriar o catálogo é mais
+  // confiável que updateShape, pois os footprints já computados ficam em cache.
+  const setClusterCatalog = useCallback((catalogId, style) => {
+    if (!aladinRef.current) return;
+
+    const cfg = clusterCatalogs.find(cat => cat.id === catalogId);
+    if (!cfg) return;
+
+    detachClusterCatalog();
+
+    const catalog = A.catalogHiPS(cfg.url, {
+      name: cfg.name,
+      onClick: 'showTable',
+      color: style.color,
+      shape: makeClusterRadiusShape(cfg, style),
+      ...cfg.options,
+    });
+    aladinRef.current.addCatalog(catalog);
+    if (style.visible === false) catalog.hide();
+
+    clusterCatalogRef.current = catalog;
+    setClusterOverlay({ catalogId, visible: true, ...style });
+  }, []);
+
+  const setClusterCatalogVisibility = useCallback((visible) => {
+    const catalog = clusterCatalogRef.current;
+    if (!catalog) return;
+
+    if (visible) {
+      catalog.show();
+    } else {
+      catalog.hide();
+    }
+    setClusterOverlay(prev => ({ ...prev, visible }));
+  }, []);
+
   return {
     containerRef,
     aladinRef,
@@ -552,5 +668,35 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost) {
     setMapOpacity,
     setMapVisibility,
     removeMapOverlay,
+    clusterOverlay,
+    getClusterCatalogs,
+    setClusterCatalog,
+    setClusterCatalogVisibility,
+    removeClusterCatalog,
+  };
+}
+
+const UNIT_TO_DEG = { deg: 1, arcmin: 1 / 60, arcsec: 1 / 3600 };
+
+/**
+ * Cria a shape function do catálogo de clusters: cada fonte vira um círculo
+ * com o raio do cluster (em coordenadas do céu, escala com o zoom).
+ * A função tem 1 argumento, então o Aladin a trata como gerador de footprints;
+ * quando o círculo fica pequeno demais na tela ele cai no marker padrão.
+ */
+function makeClusterRadiusShape(cfg, style) {
+  const toDeg = UNIT_TO_DEG[cfg.radiusUnit] ?? UNIT_TO_DEG.arcmin;
+
+  return (source) => {
+    const value = parseFloat(source.data?.[cfg.radiusColumn]);
+    const radiusDeg = Number.isFinite(value) && value > 0
+      ? value * toDeg
+      : cfg.defaultRadiusArcmin / 60;
+
+    return A.circle(source.ra, source.dec, radiusDeg, {
+      color: style.color,
+      opacity: style.opacity,
+      lineWidth: style.lineWidth,
+    });
   };
 }

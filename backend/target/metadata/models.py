@@ -312,16 +312,16 @@ class Settings(models.Model):
 
     default_fov = models.FloatField(
         verbose_name=_("Default FOV"),
-        help_text=_("Default field of view to be used in target preview."),
+        help_text=_("Default field of view (arcmin) to be used in target preview."),
         blank=True,
-        default=1.5,
+        default=5,
     )
 
     default_marker_size = models.FloatField(
         verbose_name=_("Default Marker Size"),
-        help_text=_("Default marker size to be used in target preview."),
+        help_text=_("Default marker radius (arcsec) to be used in target preview."),
         blank=True,
-        default=0.001,
+        default=5,
     )
 
     class Meta:

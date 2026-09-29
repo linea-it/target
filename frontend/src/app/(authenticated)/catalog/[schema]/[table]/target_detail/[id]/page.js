@@ -138,6 +138,7 @@ export default function SingleTargetDetail({ params }) {
         }}
         userGroups={user?.groups || []}
         baseHost={settings?.base_host}
+        default_survey={tableRecord?.settings?.default_image}
       >
         <TargetDetailContainer catalog={tableRecord} record={record} />
       </AladinProvider>

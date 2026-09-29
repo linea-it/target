@@ -19,8 +19,9 @@ export default function TargetDetailContainer({ catalog, record }) {
 
     // console.log("Aladin carregado e pronto para uso");
     // console.log(catalog, isReady)
-    if (catalog?.settings?.default_image && isReady) {
-      setImageSurvey(catalog?.settings?.default_image)
+    // Sem default_image o hook usa a DEFAULT_SURVEY_ID.
+    if (catalog && isReady) {
+      setImageSurvey(catalog.settings?.default_image)
     }
   }, [catalog, isReady])
 
