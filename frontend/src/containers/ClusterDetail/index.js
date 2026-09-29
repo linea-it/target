@@ -10,6 +10,8 @@ import MembersDataGrid from "@/components/MembersDataGrid";
 import { useAladinContext } from '@/components/Aladin/AladinContext';
 import AladinViewer from '@/components/Aladin/AladinViewer';
 import MapsDialog from '@/components/Aladin/MapsDialog';
+import { DEFAULT_SURVEY_ID } from '@/components/Aladin/useAladin';
+import ClusterCatalogDialog from '@/components/Aladin/ClusterCatalogDialog';
 import { getClusterMembers, getMetadataById, getNotebookHtml, downloadClusterNotebook } from '@/services/Metadata';
 import { useQuery } from '@tanstack/react-query'
 
@@ -23,6 +25,7 @@ import ScatterPlotIcon from '@mui/icons-material/ScatterPlot';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import LayersIcon from '@mui/icons-material/Layers';
+import BubbleChartIcon from '@mui/icons-material/BubbleChart';
 import Tooltip from '@mui/material/Tooltip';
 import Skeleton from '@mui/material/Skeleton';
 import Button from '@mui/material/Button';
@@ -38,13 +41,15 @@ function TabPanel({ children, value, index }) {
 
 
 export default function ClusterDetailContainer({ catalog, record }) {
-  const { isReady, setTarget, aladinRef, setImageSurvey, addCatalog, gotoRaDec, toggleMarkerVisibility, takeSnapshot, toggleCatalogVisibility, getMapsForSurvey } = useAladinContext();
+  const { isReady, setTarget, aladinRef, setImageSurvey, addCatalog, gotoRaDec, toggleMarkerVisibility, takeSnapshot, toggleCatalogVisibility, getMapsForSurvey, getClusterCatalogs } = useAladinContext();
 
   const [selectedMember, setSelectedMember] = React.useState(undefined);
   const [mapsOpen, setMapsOpen] = React.useState(false);
+  const [clusterCatalogOpen, setClusterCatalogOpen] = React.useState(false);
 
-  const defaultImage = catalog?.settings?.default_image;
+  const defaultImage = catalog?.settings?.default_image || DEFAULT_SURVEY_ID;
   const hasMaps = !!getMapsForSurvey(defaultImage);
+  const hasClusterCatalogs = getClusterCatalogs().length > 0;
   const [activeTab, setActiveTab] = React.useState(0);
   const [iframeHeight, setIframeHeight] = React.useState(0);
   const [downloadingNotebook, setDownloadingNotebook] = React.useState(false);
@@ -98,8 +103,9 @@ export default function ClusterDetailContainer({ catalog, record }) {
     // Quando o catalogo tem uma imagem/survey default
     // Ele é definido apos a instancia do Aladin.
 
-    if (catalog?.settings?.default_image && isReady) {
-      setImageSurvey(catalog?.settings?.default_image)
+    // Sem default_image o hook usa a DEFAULT_SURVEY_ID.
+    if (catalog && isReady) {
+      setImageSurvey(catalog.settings?.default_image)
     }
   }, [catalog, isReady])
 
@@ -354,6 +360,17 @@ export default function ClusterDetailContainer({ catalog, record }) {
                   </IconButton>
                 </span>
               </Tooltip>
+              <Tooltip title={hasClusterCatalogs ? 'Clusters catalog' : 'No clusters catalog available'}>
+                <span>
+                  <IconButton
+                    aria-label="clusters-catalog"
+                    disabled={!record || !hasClusterCatalogs}
+                    onClick={() => setClusterCatalogOpen(true)}
+                  >
+                    <BubbleChartIcon />
+                  </IconButton>
+                </span>
+              </Tooltip>
             </Toolbar>
           </Paper>
         </Box>
@@ -388,6 +405,7 @@ export default function ClusterDetailContainer({ catalog, record }) {
         )}
       </Paper>
       <MapsDialog open={mapsOpen} onClose={() => setMapsOpen(false)} surveyId={defaultImage} />
+      <ClusterCatalogDialog open={clusterCatalogOpen} onClose={() => setClusterCatalogOpen(false)} />
 
       {/* Spacer */}
       <Box mt={6} />

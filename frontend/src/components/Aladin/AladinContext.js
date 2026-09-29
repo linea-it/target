@@ -27,6 +27,11 @@ export const AladinContext = createContext({
   setMapOpacity: () => { },
   setMapVisibility: () => { },
   removeMapOverlay: () => { },
+  clusterOverlay: null,
+  getClusterCatalogs: () => [],
+  setClusterCatalog: () => { },
+  setClusterCatalogVisibility: () => { },
+  removeClusterCatalog: () => { },
 });
 
 /**

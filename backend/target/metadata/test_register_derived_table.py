@@ -9,8 +9,10 @@ from unittest import mock
 import pytest
 
 from target.metadata.catalog_admin import register_derived_table
+from target.metadata.catalog_admin import register_table
 from target.metadata.models import Column
 from target.metadata.models import Schema
+from target.metadata.models import Settings
 from target.metadata.models import Table
 from target.users.tests.factories import UserFactory
 
@@ -129,3 +131,65 @@ def test_member_table_uses_related_required_ucds(owner, source_table):
 
     assert derived.is_completed is True
     assert derived.columns.get(name="cross_id").ucd == "meta.id.cross"
+
+
+@pytest.mark.django_db
+def test_derived_table_inherits_source_settings(owner, source_table):
+    Settings.objects.create(
+        table=source_table,
+        default_image="LSST_DP1_IRG_LIneA",
+        default_fov=12,
+        default_marker_size=7,
+    )
+    result_table = _make_result_table(owner, "subset_3", ["id", "ra", "dec"])
+    with mock.patch(
+        "target.metadata.catalog_admin.register_table",
+        return_value=result_table,
+    ):
+        derived = register_derived_table(owner, source_table, "subset_3", "My subset")
+
+    settings = Settings.objects.get(table=derived)
+    assert settings.default_image == "LSST_DP1_IRG_LIneA"
+    assert settings.default_fov == 12  # noqa: PLR2004
+    assert settings.default_marker_size == 7  # noqa: PLR2004
+
+
+@pytest.mark.django_db
+def test_derived_table_gets_default_settings_when_source_has_none(
+    owner,
+    source_table,
+):
+    result_table = _make_result_table(owner, "subset_4", ["id", "ra", "dec"])
+    with mock.patch(
+        "target.metadata.catalog_admin.register_table",
+        return_value=result_table,
+    ):
+        derived = register_derived_table(owner, source_table, "subset_4", "My subset")
+
+    settings = Settings.objects.get(table=derived)
+    assert settings.default_image == "DES_DR2_IRG_LIneA"
+    assert settings.default_fov == 5  # noqa: PLR2004
+    assert settings.default_marker_size == 5  # noqa: PLR2004
+
+
+@pytest.mark.django_db
+def test_register_table_creates_default_settings(owner):
+    db = mock.Mock()
+    db.table_exists.return_value = True
+    db.get_table_status.return_value = {"row_estimate": 10, "total_bytes": 100}
+    db.describe_table.return_value = []
+    data = {
+        "schema": f"mydb_{owner.username}",
+        "name": "new_catalog",
+        "title": "New",
+        "description": "",
+        "catalog_type": Table.CATALOG_TYPE_TARGET,
+    }
+    with (
+        mock.patch("target.metadata.catalog_admin.MyDB", return_value=db),
+        mock.patch("target.metadata.catalog_admin.ensure_annotation_columns"),
+    ):
+        table = register_table(owner, data)
+
+    settings = Settings.objects.get(table=table)
+    assert settings.default_image == "DES_DR2_IRG_LIneA"

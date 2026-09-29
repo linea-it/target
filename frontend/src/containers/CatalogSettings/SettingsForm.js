@@ -14,16 +14,18 @@ import { updateTableSettings, createTableSettings } from "@/services/Metadata";
 import { useMutation } from '@tanstack/react-query'
 
 import { useAuth } from "@/contexts/AuthContext";
+import { DEFAULT_SURVEY_ID } from "@/components/Aladin/useAladin";
 
 
 export default function SettingsForm() {
   const { user } = useAuth();
   const { catalog } = useEditCatalog();
 
+  // Sem Settings no banco, mostra os mesmos defaults do model (backend).
   const [editedSettings, setEditedSettings] = React.useState(catalog?.settings || {
     id: undefined,
     table: undefined,
-    default_image: '',
+    default_image: DEFAULT_SURVEY_ID,
     default_fov: 5,
     default_marker_size: 5,
   })

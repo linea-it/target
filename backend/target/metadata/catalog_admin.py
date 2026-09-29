@@ -189,9 +189,34 @@ def register_table(user, data):
             order=c.get("order"),
         )
 
+    # Todo catálogo registrado nasce com Settings (valores default do model):
+    # sem ele o frontend não tem imagem default para o Aladin.
+    create_table_settings(table)
+
     table.refresh_from_db()
 
     return table
+
+
+def create_table_settings(table, source_table=None):
+    """Creates (or overwrites) `table`'s Settings. With `source_table`, copies
+    its preferences (default image/FOV/marker size) - used by subsets so they
+    open looking like the catalog they came from; if the source has no
+    Settings, falls back to the model defaults.
+    """
+    from target.metadata.models import Settings
+
+    source_settings = (
+        Settings.objects.filter(table=source_table).first() if source_table else None
+    )
+    defaults = {}
+    if source_settings is not None:
+        defaults = {
+            "default_image": source_settings.default_image,
+            "default_fov": source_settings.default_fov,
+            "default_marker_size": source_settings.default_marker_size,
+        }
+    return Settings.objects.update_or_create(table=table, defaults=defaults)[0]
 
 
 def register(user, data):
@@ -299,6 +324,9 @@ def register_derived_table(owner, source_table, result_table_name, title):
 
     table.source_table = source_table
     table.save(update_fields=["source_table"])
+
+    # O subset herda as preferências (imagem default, FOV, marker) do original.
+    create_table_settings(table, source_table=source_table)
 
     required_ucds = (
         Table.RELATED_REQUIRED_UCDS
