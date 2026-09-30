@@ -15,6 +15,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import LayersIcon from '@mui/icons-material/Layers';
 import BubbleChartIcon from '@mui/icons-material/BubbleChart';
+import GradientIcon from '@mui/icons-material/Gradient';
 import Tooltip from '@mui/material/Tooltip';
 import { usePathname } from 'next/navigation';
 import { useAladinContext } from '@/components/Aladin/AladinContext';
@@ -28,19 +29,22 @@ import AladinViewer from '@/components/Aladin/AladinViewer';
 import MapsDialog from '@/components/Aladin/MapsDialog';
 import { DEFAULT_SURVEY_ID } from '@/components/Aladin/useAladin';
 import ClusterCatalogDialog from '@/components/Aladin/ClusterCatalogDialog';
+import PhotozCatalogDialog from '@/components/Aladin/PhotozCatalogDialog';
 import AnnotationPanel from '@/components/AnnotationPanel';
 
 export default function ClusterDetail(props) {
   const pathname = usePathname()
-  const { isReady, setTarget, aladinRef, setImageSurvey, toggleMarkerVisibility, takeSnapshot, addCatalog, toggleCatalogVisibility, getMapsForSurvey, getClusterCatalogs } = useAladinContext();
+  const { isReady, setTarget, aladinRef, setImageSurvey, toggleMarkerVisibility, takeSnapshot, addCatalog, toggleCatalogVisibility, getMapsForSurvey, getClusterCatalogs, getPhotozCatalogs } = useAladinContext();
   const { selectedRecord, catalog } = useCatalog();
 
   const [mapsOpen, setMapsOpen] = React.useState(false);
   const [clusterCatalogOpen, setClusterCatalogOpen] = React.useState(false);
+  const [photozCatalogOpen, setPhotozCatalogOpen] = React.useState(false);
 
   const defaultImage = catalog?.settings?.default_image || DEFAULT_SURVEY_ID;
   const hasMaps = !!getMapsForSurvey(defaultImage);
   const hasClusterCatalogs = getClusterCatalogs().length > 0;
+  const hasPhotozCatalogs = getPhotozCatalogs().length > 0;
 
   const { isLoading, data: members } = useQuery({
     queryKey: ['membersByClusterId', catalog?.related_table, selectedRecord?.meta_id],
@@ -181,6 +185,17 @@ export default function ClusterDetail(props) {
                 </IconButton>
               </span>
             </Tooltip>
+            <Tooltip title={hasPhotozCatalogs ? 'Photo-z catalog' : 'No photo-z catalog available'}>
+              <span>
+                <IconButton
+                  aria-label="photoz-catalog"
+                  disabled={!selectedRecord || !hasPhotozCatalogs}
+                  onClick={() => setPhotozCatalogOpen(true)}
+                >
+                  <GradientIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
           </Stack>
         </Toolbar>
 
@@ -210,6 +225,7 @@ export default function ClusterDetail(props) {
 
       <MapsDialog open={mapsOpen} onClose={() => setMapsOpen(false)} surveyId={defaultImage} />
       <ClusterCatalogDialog open={clusterCatalogOpen} onClose={() => setClusterCatalogOpen(false)} />
+      <PhotozCatalogDialog open={photozCatalogOpen} onClose={() => setPhotozCatalogOpen(false)} />
     </Stack>
 
   );

@@ -1,6 +1,7 @@
 'use client';
 import A from 'aladin-lite';
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { COLOR_LEVELS, colorForIndex, drawShapeCanvas, zToColorIndex } from './photozColors';
 
 // Imagem base usada quando o catálogo não define uma (ou define uma que o
 // usuário não pode acessar). Mesmo default do model Settings no backend.
@@ -27,6 +28,10 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
   // { catalogId, color, opacity, lineWidth, visible }
   const clusterCatalogRef = useRef(null);
   const [clusterOverlay, setClusterOverlay] = useState(null);
+  // Catálogo HiPS de photo-z ativo e seu estado para a UI:
+  // { catalogId, shape, sourceSize, zMin, zMax, visible }
+  const photozCatalogRef = useRef(null);
+  const [photozOverlay, setPhotozOverlay] = useState(null);
 
   const surveys = [
     // Adiciona imagem do DES DR2 (pública)
@@ -176,6 +181,27 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
     },
   ]
 
+  // Catálogos HiPScat de photo-z. Mesmo esquema dos de clusters (sob demanda,
+  // pelo PhotozCatalogDialog), mas cada fonte é desenhada com um shape padrão
+  // cuja cor vem do valor de z (colormap entre zMin e zMax).
+  const photozCatalogs = [
+    {
+      id: 'photoz',
+      name: 'Photo-z',
+      // url: 'https://datasets.linea.org.br/data/releases/des/dr2/catalogs/hips/', // TODO: temporária, trocar pela url com baseHost
+      // zColumn: 'MAG_AUTO_G_DERED',
+      // zRange: [0, 24],
+      url: `${baseHost}/data/releases/des/dr2/catalogs/341_ref_z_clean/hips`, // TODO: url do HiPS de photo-z (sem url o catálogo não é listado)
+      zColumn: 'z', // TODO: coluna com o valor de photo-z
+      zRange: [0, 1.5], // Intervalo default do colormap (e base dos limites do slider)
+      options: {
+        requestCredentials: 'include',
+        requestMode: 'cors',
+      },
+      // requireGroup: 'TODO',
+    },
+  ]
+
   // Mapas sistemáticos (HiPS) — pré-registrados no init para aparecerem
   // no menu nativo "+ Surveys" do Aladin como layers de overlay.
   const maps = [
@@ -243,6 +269,8 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
       setMapOverlays({});
       clusterCatalogRef.current = null;
       setClusterOverlay(null);
+      photozCatalogRef.current = null;
+      setPhotozOverlay(null);
 
       aladinRef.current = A.aladin(containerRef.current, aladinParams);
       // setIsReady(true);
@@ -596,15 +624,15 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
   }, [userGroups]);
 
   // Catálogos HiPS (ProgressiveCat) não têm removeAll(); basta removeOverlay.
-  const detachClusterCatalog = () => {
-    if (clusterCatalogRef.current && aladinRef.current) {
-      aladinRef.current.removeOverlay(clusterCatalogRef.current);
+  const detachHipsCatalog = (ref) => {
+    if (ref.current && aladinRef.current) {
+      aladinRef.current.removeOverlay(ref.current);
     }
-    clusterCatalogRef.current = null;
+    ref.current = null;
   };
 
   const removeClusterCatalog = useCallback(() => {
-    detachClusterCatalog();
+    detachHipsCatalog(clusterCatalogRef);
     setClusterOverlay(null);
   }, []);
 
@@ -617,7 +645,7 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
     const cfg = clusterCatalogs.find(cat => cat.id === catalogId);
     if (!cfg) return;
 
-    detachClusterCatalog();
+    detachHipsCatalog(clusterCatalogRef);
 
     const catalog = A.catalogHiPS(cfg.url, {
       name: cfg.name,
@@ -643,6 +671,69 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
       catalog.hide();
     }
     setClusterOverlay(prev => ({ ...prev, visible }));
+  }, []);
+
+  // ---------------------------------------------------------------------
+  // Catálogo HiPS de photo-z (shape padrão com cor pelo valor de z)
+  // ---------------------------------------------------------------------
+
+  const getPhotozCatalogs = useCallback(() => {
+    return photozCatalogs
+      .filter(cat => cat.url)
+      .filter(cat => !cat.requireGroup || userGroups.includes(cat.requireGroup))
+      .map(({ id, name, zRange }) => ({ id, name, zRange }));
+  }, [userGroups]);
+
+  const removePhotozCatalog = useCallback(() => {
+    detachHipsCatalog(photozCatalogRef);
+    setPhotozOverlay(null);
+  }, []);
+
+  // Aplica (ou substitui) o catálogo de photo-z com o estilo informado. Assim
+  // como nos clusters, mudança de estilo recria o catálogo: a imagem de cada
+  // fonte é calculada uma vez por tile.
+  const setPhotozCatalog = useCallback((catalogId, style) => {
+    if (!aladinRef.current) return;
+
+    const cfg = photozCatalogs.find(cat => cat.id === catalogId);
+    if (!cfg) return;
+
+    const [defaultMin, defaultMax] = cfg.zRange;
+    const applied = {
+      shape: style.shape,
+      sourceSize: style.sourceSize,
+      zMin: style.zMin ?? defaultMin,
+      zMax: style.zMax ?? defaultMax,
+    };
+
+    detachHipsCatalog(photozCatalogRef);
+
+    const catalog = A.catalogHiPS(cfg.url, {
+      name: cfg.name,
+      onClick: 'showTable',
+      // Cor do marker das fontes sem valor de z.
+      color: PHOTOZ_NO_VALUE_COLOR,
+      sourceSize: applied.sourceSize,
+      shape: makePhotozColorShape(cfg, applied),
+      ...cfg.options,
+    });
+    aladinRef.current.addCatalog(catalog);
+    if (style.visible === false) catalog.hide();
+
+    photozCatalogRef.current = catalog;
+    setPhotozOverlay({ catalogId, visible: style.visible ?? true, ...applied });
+  }, []);
+
+  const setPhotozCatalogVisibility = useCallback((visible) => {
+    const catalog = photozCatalogRef.current;
+    if (!catalog) return;
+
+    if (visible) {
+      catalog.show();
+    } else {
+      catalog.hide();
+    }
+    setPhotozOverlay(prev => ({ ...prev, visible }));
   }, []);
 
   return {
@@ -673,6 +764,11 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
     setClusterCatalog,
     setClusterCatalogVisibility,
     removeClusterCatalog,
+    photozOverlay,
+    getPhotozCatalogs,
+    setPhotozCatalog,
+    setPhotozCatalogVisibility,
+    removePhotozCatalog,
   };
 }
 
@@ -698,5 +794,31 @@ function makeClusterRadiusShape(cfg, style) {
       opacity: style.opacity,
       lineWidth: style.lineWidth,
     });
+  };
+}
+
+const PHOTOZ_NO_VALUE_COLOR = '#9e9e9e';
+
+/**
+ * Cria a shape function do catálogo de photo-z: cada fonte vira o shape
+ * escolhido pintado com a cor do seu z no colormap (clamp em zMin/zMax).
+ * Retornar um canvas faz o Aladin usá-lo como imagem da fonte; os canvases
+ * ficam em cache por nível de cor (no máximo COLOR_LEVELS por estilo).
+ * Fontes sem valor de z usam o shape padrão na cor do catálogo.
+ */
+function makePhotozColorShape(cfg, style) {
+  const cache = new Map();
+
+  return (source) => {
+    const z = parseFloat(source.data?.[cfg.zColumn]);
+    if (!Number.isFinite(z)) return style.shape;
+
+    const index = zToColorIndex(z, style.zMin, style.zMax, COLOR_LEVELS);
+    let canvas = cache.get(index);
+    if (!canvas) {
+      canvas = drawShapeCanvas(style.shape, colorForIndex(index, COLOR_LEVELS), style.sourceSize);
+      cache.set(index, canvas);
+    }
+    return canvas;
   };
 }
