@@ -23,7 +23,7 @@ function de 1 argumento por fonte e, se ela retorna um `HTMLCanvasElement`, faz
 A shape function do photo-z devolve o shape escolhido já pintado na cor do seu z.
 Os canvases ficam em cache por nível de cor (64 níveis), então há no máximo 64 por estilo.
 
-Fontes sem valor de z recebem o shape padrão na cor do catálogo (cinza `#9e9e9e`).
+O intervalo [zMin, zMax] do colormap também filtra o desenho: só as fontes com z dentro dele são exibidas (as fora do intervalo e as sem valor de z ficam ocultas).
 
 Limitação: fontes desenhadas como imagem não mudam de aparência em hover/seleção.
 
@@ -45,11 +45,31 @@ Limitação: fontes desenhadas como imagem não mudam de aparência em hover/sel
 - Botão "Photo-z catalog" (`GradientIcon`) em `components/ClusterDetail/index.js` e
   `containers/ClusterDetail/index.js`, ao lado do "Clusters catalog".
 
+## Defaults nos Settings do catálogo
+
+Catálogos `catalog_type === 'cluster'` têm, na página de Settings, os cards
+"Clusters catalog (HiPS)" e "Photo-z catalog (HiPS)" para definir o catálogo HiPS e o
+estilo padrão de cada categoria, salvos nos JSONFields `Settings.cluster_hips`
+(`{ catalogId, color, opacity, lineWidth, showOnOpen }`) e `Settings.photoz_hips`
+(`{ catalogId, shape, sourceSize, zMin, zMax, showOnOpen }`); `{}` = sem default.
+
+- **Show on open** ligado: `useHipsCatalogDefaults` aplica o catálogo com o estilo salvo
+  assim que o Aladin fica pronto, uma única vez por instância do Aladin (depois do Remove
+  ele não volta ao trocar de cluster). Desligado: nada é carregado, mas o popup abre com
+  o catálogo e o estilo salvos pré-selecionados, e Show aplica esse estilo.
+- Catálogo salvo que o usuário não pode usar (sem `url` ou sem acesso ao `requireGroup`)
+  é ignorado.
+- Subsets herdam `cluster_hips` e `photoz_hips` do catálogo de origem
+  (`catalog_admin.create_table_settings`).
+- A config dos catálogos (`buildClusterCatalogs`/`buildPhotozCatalogs`) e os estilos
+  default ficam em `frontend/src/components/Aladin/hipsCatalogs.js`, compartilhados pelo
+  `useAladin`, pelos dialogs e pelos cards de Settings.
+
 ## Pendências
 
-1. **Config real**: em `useAladin.js`, `photozCatalogs` está com `url: ''` (por isso o
-   botão aparece desabilitado) e `zColumn: 'z'` como placeholder. Preencher url do HiPS,
-   nome da coluna de photo-z, `zRange` típico e `requireGroup`, se privado.
+1. **Config real**: em `hipsCatalogs.js`, `buildPhotozCatalogs` aponta para
+   `341_ref_z_clean`, com `zColumn: 'z'` e `zRange: [0, 1.5]` ainda marcados como TODO.
+   Confirmar coluna, `zRange` típico e `requireGroup`, se privado.
 2. **CORS**: mesma questão dos clusters (`requestCredentials: 'include'` exige que o nginx
    ecoe a origem e envie `Access-Control-Allow-Credentials: true`).
 3. **Teste no navegador** com o catálogo real: cores, troca de shape/tamanho/intervalo,

@@ -16,8 +16,7 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
 import { useAladinContext } from '@/components/Aladin/AladinContext';
 import ColorSelect from '@/components/Aladin/CatalogControls/ColorSelect';
-
-const DEFAULT_STYLE = { color: '#ff9800', opacity: 0.8, lineWidth: 2 };
+import { DEFAULT_CLUSTER_STYLE } from '@/components/Aladin/hipsCatalogs';
 
 /**
  * Diálogo do catálogo HiPS de clusters (céu inteiro). Cada cluster é
@@ -25,9 +24,10 @@ const DEFAULT_STYLE = { color: '#ff9800', opacity: 0.8, lineWidth: 2 };
  * catálogo, a cor, a transparência e a espessura da linha.
  *
  * O estado aplicado vive no hook useAladin, então reabrir o diálogo sempre
- * reflete o que está realmente no Aladin.
+ * reflete o que está realmente no Aladin. Sem catálogo aplicado, o diálogo
+ * parte de `defaults` (Settings.cluster_hips do catálogo aberto).
  */
-export default function ClusterCatalogDialog({ open, onClose }) {
+export default function ClusterCatalogDialog({ open, onClose, defaults }) {
   const {
     clusterOverlay,
     getClusterCatalogs,
@@ -36,12 +36,20 @@ export default function ClusterCatalogDialog({ open, onClose }) {
     removeClusterCatalog,
   } = useAladinContext();
 
-  const catalogId = clusterOverlay?.catalogId ?? '';
+  const catalogs = getClusterCatalogs();
+
+  // Overlay ativo tem prioridade; sem ele, o default salvo no Settings (se o
+  // catálogo ainda estiver disponível para o usuário).
+  const initial = clusterOverlay ?? {
+    ...defaults,
+    catalogId: catalogs.some(cat => cat.id === defaults?.catalogId) ? defaults.catalogId : '',
+  };
+  const catalogId = initial.catalogId ?? '';
   const visible = clusterOverlay?.visible ?? false;
   const style = {
-    color: clusterOverlay?.color ?? DEFAULT_STYLE.color,
-    opacity: clusterOverlay?.opacity ?? DEFAULT_STYLE.opacity,
-    lineWidth: clusterOverlay?.lineWidth ?? DEFAULT_STYLE.lineWidth,
+    color: initial.color ?? DEFAULT_CLUSTER_STYLE.color,
+    opacity: initial.opacity ?? DEFAULT_CLUSTER_STYLE.opacity,
+    lineWidth: initial.lineWidth ?? DEFAULT_CLUSTER_STYLE.lineWidth,
   };
 
   // Valores dos sliders durante o arraste; o catálogo só é recriado no commit.
@@ -53,14 +61,13 @@ export default function ClusterCatalogDialog({ open, onClose }) {
     setLineWidth(style.lineWidth);
   }, [style.opacity, style.lineWidth]);
 
-  const catalogs = getClusterCatalogs();
-
   // Sem catálogos de clusters disponíveis não há o que exibir.
   if (catalogs.length === 0) return null;
 
+  // Sem overlay ativo, mudar o estilo aplica o catálogo (já visível).
   const applyStyle = (changes) => {
     if (!catalogId) return;
-    setClusterCatalog(catalogId, { ...style, visible, ...changes });
+    setClusterCatalog(catalogId, { ...style, visible: clusterOverlay ? visible : true, ...changes });
   };
 
   const handleCatalogChange = (event) => {
@@ -68,6 +75,10 @@ export default function ClusterCatalogDialog({ open, onClose }) {
   };
 
   const handleToggleVisibility = () => {
+    if (!clusterOverlay) {
+      applyStyle({});
+      return;
+    }
     setClusterCatalogVisibility(!visible);
   };
 
@@ -140,7 +151,7 @@ export default function ClusterCatalogDialog({ open, onClose }) {
         >
           {visible ? 'Hide' : 'Show'}
         </Button>
-        <Button color="error" onClick={removeClusterCatalog} disabled={!catalogId}>
+        <Button color="error" onClick={removeClusterCatalog} disabled={!clusterOverlay}>
           Remove
         </Button>
         <Button onClick={onClose}>Close</Button>

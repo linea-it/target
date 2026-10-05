@@ -13,6 +13,7 @@ import MapsDialog from '@/components/Aladin/MapsDialog';
 import { DEFAULT_SURVEY_ID } from '@/components/Aladin/useAladin';
 import ClusterCatalogDialog from '@/components/Aladin/ClusterCatalogDialog';
 import PhotozCatalogDialog from '@/components/Aladin/PhotozCatalogDialog';
+import { useHipsCatalogDefaults } from '@/components/Aladin/useHipsCatalogDefaults';
 import { getClusterMembers, getMetadataById, getNotebookHtml, downloadClusterNotebook } from '@/services/Metadata';
 import { useQuery } from '@tanstack/react-query'
 
@@ -54,6 +55,9 @@ export default function ClusterDetailContainer({ catalog, record }) {
   const hasMaps = !!getMapsForSurvey(defaultImage);
   const hasClusterCatalogs = getClusterCatalogs().length > 0;
   const hasPhotozCatalogs = getPhotozCatalogs().length > 0;
+
+  // Catálogos HiPS de clusters/photo-z com "Show on open" nos Settings.
+  useHipsCatalogDefaults(catalog?.settings);
   const [activeTab, setActiveTab] = React.useState(0);
   const [iframeHeight, setIframeHeight] = React.useState(0);
   const [downloadingNotebook, setDownloadingNotebook] = React.useState(false);
@@ -420,8 +424,8 @@ export default function ClusterDetailContainer({ catalog, record }) {
         )}
       </Paper>
       <MapsDialog open={mapsOpen} onClose={() => setMapsOpen(false)} surveyId={defaultImage} />
-      <ClusterCatalogDialog open={clusterCatalogOpen} onClose={() => setClusterCatalogOpen(false)} />
-      <PhotozCatalogDialog open={photozCatalogOpen} onClose={() => setPhotozCatalogOpen(false)} />
+      <ClusterCatalogDialog open={clusterCatalogOpen} onClose={() => setClusterCatalogOpen(false)} defaults={catalog?.settings?.cluster_hips} />
+      <PhotozCatalogDialog open={photozCatalogOpen} onClose={() => setPhotozCatalogOpen(false)} defaults={catalog?.settings?.photoz_hips} />
 
       {/* Spacer */}
       <Box mt={6} />

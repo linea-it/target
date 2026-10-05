@@ -47,6 +47,26 @@ raio real (lido de uma coluna do HiPS), escalando com o zoom.
   `TypeError` e impedia recriar o catálogo com o novo estilo (cor/opacidade/espessura
   "não mudavam") e o Remove. Agora a remoção usa apenas `aladin.removeOverlay()`.
 
+## Defaults nos Settings do catálogo
+
+Catálogos `catalog_type === 'cluster'` têm, na página de Settings, os cards
+"Clusters catalog (HiPS)" e "Photo-z catalog (HiPS)" para definir o catálogo HiPS e o
+estilo padrão de cada categoria, salvos nos JSONFields `Settings.cluster_hips`
+(`{ catalogId, color, opacity, lineWidth, showOnOpen }`) e `Settings.photoz_hips`
+(`{ catalogId, shape, sourceSize, zMin, zMax, showOnOpen }`); `{}` = sem default.
+
+- **Show on open** ligado: `useHipsCatalogDefaults` aplica o catálogo com o estilo salvo
+  assim que o Aladin fica pronto, uma única vez por instância do Aladin (depois do Remove
+  ele não volta ao trocar de cluster). Desligado: nada é carregado, mas o popup abre com
+  o catálogo e o estilo salvos pré-selecionados, e Show aplica esse estilo.
+- Catálogo salvo que o usuário não pode usar (sem `url` ou sem acesso ao `requireGroup`)
+  é ignorado.
+- Subsets herdam `cluster_hips` e `photoz_hips` do catálogo de origem
+  (`catalog_admin.create_table_settings`).
+- A config dos catálogos (`buildClusterCatalogs`/`buildPhotozCatalogs`) e os estilos
+  default ficam em `frontend/src/components/Aladin/hipsCatalogs.js`, compartilhados pelo
+  `useAladin`, pelos dialogs e pelos cards de Settings.
+
 ## Pendências
 
 ### 1. Ação ao clicar no círculo do cluster (link para o detalhe)
@@ -75,7 +95,7 @@ catálogo registrado), e como o frontend decide se o catálogo aberto é o mesmo
 
 ### 2. Restaurar a config real do WaZP
 
-A config em `useAladin.js` está apontando temporariamente para o catálogo público do DES
+A config (hoje em `hipsCatalogs.js`) está apontando temporariamente para o catálogo público do DES
 DR2, usando `MAG_AUTO_G_DERED` como raio, só para teste. Antes do merge:
 
 ```js

@@ -30,6 +30,7 @@ import MapsDialog from '@/components/Aladin/MapsDialog';
 import { DEFAULT_SURVEY_ID } from '@/components/Aladin/useAladin';
 import ClusterCatalogDialog from '@/components/Aladin/ClusterCatalogDialog';
 import PhotozCatalogDialog from '@/components/Aladin/PhotozCatalogDialog';
+import { useHipsCatalogDefaults } from '@/components/Aladin/useHipsCatalogDefaults';
 import AnnotationPanel from '@/components/AnnotationPanel';
 
 export default function ClusterDetail(props) {
@@ -45,6 +46,9 @@ export default function ClusterDetail(props) {
   const hasMaps = !!getMapsForSurvey(defaultImage);
   const hasClusterCatalogs = getClusterCatalogs().length > 0;
   const hasPhotozCatalogs = getPhotozCatalogs().length > 0;
+
+  // Catálogos HiPS de clusters/photo-z com "Show on open" nos Settings.
+  useHipsCatalogDefaults(catalog?.settings);
 
   const { isLoading, data: members } = useQuery({
     queryKey: ['membersByClusterId', catalog?.related_table, selectedRecord?.meta_id],
@@ -224,8 +228,8 @@ export default function ClusterDetail(props) {
       {catalog?.is_owner && (<AnnotationPanel />)}
 
       <MapsDialog open={mapsOpen} onClose={() => setMapsOpen(false)} surveyId={defaultImage} />
-      <ClusterCatalogDialog open={clusterCatalogOpen} onClose={() => setClusterCatalogOpen(false)} />
-      <PhotozCatalogDialog open={photozCatalogOpen} onClose={() => setPhotozCatalogOpen(false)} />
+      <ClusterCatalogDialog open={clusterCatalogOpen} onClose={() => setClusterCatalogOpen(false)} defaults={catalog?.settings?.cluster_hips} />
+      <PhotozCatalogDialog open={photozCatalogOpen} onClose={() => setPhotozCatalogOpen(false)} defaults={catalog?.settings?.photoz_hips} />
     </Stack>
 
   );

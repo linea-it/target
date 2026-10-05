@@ -16,6 +16,22 @@ from target.metadata.models import Settings
 from target.metadata.models import Table
 from target.users.tests.factories import UserFactory
 
+CLUSTER_HIPS = {
+    "catalogId": "y6a2_dnf_wazp_v5_clusters",
+    "color": "#ff9800",
+    "opacity": 0.8,
+    "lineWidth": 2,
+    "showOnOpen": True,
+}
+PHOTOZ_HIPS = {
+    "catalogId": "photoz",
+    "shape": "circle",
+    "sourceSize": 8,
+    "zMin": 0.1,
+    "zMax": 1.2,
+    "showOnOpen": False,
+}
+
 
 @pytest.fixture
 def owner(db):
@@ -140,6 +156,8 @@ def test_derived_table_inherits_source_settings(owner, source_table):
         default_image="LSST_DP1_IRG_LIneA",
         default_fov=12,
         default_marker_size=7,
+        cluster_hips=CLUSTER_HIPS,
+        photoz_hips=PHOTOZ_HIPS,
     )
     result_table = _make_result_table(owner, "subset_3", ["id", "ra", "dec"])
     with mock.patch(
@@ -152,6 +170,8 @@ def test_derived_table_inherits_source_settings(owner, source_table):
     assert settings.default_image == "LSST_DP1_IRG_LIneA"
     assert settings.default_fov == 12  # noqa: PLR2004
     assert settings.default_marker_size == 7  # noqa: PLR2004
+    assert settings.cluster_hips == CLUSTER_HIPS
+    assert settings.photoz_hips == PHOTOZ_HIPS
 
 
 @pytest.mark.django_db
@@ -170,6 +190,8 @@ def test_derived_table_gets_default_settings_when_source_has_none(
     assert settings.default_image == "DES_DR2_IRG_LIneA"
     assert settings.default_fov == 5  # noqa: PLR2004
     assert settings.default_marker_size == 5  # noqa: PLR2004
+    assert settings.cluster_hips == {}
+    assert settings.photoz_hips == {}
 
 
 @pytest.mark.django_db

@@ -7,6 +7,8 @@ request/viewset context. Shared so publicity is always decided server-side
 from PUBLIC_CATALOGS + request.user.is_staff, never from the client payload.
 """
 
+import copy
+
 from django.conf import settings
 from rest_framework.exceptions import PermissionDenied
 
@@ -200,9 +202,10 @@ def register_table(user, data):
 
 def create_table_settings(table, source_table=None):
     """Creates (or overwrites) `table`'s Settings. With `source_table`, copies
-    its preferences (default image/FOV/marker size) - used by subsets so they
-    open looking like the catalog they came from; if the source has no
-    Settings, falls back to the model defaults.
+    its preferences (default image/FOV/marker size and the clusters/photo-z
+    HiPS catalog defaults) - used by subsets so they open looking like the
+    catalog they came from; if the source has no Settings, falls back to the
+    model defaults.
     """
     from target.metadata.models import Settings
 
@@ -215,6 +218,9 @@ def create_table_settings(table, source_table=None):
             "default_image": source_settings.default_image,
             "default_fov": source_settings.default_fov,
             "default_marker_size": source_settings.default_marker_size,
+            # deepcopy: o subset não compartilha o dict com a origem.
+            "cluster_hips": copy.deepcopy(source_settings.cluster_hips),
+            "photoz_hips": copy.deepcopy(source_settings.photoz_hips),
         }
     return Settings.objects.update_or_create(table=table, defaults=defaults)[0]
 

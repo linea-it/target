@@ -324,6 +324,29 @@ class Settings(models.Model):
         default=5,
     )
 
+    # Defaults dos catálogos HiPS sob demanda do Aladin (Cluster Detail).
+    # Chaves em camelCase, iguais ao estilo usado pelo frontend (useAladin);
+    # {} = sem default.
+    cluster_hips = models.JSONField(
+        verbose_name=_("Clusters HiPS catalog"),
+        help_text=_(
+            "Default clusters HiPS catalog: "
+            "{catalogId, color, opacity, lineWidth, showOnOpen}.",
+        ),
+        blank=True,
+        default=dict,
+    )
+
+    photoz_hips = models.JSONField(
+        verbose_name=_("Photo-z HiPS catalog"),
+        help_text=_(
+            "Default photo-z HiPS catalog: "
+            "{catalogId, shape, sourceSize, zMin, zMax, showOnOpen}.",
+        ),
+        blank=True,
+        default=dict,
+    )
+
     class Meta:
         verbose_name = _("Settings")
         verbose_name_plural = _("Settings")

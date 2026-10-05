@@ -108,8 +108,24 @@ class SettingsSerializer(serializers.ModelSerializer[Settings]):
             "default_image",
             "default_fov",
             "default_marker_size",
+            "cluster_hips",
+            "photoz_hips",
         ]
         read_only_fields = ["id"]
+
+    def _validate_hips(self, value):
+        if value is None:
+            return {}
+        if not isinstance(value, dict):
+            msg = "Must be an object."
+            raise serializers.ValidationError(msg)
+        return value
+
+    def validate_cluster_hips(self, value):
+        return self._validate_hips(value)
+
+    def validate_photoz_hips(self, value):
+        return self._validate_hips(value)
 
 
 class NestedTableSerializer(serializers.ModelSerializer[Table]):

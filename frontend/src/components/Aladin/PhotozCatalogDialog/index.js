@@ -17,28 +17,20 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
 import { useAladinContext } from '@/components/Aladin/AladinContext';
 import ShapeSelect from '@/components/Aladin/CatalogControls/ShapeSelect';
+import ColormapSelect from '@/components/Aladin/CatalogControls/ColormapSelect';
 import { colormapGradientCss } from '@/components/Aladin/photozColors';
-
-const DEFAULT_STYLE = { shape: 'circle', sourceSize: 8 };
-const COLORBAR_GRADIENT = colormapGradientCss();
-
-// Limites do slider de intervalo: o zRange default do catálogo com folga,
-// para o usuário conseguir abrir o intervalo além do default.
-function sliderBounds(zRange) {
-  const [min, max] = zRange;
-  const pad = (max - min) * 0.5;
-  return [Math.max(0, min - pad), max + pad];
-}
+import { DEFAULT_PHOTOZ_STYLE, Z_SLIDER_STEP, zSliderBounds } from '@/components/Aladin/hipsCatalogs';
 
 /**
  * Diálogo do catálogo HiPS de photo-z. Cada fonte é desenhada com o shape
  * escolhido e a cor dada pelo seu valor de z no colormap; aqui o usuário
- * escolhe o catálogo, o shape, o tamanho e o intervalo de z do colormap.
+ * escolhe o catálogo, o shape, o tamanho, a escala de cor e o intervalo de z.
  *
  * O estado aplicado vive no hook useAladin, então reabrir o diálogo sempre
- * reflete o que está realmente no Aladin.
+ * reflete o que está realmente no Aladin. Sem catálogo aplicado, o diálogo
+ * parte de `defaults` (Settings.photoz_hips do catálogo aberto).
  */
-export default function PhotozCatalogDialog({ open, onClose }) {
+export default function PhotozCatalogDialog({ open, onClose, defaults }) {
   const {
     photozOverlay,
     getPhotozCatalogs,
@@ -49,15 +41,22 @@ export default function PhotozCatalogDialog({ open, onClose }) {
 
   const catalogs = getPhotozCatalogs();
 
-  const catalogId = photozOverlay?.catalogId ?? '';
+  // Overlay ativo tem prioridade; sem ele, o default salvo no Settings (se o
+  // catálogo ainda estiver disponível para o usuário).
+  const initial = photozOverlay ?? {
+    ...defaults,
+    catalogId: catalogs.some(cat => cat.id === defaults?.catalogId) ? defaults.catalogId : '',
+  };
+  const catalogId = initial.catalogId ?? '';
   const visible = photozOverlay?.visible ?? false;
   const selected = catalogs.find(cat => cat.id === catalogId);
   const zRange = selected?.zRange ?? [0, 1];
   const style = {
-    shape: photozOverlay?.shape ?? DEFAULT_STYLE.shape,
-    sourceSize: photozOverlay?.sourceSize ?? DEFAULT_STYLE.sourceSize,
-    zMin: photozOverlay?.zMin ?? zRange[0],
-    zMax: photozOverlay?.zMax ?? zRange[1],
+    shape: initial.shape ?? DEFAULT_PHOTOZ_STYLE.shape,
+    sourceSize: initial.sourceSize ?? DEFAULT_PHOTOZ_STYLE.sourceSize,
+    colormap: initial.colormap ?? DEFAULT_PHOTOZ_STYLE.colormap,
+    zMin: initial.zMin ?? zRange[0],
+    zMax: initial.zMax ?? zRange[1],
   };
 
   // Valores dos sliders durante o arraste; o catálogo só é recriado no commit.
@@ -75,20 +74,25 @@ export default function PhotozCatalogDialog({ open, onClose }) {
   // Sem catálogos de photo-z disponíveis não há o que exibir.
   if (catalogs.length === 0) return null;
 
-  const [boundMin, boundMax] = sliderBounds(zRange);
+  const [boundMin, boundMax] = zSliderBounds(selected);
 
+  // Sem overlay ativo, mudar o estilo aplica o catálogo (já visível).
   const applyStyle = (changes) => {
     if (!catalogId) return;
-    setPhotozCatalog(catalogId, { ...style, visible, ...changes });
+    setPhotozCatalog(catalogId, { ...style, visible: photozOverlay ? visible : true, ...changes });
   };
 
   // Trocar de catálogo volta o intervalo para o default do novo catálogo.
   const handleCatalogChange = (event) => {
-    const { shape, sourceSize: size } = style;
-    setPhotozCatalog(event.target.value, { shape, sourceSize: size });
+    const { shape, sourceSize: size, colormap } = style;
+    setPhotozCatalog(event.target.value, { shape, sourceSize: size, colormap });
   };
 
   const handleToggleVisibility = () => {
+    if (!photozOverlay) {
+      applyStyle({});
+      return;
+    }
     setPhotozCatalogVisibility(!visible);
   };
 
@@ -131,6 +135,12 @@ export default function PhotozCatalogDialog({ open, onClose }) {
             />
           </Box>
 
+          <ColormapSelect
+            value={style.colormap}
+            onChange={(colormap) => applyStyle({ colormap })}
+            disabled={!catalogId}
+          />
+
           <Stack spacing={1}>
             <Typography id="photoz-range-label" variant="body2" color="text.secondary">
               Photo-z range
@@ -142,7 +152,7 @@ export default function PhotozCatalogDialog({ open, onClose }) {
               onChangeCommitted={(event, [zMin, zMax]) => applyStyle({ zMin, zMax })}
               min={boundMin}
               max={boundMax}
-              step={0.01}
+              step={Z_SLIDER_STEP}
               disableSwap
               valueLabelDisplay="auto"
               disabled={!catalogId}
@@ -151,7 +161,7 @@ export default function PhotozCatalogDialog({ open, onClose }) {
               sx={{
                 height: 12,
                 borderRadius: 1,
-                background: COLORBAR_GRADIENT,
+                background: colormapGradientCss(style.colormap),
                 opacity: catalogId ? 1 : 0.4,
               }}
             />
@@ -174,7 +184,7 @@ export default function PhotozCatalogDialog({ open, onClose }) {
         >
           {visible ? 'Hide' : 'Show'}
         </Button>
-        <Button color="error" onClick={removePhotozCatalog} disabled={!catalogId}>
+        <Button color="error" onClick={removePhotozCatalog} disabled={!photozOverlay}>
           Remove
         </Button>
         <Button onClick={onClose}>Close</Button>
