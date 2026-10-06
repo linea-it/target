@@ -45,13 +45,12 @@ export function buildPhotozCatalogs(baseHost) {
       url: `${baseHost}/data/releases/des/dr2/catalogs/341_ref_z_clean/hips`, // TODO: url do HiPS de photo-z (sem url o catálogo não é listado)
       zColumn: 'z', // TODO: coluna com o valor de photo-z
       zMinValue: 0.0001, // Menor valor de z do catálogo (limite inferior do slider)
-      zMaxValue: 21.139999, // Maior valor de z do catálogo (limite superior do slider)
+      zMaxValue: 1.8, // Maior valor de z do catálogo (limite superior do slider)
       // zRange: [0, 1.5], // Intervalo default do colormap; sem ele, usa os limites do slider
       options: {
         requestCredentials: 'include',
         requestMode: 'cors',
       },
-      // requireGroup: 'TODO',
     },
   ];
   // Sem zRange explícito, o intervalo default do colormap são os limites do slider.
