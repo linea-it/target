@@ -69,7 +69,7 @@ export default function CatalogDetailContainer({ catalog }) {
     // Atualiza o registro selecionado no contexto do catálogo
 
     // Usando o primeiro registro selecionado
-    // Caso multiselect esteja habilitado, aqui deve ser alterado, 
+    // Caso multiselect esteja habilitado, aqui deve ser alterado,
     // mas é necessário atenção com o comportamento do Aladin.
     setSelectedRecord(selectedRows[0]);
 
@@ -97,7 +97,9 @@ export default function CatalogDetailContainer({ catalog }) {
         {/* Painel esquerdo — tabela */}
         <Box
           sx={{
-            flex: isMobile ? 'none' : `0 0 ${leftWidth}%`,
+            // flex-shrink 1: cede espaço quando o painel do Aladin atinge o minWidth,
+            // evitando que a soma estoure a largura em telas menores.
+            flex: isMobile ? 'none' : `0 1 ${leftWidth}%`,
             display: 'flex',
             minWidth: isMobile ? '100%' : '400px',
             height: isMobile ? 420 : 'auto',

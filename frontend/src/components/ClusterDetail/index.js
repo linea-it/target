@@ -124,14 +124,17 @@ export default function ClusterDetail(props) {
       }}
     >
       <Box>
-        <Toolbar>
-          <Stack direction="row" spacing={2}>
+        <Toolbar sx={{ py: 1 }}>
+          {/* flexWrap + useFlexGap: em painéis estreitos os ícones quebram
+              para a linha de baixo em vez de vazar para fora do Paper. */}
+          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
             <Button
               href={`${pathname}/cluster_detail/${selectedRecord?.meta_id}`}
               target="_blank"
               variant="outlined"
               size="large"
               disabled={!selectedRecord}
+              sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
             >
               Cluster Detail
             </Button>
