@@ -49,7 +49,7 @@ export default function MaterializeCatalogPage({ params }) {
           <CatalogsBreadcrumbLink />
           <Link color="inherit" href={`/catalog/${schema}/${table}`}>{catalog.schema}</Link>
           <Link color="inherit" href={`/catalog/${schema}/${table}`}>{catalog.table}</Link>
-          <Typography>Save filtered subset</Typography>
+          <Typography>Create Catalog from Subset</Typography>
         </Breadcrumbs>
         <Stack direction="row" mt={2} spacing={1} sx={{ alignItems: "center" }}>
           <IconButton href={`/catalog/${schema}/${table}`}>

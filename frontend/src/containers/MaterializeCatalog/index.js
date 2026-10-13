@@ -1,5 +1,4 @@
 'use client'
-import React from "react";
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Container from '@mui/material/Container';
@@ -21,7 +20,7 @@ export default function MaterializeCatalogContainer() {
         flexGrow: 1,
         width: '100%',
       }}>
-        <Typography variant="h5" mt={2}>Save filtered subset</Typography>
+        <Typography variant="h5" mt={2}>Create Catalog from Subset</Typography>
         <Box> <MaterializeCatalogStepper /> </Box>
         <Box sx={{ flexGrow: 1 }}>
           {activeStep === 0 && (<MaterializeCatalogSqlPreview />)}

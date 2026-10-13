@@ -7,7 +7,6 @@ import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link'
 import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
-import Tooltip from '@mui/material/Tooltip';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
@@ -34,8 +33,7 @@ export default function CatalogDetail({ params }) {
   const { schema, table } = React.use(params)
   const [isClient, setIsClient] = React.useState(false)
   const { user, settings } = useAuth();
-  const { setCatalog, catalog, lastFilterModel } = useCatalog();
-  const hasActiveFilter = !!lastFilterModel?.items?.length;
+  const { setCatalog, catalog } = useCatalog();
 
   const { status, isLoading, data, isSuccess } = useQuery({
     queryKey: ['metadataBySchemaTable', { schema, table }],
@@ -100,20 +98,15 @@ export default function CatalogDetail({ params }) {
             </IconButton>
           )}
           {catalog.is_public && (
-            <Tooltip title={hasActiveFilter ? '' : 'Apply a filter on the grid first'}>
-              <span>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<FilterAltIcon />}
-                  href={hasActiveFilter ? `/catalog/${catalog.schema}/${catalog.table}/materialize` : undefined}
-                  disabled={!hasActiveFilter}
-                  sx={{ ml: 1 }}
-                >
-                  Save filtered subset
-                </Button>
-              </span>
-            </Tooltip>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<FilterAltIcon />}
+              href={`/catalog/${catalog.schema}/${catalog.table}/materialize`}
+              sx={{ ml: 1 }}
+            >
+              Create Catalog from Subset
+            </Button>
           )}
           {/* <IconButton disabled>
             <ShareIcon />
