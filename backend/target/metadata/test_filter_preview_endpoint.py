@@ -64,7 +64,15 @@ def test_filter_preview_returns_sql_for_public_table(public_table):
 
     response = client.post(
         f"/api/metadata/user_tables/{public_table.id}/filter_preview/",
-        {"filter_model": {"items": [{"field": "ra", "operator": ">", "value": 1}]}},
+        {
+            "filter_model": {
+                "type": "group",
+                "operator": "and",
+                "children": [
+                    {"type": "condition", "field": "ra", "operator": ">", "value": 1},
+                ],
+            },
+        },
         format="json",
     )
 
@@ -79,7 +87,15 @@ def test_filter_preview_rejects_unknown_column(public_table):
 
     response = client.post(
         f"/api/metadata/user_tables/{public_table.id}/filter_preview/",
-        {"filter_model": {"items": [{"field": "nope", "operator": "=", "value": 1}]}},
+        {
+            "filter_model": {
+                "type": "group",
+                "operator": "and",
+                "children": [
+                    {"type": "condition", "field": "nope", "operator": "=", "value": 1},
+                ],
+            },
+        },
         format="json",
     )
 

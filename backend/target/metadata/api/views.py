@@ -853,12 +853,22 @@ class UserTableViewSet(ModelViewSet):
         ).exists()
         if in_progress:
             return Response(
-                {"error": "A materialization for this table is already in progress."},
+                {
+                    "error": (
+                        "This table is already being copied into a new catalog. "
+                        "Wait for it to finish, then try again."
+                    ),
+                },
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
 
         filter_model = request.data.get("filter_model") or {}
         requested_name = (request.data.get("table_name") or "").strip()
+
+        try:
+            build_select_sql(table, filter_model)
+        except FilterToSqlError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         if requested_name:
             error = _validate_result_table_name(

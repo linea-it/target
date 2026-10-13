@@ -54,7 +54,13 @@ def cluster_table(db):
 
 @pytest.fixture(autouse=True)
 def _mock_task_delay():
-    with mock.patch("target.metadata.api.views.run_materialization_job") as mock_task:
+    with (
+        mock.patch("target.metadata.api.views.run_materialization_job") as mock_task,
+        mock.patch(
+            "target.metadata.api.views.build_select_sql",
+            return_value="SELECT 1",
+        ),
+    ):
         yield mock_task
 
 
@@ -65,7 +71,15 @@ def test_materialize_creates_job_and_returns_202(public_table):
 
     response = client.post(
         f"/api/metadata/user_tables/{public_table.id}/materialize/",
-        {"filter_model": {"items": [{"field": "ra", "operator": ">", "value": 1}]}},
+        {
+            "filter_model": {
+                "type": "group",
+                "operator": "and",
+                "children": [
+                    {"type": "condition", "field": "ra", "operator": ">", "value": 1},
+                ],
+            },
+        },
         format="json",
     )
 
@@ -188,6 +202,7 @@ def test_materialize_rejects_concurrent_job_for_same_source(public_table):
     )
 
     assert response.status_code == HTTPStatus.TOO_MANY_REQUESTS
+    assert "already being copied" in response.json()["error"]
 
 
 @pytest.mark.django_db
