@@ -3,8 +3,13 @@ With these settings, tests run faster.
 """
 
 from .base import *  # noqa: F403
+from .base import DATABASES
 from .base import TEMPLATES
 from .base import env
+
+# The mydb alias points at an external catalog server. Tests only need the
+# local Django database; mirroring avoids opening that connection.
+DATABASES["mydb"]["TEST"] = {"MIRROR": "default"}
 
 # GENERAL
 # ------------------------------------------------------------------------------

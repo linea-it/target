@@ -56,14 +56,13 @@ export default function MaterializeCatalogProgress() {
     <Box>
       {isRunning && (
         <Alert severity="info" icon={<CircularProgress size={20} />} sx={{ mb: 2 }}>
-          Materializing your filtered subset. This can take a few minutes for large tables -
-          feel free to leave this page, the job keeps running in the background.
+          Preparing your catalog. This can take a few minutes.
         </Alert>
       )}
 
       {isError && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          {jobStatus.error || 'Materialization failed.'}
+          {jobStatus.error || 'The catalog copy did not finish. Please try again.'}
         </Alert>
       )}
 

@@ -9,11 +9,11 @@ import { materializeTable } from "@/services/Metadata";
 import MaterializeCatalogToolbar from "./Toolbar";
 
 export default function MaterializeCatalogConfirmation() {
-  const { catalog, lastFilterModel } = useCatalog();
-  const { setActiveStep, setJob, tableName } = useMaterializeCatalog();
+  const { catalog } = useCatalog();
+  const { setActiveStep, setJob, tableName, subsetFilter } = useMaterializeCatalog();
 
   const mutation = useMutation({
-    mutationFn: () => materializeTable({ tableId: catalog.id, filterModel: lastFilterModel, tableName }),
+    mutationFn: () => materializeTable({ tableId: catalog.id, filterModel: subsetFilter, tableName }),
     onSuccess: (res) => {
       setJob(res.data);
       setActiveStep(2);
