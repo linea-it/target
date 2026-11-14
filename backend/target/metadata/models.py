@@ -324,14 +324,14 @@ class Settings(models.Model):
         default=5,
     )
 
-    # Defaults dos catálogos HiPS sob demanda do Aladin (Cluster Detail).
+    # Defaults dos overlays sob demanda do Aladin (Cluster Detail).
     # Chaves em camelCase, iguais ao estilo usado pelo frontend (useAladin);
     # {} = sem default.
-    cluster_hips = models.JSONField(
-        verbose_name=_("Clusters HiPS catalog"),
+    neighbor_clusters = models.JSONField(
+        verbose_name=_("Neighbor clusters"),
         help_text=_(
-            "Default clusters HiPS catalog: "
-            "{catalogId, color, opacity, lineWidth, showOnOpen}.",
+            "Default neighbor clusters overlay (area search on this table): "
+            "{factor, maxRadiusDeg, method, color, opacity, lineWidth, showOnOpen}.",
         ),
         blank=True,
         default=dict,

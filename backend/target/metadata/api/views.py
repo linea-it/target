@@ -1,3 +1,4 @@
+import math
 import re
 
 from django.conf import settings
@@ -13,8 +14,11 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.viewsets import ModelViewSet
+from sqlalchemy.exc import ProgrammingError
 
 from dblinea import MyDB
+from dblinea.mydb import AREA_METHOD_BOX
+from dblinea.mydb import AREA_METHODS
 from target.metadata.annotation import ReservedColumnConflictError
 from target.metadata.annotation import TableNotInDatabaseError
 from target.metadata.annotation import ensure_annotation_columns_lazy
@@ -90,6 +94,11 @@ class SettingsViewSet(ModelViewSet):
 # Base name only - "_members" (8 chars) may still be appended for the
 # cluster+members case, so this is capped well under Postgres's 63-byte
 # identifier limit.
+# Busca por área no endpoint data/ (clusters vizinhos no Aladin).
+CONE_PARAMS = ("cone_ra", "cone_dec", "cone_radius", "cone_method")
+# Teto do raio da busca por área, para proteger o banco.
+MAX_CONE_RADIUS_DEG = 1.0
+
 RESULT_TABLE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,49}$")
 
 
@@ -446,7 +455,7 @@ class UserTableViewSet(ModelViewSet):
         return {c.ucd: c.name for c in columns if c.ucd and c.name}
 
     def parse_filters(self, query_params):
-        reserved_keys = ["page", "pageSize", "columns", "ordering"]
+        reserved_keys = ["page", "pageSize", "columns", "ordering", *CONE_PARAMS]
         filters = {
             key: value
             for key, value in query_params.items()
@@ -455,6 +464,58 @@ class UserTableViewSet(ModelViewSet):
         if len(filters.keys()) == 0:
             return None
         return filters
+
+    def parse_cone(self, query_params, ucds):
+        """Busca por área: cone_ra, cone_dec, cone_radius (graus) e
+        cone_method (q3c | box, default box). Retorna None quando não há
+        busca por área, ou o dict `area` aceito por MyDB.query.
+
+        Lança ValueError com a mensagem de erro se os parâmetros forem
+        inválidos.
+        """
+        keys = ("cone_ra", "cone_dec", "cone_radius")
+        present = [k for k in keys if query_params.get(k) not in (None, "")]
+        if not present:
+            return None
+        if len(present) != len(keys):
+            msg = "cone_ra, cone_dec and cone_radius must be provided together."
+            raise ValueError(msg)
+
+        try:
+            ra, dec, radius = (float(query_params.get(k)) for k in keys)
+        except (TypeError, ValueError) as e:
+            msg = "cone_ra, cone_dec and cone_radius must be numbers."
+            raise ValueError(msg) from e
+
+        if not all(math.isfinite(v) for v in (ra, dec, radius)):
+            msg = "cone_ra, cone_dec and cone_radius must be finite numbers."
+            raise ValueError(msg)
+        if not -90.0 <= dec <= 90.0:  # noqa: PLR2004
+            msg = "cone_dec must be between -90 and 90."
+            raise ValueError(msg)
+        if radius <= 0:
+            msg = "cone_radius must be greater than 0."
+            raise ValueError(msg)
+
+        method = query_params.get("cone_method") or AREA_METHOD_BOX
+        if method not in AREA_METHODS:
+            msg = f"cone_method must be one of: {', '.join(AREA_METHODS)}."
+            raise ValueError(msg)
+
+        ra_col = ucds.get("pos.eq.ra;meta.main")
+        dec_col = ucds.get("pos.eq.dec;meta.main")
+        if not ra_col or not dec_col:
+            msg = "Table has no RA/Dec columns (UCDs pos.eq.ra/dec;meta.main)."
+            raise ValueError(msg)
+
+        return {
+            "method": method,
+            "ra": ra % 360.0,
+            "dec": dec,
+            "radius": min(radius, MAX_CONE_RADIUS_DEG),
+            "ra_col": ra_col,
+            "dec_col": dec_col,
+        }
 
     def perform_destroy(self, instance):
         if not can_manage_table(self.request.user, instance):
@@ -477,6 +538,7 @@ class UserTableViewSet(ModelViewSet):
         url_filters,
         ordering,
         ucds,
+        area=None,
     ):
         db = self._get_reader_db(table)
         rows, count = db.query(
@@ -485,6 +547,7 @@ class UserTableViewSet(ModelViewSet):
             offset=offset,
             url_filters=url_filters,
             ordering=ordering,
+            area=area,
         )
 
         # match the column names with the table columns ucd
@@ -559,14 +622,35 @@ class UserTableViewSet(ModelViewSet):
 
         ordering = request.query_params.get("ordering", None)
 
-        parsed_rows, count = self.query_data(
-            table=table,
-            limit=limit,
-            offset=offset,
-            url_filters=url_filters,
-            ordering=ordering,
-            ucds=ucds,
-        )
+        # Busca por área (ex.: clusters vizinhos no Aladin).
+        try:
+            area = self.parse_cone(request.query_params, ucds)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            parsed_rows, count = self.query_data(
+                table=table,
+                limit=limit,
+                offset=offset,
+                url_filters=url_filters,
+                ordering=ordering,
+                ucds=ucds,
+                area=area,
+            )
+        except ProgrammingError as e:
+            # cone_method=q3c num banco sem a extensão q3c.
+            if area is None or "q3c_radial_query" not in str(e):
+                raise
+            return Response(
+                {
+                    "error": (
+                        "Cone search (q3c) is not available in this database. "
+                        "Use cone_method=box."
+                    ),
+                },
+                status=status.HTTP_501_NOT_IMPLEMENTED,
+            )
 
         results = {
             "results": parsed_rows,

@@ -1,39 +1,16 @@
-// Config dos catálogos HiPS sob demanda do Aladin (clusters e photo-z).
+// Config dos catálogos HiPS sob demanda do Aladin (photo-z).
+// Os clusters vizinhos não usam HiPS: vêm da própria tabela (neighborClusters.js).
 // Compartilhada entre o useAladin (que cria os catálogos) e a página de
 // Settings do catálogo (que define o catálogo/estilo padrão de cada um).
 
 import { DEFAULT_COLORMAP } from './photozColors';
 
-// Estilos iniciais quando não há overlay ativo nem default salvo no Settings.
-export const DEFAULT_CLUSTER_STYLE = { color: '#ff9800', opacity: 0.8, lineWidth: 2 };
+// Estilo inicial quando não há overlay ativo nem default salvo no Settings.
 export const DEFAULT_PHOTOZ_STYLE = { shape: 'circle', sourceSize: 8, colormap: DEFAULT_COLORMAP };
 
-// Catálogos HiPScat de clusters (céu inteiro). Diferente dos catálogos do
-// useAladin, não são pré-carregados: são criados sob demanda pelo ClusterCatalogDialog
-// e cada fonte é desenhada como um círculo com o raio do cluster.
-export function buildClusterCatalogs(baseHost) {
-  return [
-    {
-      id: 'y6a2_dnf_wazp_v5_clusters',
-      name: 'DES Y6 WaZP v5 clusters',
-      // url: 'https://datasets.linea.org.br/data/releases/des/dr2/catalogs/hips/', // TODO: temporária, trocar pela url com baseHost
-      // radiusColumn: 'MAG_AUTO_G_DERED',
-      url: `${baseHost}/data/releases/des/dr2/catalogs/y6a2_dnf_wazp_v5_clusters/hips`,
-      radiusColumn: 'radius_amin', // Coluna com o raio do cluster
-      radiusUnit: 'arcmin', // Unidade da coluna de raio: 'deg' | 'arcmin' | 'arcsec'
-      defaultRadiusArcmin: 1, // Usado quando a fonte não tem valor de raio
-      options: {
-        requestCredentials: 'include',
-        requestMode: 'cors',
-      },
-      // requireGroup: 'TODO',
-    },
-  ];
-}
-
-// Catálogos HiPScat de photo-z. Mesmo esquema dos de clusters (sob demanda,
-// pelo PhotozCatalogDialog), mas cada fonte é desenhada com um shape padrão
-// cuja cor vem do valor de z (colormap entre zMin e zMax).
+// Catálogos HiPScat de photo-z (sob demanda, pelo PhotozCatalogDialog). Cada
+// fonte é desenhada com um shape padrão cuja cor vem do valor de z (colormap
+// entre zMin e zMax).
 export function buildPhotozCatalogs(baseHost) {
   const catalogs = [
     {

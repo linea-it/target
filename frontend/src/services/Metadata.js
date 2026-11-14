@@ -90,6 +90,19 @@ export const getClusterMembers = ({ tableId, property_cross_id, value }) => {
 }
 
 
+// Clusters da mesma tabela ao redor de (ra, dec): busca por área no endpoint
+// data/ (radiusDeg em graus; method 'q3c' | 'box').
+export const getNeighborClusters = ({ tableId, ra, dec, radiusDeg, method, pageSize }) => {
+    return api.get(`metadata/user_tables/${tableId}/data/`, {
+        params: {
+            cone_ra: ra,
+            cone_dec: dec,
+            cone_radius: radiusDeg,
+            cone_method: method,
+            pageSize,
+        }
+    })
+}
 
 export const getNotebookHtml = ({ tableId, propertyId, recordId }) => {
     return api.get(`metadata/user_tables/${tableId}/notebook/`, {

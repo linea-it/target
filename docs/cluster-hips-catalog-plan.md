@@ -1,11 +1,17 @@
 ---
 title: "Catálogo HiPS de clusters (céu inteiro) no Aladin do Cluster Detail"
-status: "Implementado (controle de catálogo); ação de clique pendente"
+status: "Substituído (issue #206): ver docs/neighbor-clusters-plan.md"
 date: 2026-09-29
 author: glauber.vila.verde@gmail.com
 ---
 
 # Catálogo HiPS de clusters (céu inteiro) no Aladin do Cluster Detail
+
+> **Substituído (issue #206).** O overlay via HiPS não teve bom desempenho e foi
+> removido (botão, `ClusterCatalogDialog`, `Settings.cluster_hips`). Os clusters
+> agora vêm da própria tabela por busca por área: ver
+> [neighbor-clusters-plan.md](neighbor-clusters-plan.md). Este documento fica
+> como histórico.
 
 ## Contexto
 

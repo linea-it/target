@@ -15,8 +15,8 @@ import { useMutation } from '@tanstack/react-query'
 
 import { useAuth } from "@/contexts/AuthContext";
 import { DEFAULT_SURVEY_ID } from "@/components/Aladin/useAladin";
-import { buildClusterCatalogs, buildPhotozCatalogs, listAvailable } from "@/components/Aladin/hipsCatalogs";
-import ClusterHipsSettingsCard from "@/containers/CatalogSettings/ClusterHipsSettingsCard";
+import { buildPhotozCatalogs, listAvailable } from "@/components/Aladin/hipsCatalogs";
+import NeighborClustersSettingsCard from "@/containers/CatalogSettings/NeighborClustersSettingsCard";
 import PhotozHipsSettingsCard from "@/containers/CatalogSettings/PhotozHipsSettingsCard";
 
 
@@ -31,7 +31,7 @@ export default function SettingsForm() {
     default_image: DEFAULT_SURVEY_ID,
     default_fov: 5,
     default_marker_size: 5,
-    cluster_hips: {},
+    neighbor_clusters: {},
     photoz_hips: {},
   })
 
@@ -85,7 +85,6 @@ export default function SettingsForm() {
 
 
   // Os selects dos cards só usam id/name e os atributos de z; a url real não importa aqui.
-  const clusterCatalogs = listAvailable(buildClusterCatalogs(), user?.groups);
   const photozCatalogs = listAvailable(buildPhotozCatalogs(), user?.groups);
 
   const surveys = [{
@@ -166,16 +165,13 @@ export default function SettingsForm() {
         </CardContent>
       </Card>
 
-      {/* Catálogos HiPS sob demanda só existem no Aladin do Cluster Detail. */}
+      {/* Clusters vizinhos e catálogo HiPS de photo-z só existem no Aladin do Cluster Detail. */}
       {catalog?.catalog_type === 'cluster' && (
         <Stack spacing={4} mt={4}>
-          {clusterCatalogs.length > 0 && (
-            <ClusterHipsSettingsCard
-              catalogs={clusterCatalogs}
-              value={editedSettings?.cluster_hips}
-              onChange={(value) => update('cluster_hips', value)}
-            />
-          )}
+          <NeighborClustersSettingsCard
+            value={editedSettings?.neighbor_clusters}
+            onChange={(value) => update('neighbor_clusters', value)}
+          />
           {photozCatalogs.length > 0 && (
             <PhotozHipsSettingsCard
               catalogs={photozCatalogs}

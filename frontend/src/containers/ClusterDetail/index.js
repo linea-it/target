@@ -11,7 +11,8 @@ import { useAladinContext } from '@/components/Aladin/AladinContext';
 import AladinViewer from '@/components/Aladin/AladinViewer';
 import MapsDialog from '@/components/Aladin/MapsDialog';
 import { DEFAULT_SURVEY_ID } from '@/components/Aladin/useAladin';
-import ClusterCatalogDialog from '@/components/Aladin/ClusterCatalogDialog';
+import NeighborClustersDialog from '@/components/Aladin/NeighborClustersDialog';
+import { useNeighborClusters } from '@/components/Aladin/useNeighborClusters';
 import PhotozCatalogDialog from '@/components/Aladin/PhotozCatalogDialog';
 import { useHipsCatalogDefaults } from '@/components/Aladin/useHipsCatalogDefaults';
 import { getClusterMembers, getMetadataById, getNotebookHtml, downloadClusterNotebook } from '@/services/Metadata';
@@ -44,20 +45,22 @@ function TabPanel({ children, value, index }) {
 
 
 export default function ClusterDetailContainer({ catalog, record }) {
-  const { isReady, setTarget, aladinRef, setImageSurvey, addCatalog, gotoRaDec, toggleMarkerVisibility, takeSnapshot, toggleCatalogVisibility, getMapsForSurvey, getClusterCatalogs, getPhotozCatalogs } = useAladinContext();
+  const { isReady, setTarget, aladinRef, setImageSurvey, addCatalog, gotoRaDec, toggleMarkerVisibility, takeSnapshot, toggleCatalogVisibility, getMapsForSurvey, getPhotozCatalogs } = useAladinContext();
 
   const [selectedMember, setSelectedMember] = React.useState(undefined);
   const [mapsOpen, setMapsOpen] = React.useState(false);
-  const [clusterCatalogOpen, setClusterCatalogOpen] = React.useState(false);
+  const [neighborsOpen, setNeighborsOpen] = React.useState(false);
   const [photozCatalogOpen, setPhotozCatalogOpen] = React.useState(false);
 
   const defaultImage = catalog?.settings?.default_image || DEFAULT_SURVEY_ID;
   const hasMaps = !!getMapsForSurvey(defaultImage);
-  const hasClusterCatalogs = getClusterCatalogs().length > 0;
   const hasPhotozCatalogs = getPhotozCatalogs().length > 0;
 
-  // Catálogos HiPS de clusters/photo-z com "Show on open" nos Settings.
+  // Catálogo HiPS de photo-z com "Show on open" nos Settings.
   useHipsCatalogDefaults(catalog?.settings);
+
+  // Clusters vizinhos (mesma tabela, busca por área ao redor do cluster).
+  const neighbors = useNeighborClusters(catalog, record);
   const [activeTab, setActiveTab] = React.useState(0);
   const [iframeHeight, setIframeHeight] = React.useState(0);
   const [downloadingNotebook, setDownloadingNotebook] = React.useState(false);
@@ -368,14 +371,14 @@ export default function ClusterDetailContainer({ catalog, record }) {
                   </IconButton>
                 </span>
               </Tooltip>
-              <Tooltip title={hasClusterCatalogs ? 'Clusters catalog' : 'No clusters catalog available'}>
+              <Tooltip title="Neighbor clusters">
                 <span>
                   <IconButton
-                    aria-label="clusters-catalog"
-                    disabled={!record || !hasClusterCatalogs}
-                    onClick={() => setClusterCatalogOpen(true)}
+                    aria-label="neighbor-clusters"
+                    disabled={!record}
+                    onClick={() => setNeighborsOpen(true)}
                   >
-                    <BubbleChartIcon />
+                    {neighbors.isFetching ? <CircularProgress size={24} /> : <BubbleChartIcon />}
                   </IconButton>
                 </span>
               </Tooltip>
@@ -424,7 +427,7 @@ export default function ClusterDetailContainer({ catalog, record }) {
         )}
       </Paper>
       <MapsDialog open={mapsOpen} onClose={() => setMapsOpen(false)} surveyId={defaultImage} />
-      <ClusterCatalogDialog open={clusterCatalogOpen} onClose={() => setClusterCatalogOpen(false)} defaults={catalog?.settings?.cluster_hips} />
+      <NeighborClustersDialog open={neighborsOpen} onClose={() => setNeighborsOpen(false)} neighbors={neighbors} />
       <PhotozCatalogDialog open={photozCatalogOpen} onClose={() => setPhotozCatalogOpen(false)} defaults={catalog?.settings?.photoz_hips} />
 
       {/* Spacer */}

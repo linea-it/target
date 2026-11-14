@@ -2,7 +2,7 @@
 import A from 'aladin-lite';
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { COLOR_LEVELS, DEFAULT_COLORMAP, colorForIndex, drawShapeCanvas, zToColorIndex } from './photozColors';
-import { buildClusterCatalogs, buildPhotozCatalogs, listAvailable } from './hipsCatalogs';
+import { buildPhotozCatalogs, listAvailable } from './hipsCatalogs';
 
 // Imagem base usada quando o catálogo não define uma (ou define uma que o
 // usuário não pode acessar). Mesmo default do model Settings no backend.
@@ -25,10 +25,12 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
   const [currentSurveyId, setCurrentSurveyId] = useState(null);
   // Espelha mapLayersRef para a UI: { [surveyKey]: { mapId, opacity } }
   const [mapOverlays, setMapOverlays] = useState({});
-  // Catálogo HiPS de clusters ativo e seu estado para a UI:
-  // { catalogId, color, opacity, lineWidth, visible }
-  const clusterCatalogRef = useRef(null);
-  const [clusterOverlay, setClusterOverlay] = useState(null);
+  // Clusters vizinhos (catálogo comum com as linhas da tabela) e seu estado
+  // para a UI: { visible, count }. A visibilidade fica num ref para sobreviver
+  // à troca das fontes (nova busca ao trocar de cluster ou de raio).
+  const neighborCatalogRef = useRef(null);
+  const neighborVisibleRef = useRef(true);
+  const [neighborClusters, setNeighborClustersState] = useState(null);
   // Catálogo HiPS de photo-z ativo e seu estado para a UI:
   // { catalogId, shape, sourceSize, colormap, zMin, zMax, visible }
   const photozCatalogRef = useRef(null);
@@ -160,7 +162,6 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
   ]
 
   // Catálogos HiPS sob demanda (config em hipsCatalogs.js).
-  const clusterCatalogs = buildClusterCatalogs(baseHost);
   const photozCatalogs = buildPhotozCatalogs(baseHost);
 
   // Mapas sistemáticos (HiPS) — pré-registrados no init para aparecerem
@@ -227,8 +228,9 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
       // do componente pai sem que o Aladin seja recriado.
       mapLayersRef.current = {};
       setMapOverlays({});
-      clusterCatalogRef.current = null;
-      setClusterOverlay(null);
+      neighborCatalogRef.current = null;
+      neighborVisibleRef.current = true;
+      setNeighborClustersState(null);
       photozCatalogRef.current = null;
       setPhotozOverlay(null);
 
@@ -573,13 +575,69 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
   }, []);
 
   // ---------------------------------------------------------------------
-  // Catálogo HiPS de clusters (círculo com o raio de cada cluster)
+  // Clusters vizinhos (linhas da mesma tabela, círculo com o raio de cada um)
   // ---------------------------------------------------------------------
 
-  const getClusterCatalogs = useCallback(() => {
-    return listAvailable(clusterCatalogs, userGroups)
-      .map(({ id, name }) => ({ id, name }));
-  }, [userGroups]);
+  const detachNeighborCatalog = () => {
+    const catalog = neighborCatalogRef.current;
+    if (catalog && aladinRef.current) {
+      catalog.removeAll();
+      aladinRef.current.removeOverlay(catalog);
+    }
+    neighborCatalogRef.current = null;
+  };
+
+  const removeNeighborClusters = useCallback(() => {
+    detachNeighborCatalog();
+    neighborVisibleRef.current = true;
+    setNeighborClustersState(null);
+  }, []);
+
+  // Desenha (ou substitui) os clusters vizinhos. `rows` são linhas do
+  // endpoint data/ (meta_ra, meta_dec, meta_radius_arcmin, meta_id...);
+  // style: { color, opacity, lineWidth, fallbackRadiusArcmin };
+  // Recria o catálogo a cada chamada: os footprints ficam em cache e
+  // updateShape não os recalcula. A visibilidade atual é mantida.
+  const setNeighborClusters = useCallback((rows, style) => {
+    const aladin = aladinRef.current;
+    if (!aladin) return;
+
+    detachNeighborCatalog();
+
+    const catalog = A.catalog({
+      name: 'Neighbor clusters',
+      color: style.color,
+      shape: makeNeighborShape(style),
+      onClick: 'showTable',
+    });
+    aladin.addCatalog(catalog);
+    catalog.addSources(
+      rows
+        .filter(row => Number.isFinite(parseFloat(row.meta_ra)) && Number.isFinite(parseFloat(row.meta_dec)))
+        .map(row => A.source(parseFloat(row.meta_ra), parseFloat(row.meta_dec), row)),
+    );
+    if (!neighborVisibleRef.current) catalog.hide();
+
+    neighborCatalogRef.current = catalog;
+    setNeighborClustersState({ visible: neighborVisibleRef.current, count: rows.length });
+  }, []);
+
+  const setNeighborClustersVisibility = useCallback((visible) => {
+    neighborVisibleRef.current = visible;
+    const catalog = neighborCatalogRef.current;
+    if (!catalog) return;
+
+    if (visible) {
+      catalog.show();
+    } else {
+      catalog.hide();
+    }
+    setNeighborClustersState(prev => (prev ? { ...prev, visible } : prev));
+  }, []);
+
+  // ---------------------------------------------------------------------
+  // Catálogo HiPS de photo-z (shape padrão com cor pelo valor de z)
+  // ---------------------------------------------------------------------
 
   // Catálogos HiPS (ProgressiveCat) não têm removeAll(); basta removeOverlay.
   const detachHipsCatalog = (ref) => {
@@ -588,52 +646,6 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
     }
     ref.current = null;
   };
-
-  const removeClusterCatalog = useCallback(() => {
-    detachHipsCatalog(clusterCatalogRef);
-    setClusterOverlay(null);
-  }, []);
-
-  // Aplica (ou substitui) o catálogo de clusters com o estilo informado.
-  // Mudanças de estilo também passam por aqui: recriar o catálogo é mais
-  // confiável que updateShape, pois os footprints já computados ficam em cache.
-  const setClusterCatalog = useCallback((catalogId, style) => {
-    if (!aladinRef.current) return;
-
-    const cfg = clusterCatalogs.find(cat => cat.id === catalogId);
-    if (!cfg) return;
-
-    detachHipsCatalog(clusterCatalogRef);
-
-    const catalog = A.catalogHiPS(cfg.url, {
-      name: cfg.name,
-      onClick: 'showTable',
-      color: style.color,
-      shape: makeClusterRadiusShape(cfg, style),
-      ...cfg.options,
-    });
-    aladinRef.current.addCatalog(catalog);
-    if (style.visible === false) catalog.hide();
-
-    clusterCatalogRef.current = catalog;
-    setClusterOverlay({ catalogId, visible: true, ...style });
-  }, []);
-
-  const setClusterCatalogVisibility = useCallback((visible) => {
-    const catalog = clusterCatalogRef.current;
-    if (!catalog) return;
-
-    if (visible) {
-      catalog.show();
-    } else {
-      catalog.hide();
-    }
-    setClusterOverlay(prev => ({ ...prev, visible }));
-  }, []);
-
-  // ---------------------------------------------------------------------
-  // Catálogo HiPS de photo-z (shape padrão com cor pelo valor de z)
-  // ---------------------------------------------------------------------
 
   const getPhotozCatalogs = useCallback(() => {
     return listAvailable(photozCatalogs, userGroups)
@@ -716,11 +728,10 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
     setMapOpacity,
     setMapVisibility,
     removeMapOverlay,
-    clusterOverlay,
-    getClusterCatalogs,
-    setClusterCatalog,
-    setClusterCatalogVisibility,
-    removeClusterCatalog,
+    neighborClusters,
+    setNeighborClusters,
+    setNeighborClustersVisibility,
+    removeNeighborClusters,
     photozOverlay,
     getPhotozCatalogs,
     setPhotozCatalog,
@@ -729,24 +740,18 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
   };
 }
 
-const UNIT_TO_DEG = { deg: 1, arcmin: 1 / 60, arcsec: 1 / 3600 };
-
 /**
- * Cria a shape function do catálogo de clusters: cada fonte vira um círculo
- * com o raio do cluster (em coordenadas do céu, escala com o zoom).
+ * Shape function dos clusters vizinhos: cada fonte vira um círculo com o raio
+ * do cluster (meta_radius_arcmin, em coordenadas do céu, escala com o zoom).
  * A função tem 1 argumento, então o Aladin a trata como gerador de footprints;
  * quando o círculo fica pequeno demais na tela ele cai no marker padrão.
  */
-function makeClusterRadiusShape(cfg, style) {
-  const toDeg = UNIT_TO_DEG[cfg.radiusUnit] ?? UNIT_TO_DEG.arcmin;
-
+function makeNeighborShape(style) {
   return (source) => {
-    const value = parseFloat(source.data?.[cfg.radiusColumn]);
-    const radiusDeg = Number.isFinite(value) && value > 0
-      ? value * toDeg
-      : cfg.defaultRadiusArcmin / 60;
+    const value = parseFloat(source.data?.meta_radius_arcmin);
+    const radiusArcmin = Number.isFinite(value) && value > 0 ? value : style.fallbackRadiusArcmin;
 
-    return A.circle(source.ra, source.dec, radiusDeg, {
+    return A.circle(source.ra, source.dec, radiusArcmin / 60, {
       color: style.color,
       opacity: style.opacity,
       lineWidth: style.lineWidth,

@@ -219,7 +219,9 @@ def create_table_settings(table, source_table=None):
             "default_fov": source_settings.default_fov,
             "default_marker_size": source_settings.default_marker_size,
             # deepcopy: o subset não compartilha o dict com a origem.
-            "cluster_hips": copy.deepcopy(source_settings.cluster_hips),
+            "neighbor_clusters": copy.deepcopy(
+                source_settings.neighbor_clusters,
+            ),
             "photoz_hips": copy.deepcopy(source_settings.photoz_hips),
         }
     return Settings.objects.update_or_create(table=table, defaults=defaults)[0]
