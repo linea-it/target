@@ -222,7 +222,7 @@ def create_table_settings(table, source_table=None):
             "neighbor_clusters": copy.deepcopy(
                 source_settings.neighbor_clusters,
             ),
-            "photoz_hips": copy.deepcopy(source_settings.photoz_hips),
+            "photoz": copy.deepcopy(source_settings.photoz),
         }
     return Settings.objects.update_or_create(table=table, defaults=defaults)[0]
 
@@ -336,11 +336,7 @@ def register_derived_table(owner, source_table, result_table_name, title):
     # O subset herda as preferências (imagem default, FOV, marker) do original.
     create_table_settings(table, source_table=source_table)
 
-    required_ucds = (
-        Table.RELATED_REQUIRED_UCDS
-        if catalog_type == Table.CATALOG_TYPE_MEMBER
-        else Table.REQUIRED_UCDS
-    )
+    required_ucds = Table.required_ucds_for(catalog_type)
     present_ucds = {c.ucd for c in table.columns.all() if c.ucd}
     missing = [ucd for ucd in required_ucds if ucd not in present_ucds]
     if not missing:

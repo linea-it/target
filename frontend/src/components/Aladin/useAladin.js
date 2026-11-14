@@ -2,7 +2,6 @@
 import A from 'aladin-lite';
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { COLOR_LEVELS, DEFAULT_COLORMAP, colorForIndex, drawShapeCanvas, zToColorIndex } from './photozColors';
-import { buildPhotozCatalogs, listAvailable } from './hipsCatalogs';
 
 // Imagem base usada quando o catálogo não define uma (ou define uma que o
 // usuário não pode acessar). Mesmo default do model Settings no backend.
@@ -31,9 +30,11 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
   const neighborCatalogRef = useRef(null);
   const neighborVisibleRef = useRef(true);
   const [neighborClusters, setNeighborClustersState] = useState(null);
-  // Catálogo HiPS de photo-z ativo e seu estado para a UI:
-  // { catalogId, shape, sourceSize, colormap, zMin, zMax, visible }
+  // Fontes de photo-z (catálogo comum com as linhas da tabela de photo-z) e
+  // seu estado para a UI: { visible, count }. Visibilidade num ref, como nos
+  // vizinhos, para sobreviver a uma nova busca.
   const photozCatalogRef = useRef(null);
+  const photozVisibleRef = useRef(true);
   const [photozOverlay, setPhotozOverlay] = useState(null);
 
   const surveys = [
@@ -161,9 +162,6 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
     }
   ]
 
-  // Catálogos HiPS sob demanda (config em hipsCatalogs.js).
-  const photozCatalogs = buildPhotozCatalogs(baseHost);
-
   // Mapas sistemáticos (HiPS) — pré-registrados no init para aparecerem
   // no menu nativo "+ Surveys" do Aladin como layers de overlay.
   const maps = [
@@ -232,6 +230,7 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
       neighborVisibleRef.current = true;
       setNeighborClustersState(null);
       photozCatalogRef.current = null;
+      photozVisibleRef.current = true;
       setPhotozOverlay(null);
 
       aladinRef.current = A.aladin(containerRef.current, aladinParams);
@@ -636,64 +635,63 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
   }, []);
 
   // ---------------------------------------------------------------------
-  // Catálogo HiPS de photo-z (shape padrão com cor pelo valor de z)
+  // Photo-z (linhas da tabela de photo-z, shape com a cor do valor de z)
   // ---------------------------------------------------------------------
 
-  // Catálogos HiPS (ProgressiveCat) não têm removeAll(); basta removeOverlay.
-  const detachHipsCatalog = (ref) => {
-    if (ref.current && aladinRef.current) {
-      aladinRef.current.removeOverlay(ref.current);
+  const detachPhotozCatalog = () => {
+    const catalog = photozCatalogRef.current;
+    if (catalog && aladinRef.current) {
+      catalog.removeAll();
+      aladinRef.current.removeOverlay(catalog);
     }
-    ref.current = null;
+    photozCatalogRef.current = null;
   };
 
-  const getPhotozCatalogs = useCallback(() => {
-    return listAvailable(photozCatalogs, userGroups)
-      .map(({ id, name, zRange, zMinValue, zMaxValue }) => ({ id, name, zRange, zMinValue, zMaxValue }));
-  }, [userGroups]);
-
-  const removePhotozCatalog = useCallback(() => {
-    detachHipsCatalog(photozCatalogRef);
+  const removePhotozSources = useCallback(() => {
+    detachPhotozCatalog();
+    photozVisibleRef.current = true;
     setPhotozOverlay(null);
   }, []);
 
-  // Aplica (ou substitui) o catálogo de photo-z com o estilo informado. Assim
-  // como nos clusters, mudança de estilo recria o catálogo: a imagem de cada
-  // fonte é calculada uma vez por tile.
-  const setPhotozCatalog = useCallback((catalogId, style) => {
-    if (!aladinRef.current) return;
+  // Desenha (ou substitui) as fontes de photo-z. `rows` são linhas do
+  // endpoint data/ (meta_ra, meta_dec, meta_z...); style: { name, shape,
+  // sourceSize, colormap, zMin, zMax }. Recria o catálogo a cada chamada
+  // (as imagens das fontes ficam em cache no catálogo). Visibilidade mantida.
+  const setPhotozSources = useCallback((rows, style) => {
+    const aladin = aladinRef.current;
+    if (!aladin) return;
 
-    const cfg = photozCatalogs.find(cat => cat.id === catalogId);
-    if (!cfg) return;
+    detachPhotozCatalog();
 
-    const [defaultMin, defaultMax] = cfg.zRange;
     const applied = {
       shape: style.shape,
       sourceSize: style.sourceSize,
       colormap: style.colormap ?? DEFAULT_COLORMAP,
-      zMin: style.zMin ?? defaultMin,
-      zMax: style.zMax ?? defaultMax,
+      zMin: style.zMin,
+      zMax: style.zMax,
     };
-
-    detachHipsCatalog(photozCatalogRef);
-
-    const catalog = A.catalogHiPS(cfg.url, {
-      name: cfg.name,
+    const catalog = A.catalog({
+      name: style.name ?? 'Photo-z',
       onClick: 'showTable',
       // Cor do catálogo (as fontes desenhadas usam o canvas do colormap).
       color: PHOTOZ_CATALOG_COLOR,
       sourceSize: applied.sourceSize,
-      shape: makePhotozColorShape(cfg, applied),
-      ...cfg.options,
+      shape: makePhotozColorShape(applied),
     });
-    aladinRef.current.addCatalog(catalog);
-    if (style.visible === false) catalog.hide();
+    aladin.addCatalog(catalog);
+    catalog.addSources(
+      rows
+        .filter(row => Number.isFinite(parseFloat(row.meta_ra)) && Number.isFinite(parseFloat(row.meta_dec)))
+        .map(row => A.source(parseFloat(row.meta_ra), parseFloat(row.meta_dec), row)),
+    );
+    if (!photozVisibleRef.current) catalog.hide();
 
     photozCatalogRef.current = catalog;
-    setPhotozOverlay({ catalogId, visible: style.visible ?? true, ...applied });
+    setPhotozOverlay({ visible: photozVisibleRef.current, count: rows.length });
   }, []);
 
-  const setPhotozCatalogVisibility = useCallback((visible) => {
+  const setPhotozVisibility = useCallback((visible) => {
+    photozVisibleRef.current = visible;
     const catalog = photozCatalogRef.current;
     if (!catalog) return;
 
@@ -702,7 +700,7 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
     } else {
       catalog.hide();
     }
-    setPhotozOverlay(prev => ({ ...prev, visible }));
+    setPhotozOverlay(prev => (prev ? { ...prev, visible } : prev));
   }, []);
 
   return {
@@ -733,10 +731,9 @@ export function useAladin(aladinParams = {}, userGroups = [], baseHost, defaultS
     setNeighborClustersVisibility,
     removeNeighborClusters,
     photozOverlay,
-    getPhotozCatalogs,
-    setPhotozCatalog,
-    setPhotozCatalogVisibility,
-    removePhotozCatalog,
+    setPhotozSources,
+    setPhotozVisibility,
+    removePhotozSources,
   };
 }
 
@@ -769,11 +766,11 @@ const PHOTOZ_CATALOG_COLOR = '#9e9e9e';
  * O intervalo [zMin, zMax] também filtra: fontes fora dele (ou sem valor de z)
  * ficam ocultas (isShowing = false), e o Aladin não as desenha nem seleciona.
  */
-function makePhotozColorShape(cfg, style) {
+function makePhotozColorShape(style) {
   const cache = new Map();
 
   return (source) => {
-    const z = parseFloat(source.data?.[cfg.zColumn]);
+    const z = parseFloat(source.data?.meta_z);
     if (!Number.isFinite(z) || z < style.zMin || z > style.zMax) {
       // Atribuição direta (e não source.hide()) para não pedir redraw a cada fonte.
       source.isShowing = false;

@@ -25,8 +25,11 @@ NEIGHBOR_CLUSTERS = {
     "lineWidth": 2,
     "showOnOpen": True,
 }
-PHOTOZ_HIPS = {
-    "catalogId": "photoz",
+PHOTOZ = {
+    "tableId": 42,
+    "factor": 5,
+    "maxRadiusDeg": 1,
+    "colormap": "jet",
     "shape": "circle",
     "sourceSize": 8,
     "zMin": 0.1,
@@ -159,7 +162,7 @@ def test_derived_table_inherits_source_settings(owner, source_table):
         default_fov=12,
         default_marker_size=7,
         neighbor_clusters=NEIGHBOR_CLUSTERS,
-        photoz_hips=PHOTOZ_HIPS,
+        photoz=PHOTOZ,
     )
     result_table = _make_result_table(owner, "subset_3", ["id", "ra", "dec"])
     with mock.patch(
@@ -173,7 +176,7 @@ def test_derived_table_inherits_source_settings(owner, source_table):
     assert settings.default_fov == 12  # noqa: PLR2004
     assert settings.default_marker_size == 7  # noqa: PLR2004
     assert settings.neighbor_clusters == NEIGHBOR_CLUSTERS
-    assert settings.photoz_hips == PHOTOZ_HIPS
+    assert settings.photoz == PHOTOZ
 
 
 @pytest.mark.django_db
@@ -193,7 +196,7 @@ def test_derived_table_gets_default_settings_when_source_has_none(
     assert settings.default_fov == 5  # noqa: PLR2004
     assert settings.default_marker_size == 5  # noqa: PLR2004
     assert settings.neighbor_clusters == {}
-    assert settings.photoz_hips == {}
+    assert settings.photoz == {}
 
 
 @pytest.mark.django_db

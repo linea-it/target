@@ -104,6 +104,28 @@ export const getNeighborClusters = ({ tableId, ra, dec, radiusDeg, method, pageS
     })
 }
 
+// Tabelas de photo-z que o usuário pode ler (próprias e públicas):
+// [{ id, title, schema, table, is_public, z_column }].
+export const getPhotozTables = () => {
+    return api.get('metadata/user_tables/photoz_tables/')
+}
+
+// Fontes de uma tabela de photo-z ao redor de (ra, dec): busca por área
+// (box) no endpoint data/, filtrada pelo intervalo de z na coluna zColumn.
+export const getPhotozSources = ({ tableId, ra, dec, radiusDeg, zColumn, zMin, zMax, pageSize }) => {
+    return api.get(`metadata/user_tables/${tableId}/data/`, {
+        params: {
+            cone_ra: ra,
+            cone_dec: dec,
+            cone_radius: radiusDeg,
+            cone_method: 'box',
+            [`${zColumn}__gte`]: zMin,
+            [`${zColumn}__lte`]: zMax,
+            pageSize,
+        }
+    })
+}
+
 export const getNotebookHtml = ({ tableId, propertyId, recordId }) => {
     return api.get(`metadata/user_tables/${tableId}/notebook/`, {
         params: { [propertyId]: recordId },

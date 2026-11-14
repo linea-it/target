@@ -31,12 +31,12 @@ import { DEFAULT_SURVEY_ID } from '@/components/Aladin/useAladin';
 import NeighborClustersDialog from '@/components/Aladin/NeighborClustersDialog';
 import { useNeighborClusters } from '@/components/Aladin/useNeighborClusters';
 import PhotozCatalogDialog from '@/components/Aladin/PhotozCatalogDialog';
-import { useHipsCatalogDefaults } from '@/components/Aladin/useHipsCatalogDefaults';
+import { usePhotoz } from '@/components/Aladin/usePhotoz';
 import AnnotationPanel from '@/components/AnnotationPanel';
 
 export default function ClusterDetail(props) {
   const pathname = usePathname()
-  const { isReady, setTarget, aladinRef, setImageSurvey, toggleMarkerVisibility, takeSnapshot, addCatalog, toggleCatalogVisibility, getMapsForSurvey, getPhotozCatalogs } = useAladinContext();
+  const { isReady, setTarget, aladinRef, setImageSurvey, toggleMarkerVisibility, takeSnapshot, addCatalog, toggleCatalogVisibility, getMapsForSurvey } = useAladinContext();
   const { selectedRecord, catalog } = useCatalog();
 
   const [mapsOpen, setMapsOpen] = React.useState(false);
@@ -45,13 +45,11 @@ export default function ClusterDetail(props) {
 
   const defaultImage = catalog?.settings?.default_image || DEFAULT_SURVEY_ID;
   const hasMaps = !!getMapsForSurvey(defaultImage);
-  const hasPhotozCatalogs = getPhotozCatalogs().length > 0;
 
-  // Catálogo HiPS de photo-z com "Show on open" nos Settings.
-  useHipsCatalogDefaults(catalog?.settings);
-
-  // Clusters vizinhos (mesma tabela, busca por área ao redor do cluster).
+  // Clusters vizinhos (mesma tabela) e fontes de photo-z (tabela de photo-z),
+  // ambos por busca por área ao redor do cluster.
   const neighbors = useNeighborClusters(catalog, selectedRecord);
+  const photoz = usePhotoz(catalog, selectedRecord);
 
   const { isLoading, data: members } = useQuery({
     queryKey: ['membersByClusterId', catalog?.related_table, selectedRecord?.meta_id],
@@ -195,14 +193,14 @@ export default function ClusterDetail(props) {
                 </IconButton>
               </span>
             </Tooltip>
-            <Tooltip title={hasPhotozCatalogs ? 'Photo-z catalog' : 'No photo-z catalog available'}>
+            <Tooltip title={photoz.tables.length > 0 ? 'Photo-z catalog' : 'No photo-z table available'}>
               <span>
                 <IconButton
                   aria-label="photoz-catalog"
-                  disabled={!selectedRecord || !hasPhotozCatalogs}
+                  disabled={!selectedRecord || photoz.tables.length === 0}
                   onClick={() => setPhotozCatalogOpen(true)}
                 >
-                  <GradientIcon />
+                  {photoz.isFetching ? <CircularProgress size={24} /> : <GradientIcon />}
                 </IconButton>
               </span>
             </Tooltip>
@@ -235,7 +233,7 @@ export default function ClusterDetail(props) {
 
       <MapsDialog open={mapsOpen} onClose={() => setMapsOpen(false)} surveyId={defaultImage} />
       <NeighborClustersDialog open={neighborsOpen} onClose={() => setNeighborsOpen(false)} neighbors={neighbors} />
-      <PhotozCatalogDialog open={photozCatalogOpen} onClose={() => setPhotozCatalogOpen(false)} defaults={catalog?.settings?.photoz_hips} />
+      <PhotozCatalogDialog open={photozCatalogOpen} onClose={() => setPhotozCatalogOpen(false)} photoz={photoz} />
     </Stack>
 
   );

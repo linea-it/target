@@ -14,12 +14,14 @@ import RelatedTableSelect from "@/components/RelatedTableSelect";
 import RegistrableSchemaTableSelect from "@/components/RegistrableSchemaTableSelect";
 import { useMutation } from '@tanstack/react-query'
 import { registerUserTable, updateUserTable } from "@/services/Metadata";
+import { useAuth } from "@/contexts/AuthContext";
 
 
 
 export default function RegisterCatalogBasicInformation() {
 
   const { catalog, setCatalog, setActiveStep } = useRegisterCatalog();
+  const { settings } = useAuth();
   const [adminSchema, setAdminSchema] = React.useState('');
 
   const mutation = useMutation({
@@ -62,6 +64,15 @@ export default function RegisterCatalogBasicInformation() {
     })
   }
 
+  // Trocar o tipo limpa a tabela de membros (só existe para cluster).
+  const handleTypeChange = (e) => {
+    setCatalog({
+      ...catalog,
+      catalog_type: e.target.value,
+      related_table_name: '',
+    })
+  }
+
   const handleChange = (e) => {
     setCatalog({
       ...catalog,
@@ -80,6 +91,24 @@ export default function RegisterCatalogBasicInformation() {
       autoComplete="off"
     >
       {!catalog.id && (<AdminSchemaSelect value={adminSchema} onChange={setAdminSchema} />)}
+
+      {/* Com clusters habilitados também é possível registrar tabelas de
+          photo-z, usadas no Aladin do Cluster Detail. */}
+      {settings?.enable_cluster && (
+        <TextField
+          label="Type"
+          variant="outlined"
+          fullWidth
+          name="catalog_type"
+          value={catalog.catalog_type}
+          select
+          disabled={!!catalog.id}
+          onChange={handleTypeChange}
+        >
+          <MenuItem key="cluster-option" value="cluster">Cluster</MenuItem>
+          <MenuItem key="photoz-option" value="photoz">Photo-z</MenuItem>
+        </TextField>
+      )}
 
       {catalog.id ? (
         <TextField label="Table" variant="outlined" fullWidth value={`${catalog.schema}.${catalog.table}`} disabled />

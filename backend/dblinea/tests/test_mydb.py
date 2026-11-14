@@ -17,6 +17,7 @@ from sqlalchemy import Table
 from sqlalchemy.dialects import postgresql
 
 from dblinea.mydb import MyDB
+from dblinea.operator_mapper import OperatorMapper
 
 
 def _mydb():
@@ -139,3 +140,24 @@ def test_area_box_touching_pole_has_no_ra_restriction():
     sql = _sql(_mydb().area_clause(_clusters_table(), _area("box", 10, -89.5, 1)))
     assert "dec_deg BETWEEN -90.0 AND -88.5" in sql
     assert "ra_deg" not in sql
+
+
+def test_debug_query_with_area_and_url_filters(capsys):
+    # Regressão: o print de debug formatava o SQL só com os valores dos
+    # filtros de url e quebrava (KeyError) com a busca por área junto,
+    # derrubando a requisição (photo-z: área + range de z).
+    db = _mydb()
+    db._debug = True  # noqa: SLF001
+    db._database = mock.Mock()  # noqa: SLF001
+    db._database.get_dialect.return_value = postgresql.dialect()  # noqa: SLF001
+    db.operator_mapper = OperatorMapper()
+    tbl = _clusters_table()
+    filters = db.parse_url_filters(tbl, {"dec_deg__gte": "-5"})
+
+    stm, values = db.create_stm(tbl=tbl, filters=filters, limit=10, offset=0)
+    stm = stm.where(db.area_clause(tbl, _area("box", 10, 0, 1)))
+    db._debug_query(stm, with_parameters=False, values=values)  # noqa: SLF001
+
+    out = capsys.readouterr().out
+    assert "BETWEEN -1.0 AND 1.0" in out
+    assert "could not render" not in out

@@ -44,6 +44,15 @@ export const ucds = [
     unit: 'arcmin'
   },
 
+  // Obrigatório só para catalogos do tipo "photoz" (valor de photo-z usado
+  // para colorir as fontes no Aladin do Cluster Detail)
+  {
+    label: 'Photo-z',
+    value: 'src.redshift.phot',
+    mandatory: true,
+    types: ['photoz']
+  },
+
   // Obrigatório só para catalogos do tipo "members"
   {
     label: 'Cross identification',
