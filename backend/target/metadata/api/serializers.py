@@ -108,7 +108,7 @@ class SettingsSerializer(serializers.ModelSerializer[Settings]):
             "default_image",
             "default_fov",
             "default_marker_size",
-            "cluster_hips",
+            "neighbor_clusters",
             "photoz_hips",
         ]
         read_only_fields = ["id"]
@@ -121,7 +121,7 @@ class SettingsSerializer(serializers.ModelSerializer[Settings]):
             raise serializers.ValidationError(msg)
         return value
 
-    def validate_cluster_hips(self, value):
+    def validate_neighbor_clusters(self, value):
         return self._validate_hips(value)
 
     def validate_photoz_hips(self, value):

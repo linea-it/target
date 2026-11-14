@@ -16,8 +16,10 @@ from target.metadata.models import Settings
 from target.metadata.models import Table
 from target.users.tests.factories import UserFactory
 
-CLUSTER_HIPS = {
-    "catalogId": "y6a2_dnf_wazp_v5_clusters",
+NEIGHBOR_CLUSTERS = {
+    "factor": 5,
+    "maxRadiusDeg": 1,
+    "method": "q3c",
     "color": "#ff9800",
     "opacity": 0.8,
     "lineWidth": 2,
@@ -156,7 +158,7 @@ def test_derived_table_inherits_source_settings(owner, source_table):
         default_image="LSST_DP1_IRG_LIneA",
         default_fov=12,
         default_marker_size=7,
-        cluster_hips=CLUSTER_HIPS,
+        neighbor_clusters=NEIGHBOR_CLUSTERS,
         photoz_hips=PHOTOZ_HIPS,
     )
     result_table = _make_result_table(owner, "subset_3", ["id", "ra", "dec"])
@@ -170,7 +172,7 @@ def test_derived_table_inherits_source_settings(owner, source_table):
     assert settings.default_image == "LSST_DP1_IRG_LIneA"
     assert settings.default_fov == 12  # noqa: PLR2004
     assert settings.default_marker_size == 7  # noqa: PLR2004
-    assert settings.cluster_hips == CLUSTER_HIPS
+    assert settings.neighbor_clusters == NEIGHBOR_CLUSTERS
     assert settings.photoz_hips == PHOTOZ_HIPS
 
 
@@ -190,7 +192,7 @@ def test_derived_table_gets_default_settings_when_source_has_none(
     assert settings.default_image == "DES_DR2_IRG_LIneA"
     assert settings.default_fov == 5  # noqa: PLR2004
     assert settings.default_marker_size == 5  # noqa: PLR2004
-    assert settings.cluster_hips == {}
+    assert settings.neighbor_clusters == {}
     assert settings.photoz_hips == {}
 
 

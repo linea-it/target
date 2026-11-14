@@ -28,27 +28,30 @@ import { getClusterMembers } from '@/services/Metadata';
 import AladinViewer from '@/components/Aladin/AladinViewer';
 import MapsDialog from '@/components/Aladin/MapsDialog';
 import { DEFAULT_SURVEY_ID } from '@/components/Aladin/useAladin';
-import ClusterCatalogDialog from '@/components/Aladin/ClusterCatalogDialog';
+import NeighborClustersDialog from '@/components/Aladin/NeighborClustersDialog';
+import { useNeighborClusters } from '@/components/Aladin/useNeighborClusters';
 import PhotozCatalogDialog from '@/components/Aladin/PhotozCatalogDialog';
 import { useHipsCatalogDefaults } from '@/components/Aladin/useHipsCatalogDefaults';
 import AnnotationPanel from '@/components/AnnotationPanel';
 
 export default function ClusterDetail(props) {
   const pathname = usePathname()
-  const { isReady, setTarget, aladinRef, setImageSurvey, toggleMarkerVisibility, takeSnapshot, addCatalog, toggleCatalogVisibility, getMapsForSurvey, getClusterCatalogs, getPhotozCatalogs } = useAladinContext();
+  const { isReady, setTarget, aladinRef, setImageSurvey, toggleMarkerVisibility, takeSnapshot, addCatalog, toggleCatalogVisibility, getMapsForSurvey, getPhotozCatalogs } = useAladinContext();
   const { selectedRecord, catalog } = useCatalog();
 
   const [mapsOpen, setMapsOpen] = React.useState(false);
-  const [clusterCatalogOpen, setClusterCatalogOpen] = React.useState(false);
+  const [neighborsOpen, setNeighborsOpen] = React.useState(false);
   const [photozCatalogOpen, setPhotozCatalogOpen] = React.useState(false);
 
   const defaultImage = catalog?.settings?.default_image || DEFAULT_SURVEY_ID;
   const hasMaps = !!getMapsForSurvey(defaultImage);
-  const hasClusterCatalogs = getClusterCatalogs().length > 0;
   const hasPhotozCatalogs = getPhotozCatalogs().length > 0;
 
-  // Catálogos HiPS de clusters/photo-z com "Show on open" nos Settings.
+  // Catálogo HiPS de photo-z com "Show on open" nos Settings.
   useHipsCatalogDefaults(catalog?.settings);
+
+  // Clusters vizinhos (mesma tabela, busca por área ao redor do cluster).
+  const neighbors = useNeighborClusters(catalog, selectedRecord);
 
   const { isLoading, data: members } = useQuery({
     queryKey: ['membersByClusterId', catalog?.related_table, selectedRecord?.meta_id],
@@ -181,14 +184,14 @@ export default function ClusterDetail(props) {
                 </IconButton>
               </span>
             </Tooltip>
-            <Tooltip title={hasClusterCatalogs ? 'Clusters catalog' : 'No clusters catalog available'}>
+            <Tooltip title="Neighbor clusters">
               <span>
                 <IconButton
-                  aria-label="clusters-catalog"
-                  disabled={!selectedRecord || !hasClusterCatalogs}
-                  onClick={() => setClusterCatalogOpen(true)}
+                  aria-label="neighbor-clusters"
+                  disabled={!selectedRecord}
+                  onClick={() => setNeighborsOpen(true)}
                 >
-                  <BubbleChartIcon />
+                  {neighbors.isFetching ? <CircularProgress size={24} /> : <BubbleChartIcon />}
                 </IconButton>
               </span>
             </Tooltip>
@@ -231,7 +234,7 @@ export default function ClusterDetail(props) {
       {catalog?.is_owner && (<AnnotationPanel />)}
 
       <MapsDialog open={mapsOpen} onClose={() => setMapsOpen(false)} surveyId={defaultImage} />
-      <ClusterCatalogDialog open={clusterCatalogOpen} onClose={() => setClusterCatalogOpen(false)} defaults={catalog?.settings?.cluster_hips} />
+      <NeighborClustersDialog open={neighborsOpen} onClose={() => setNeighborsOpen(false)} neighbors={neighbors} />
       <PhotozCatalogDialog open={photozCatalogOpen} onClose={() => setPhotozCatalogOpen(false)} defaults={catalog?.settings?.photoz_hips} />
     </Stack>
 

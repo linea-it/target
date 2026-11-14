@@ -1,12 +1,20 @@
+import math
+
 from django.conf import settings
+from sqlalchemy import bindparam
 from sqlalchemy import desc
 from sqlalchemy import func
 from sqlalchemy.sql import and_
+from sqlalchemy.sql import or_
 from sqlalchemy.sql import select
 from sqlalchemy.sql import text
 from sqlalchemy.sql.expression import literal_column
 
 from dblinea import DBBase
+
+AREA_METHOD_Q3C = "q3c"
+AREA_METHOD_BOX = "box"
+AREA_METHODS = (AREA_METHOD_Q3C, AREA_METHOD_BOX)
 
 
 class MyDB(DBBase):
@@ -111,6 +119,7 @@ class MyDB(DBBase):
         limit=None,
         offset=None,
         url_filters=None,
+        area=None,
     ):
         tbl = self.sa_table(schema=self.schema, tablename=tablename)
 
@@ -134,6 +143,12 @@ class MyDB(DBBase):
         # Cria o Statement para o count total de linhas da tabela.
         stm_count, _ = self.create_total_count_stm(tbl, filters)
 
+        # Busca por área (cone q3c ou quadrado em ra/dec).
+        if area is not None:
+            clause = self.area_clause(tbl, area)
+            stm = stm.where(clause)
+            stm_count = stm_count.where(clause)
+
         # executa o statement
         rows = []
         count = 0
@@ -148,6 +163,85 @@ class MyDB(DBBase):
             rows.extend(self.to_dict(row) for row in queryset)
 
         return rows, count
+
+    def area_clause(self, tbl, area):
+        """Cláusula WHERE da busca por área ao redor de (ra, dec).
+
+        area: {"method": "q3c" | "box", "ra", "dec", "radius", "ra_col",
+        "dec_col"}, com ra/dec/radius em graus.
+
+        - q3c: q3c_radial_query (círculo exato, usa o índice espacial q3c;
+          requer a extensão q3c no banco).
+        - box: quadrado em ra/dec que contém o círculo, só com comparações
+          (BETWEEN/OR), sem função especial. Considera o cruzamento de
+          RA = 0/360 e o alargamento em RA por 1/cos(dec).
+        """
+        method = area.get("method", AREA_METHOD_Q3C)
+        ra_col = area["ra_col"]
+        dec_col = area["dec_col"]
+        for col in (ra_col, dec_col):
+            if col not in tbl.c:
+                msg = f"Column {col!r} not found in table {tbl.name!r}."
+                raise ValueError(msg)
+
+        ra = float(area["ra"])
+        dec = float(area["dec"])
+        radius = float(area["radius"])
+
+        if method == AREA_METHOD_Q3C:
+            return self.q3c_clause(ra_col, dec_col, ra, dec, radius)
+        if method == AREA_METHOD_BOX:
+            return self.box_clause(tbl.c[ra_col], tbl.c[dec_col], ra, dec, radius)
+
+        msg = f"Invalid area method: {method!r}."
+        raise ValueError(msg)
+
+    def q3c_clause(self, ra_col, dec_col, ra, dec, radius):
+        # Identificadores não são parametrizáveis: valida e põe entre aspas.
+        # Os valores vão como bind params.
+        self._assert_safe_identifier(ra_col)
+        self._assert_safe_identifier(dec_col)
+        stm = text(
+            f'q3c_radial_query("{ra_col}", "{dec_col}", '
+            ":area_ra, :area_dec, :area_radius)",
+        ).bindparams(
+            bindparam("area_ra", ra),
+            bindparam("area_dec", dec),
+            bindparam("area_radius", radius),
+        )
+        return and_(stm).self_group()
+
+    @staticmethod
+    def box_clause(col_ra, col_dec, ra, dec, radius):
+        dec_min = max(-90.0, dec - radius)
+        dec_max = min(90.0, dec + radius)
+        dec_clause = col_dec.between(dec_min, dec_max)
+
+        # O quadrado toca um polo: qualquer RA serve.
+        if dec_min <= -90.0 or dec_max >= 90.0:  # noqa: PLR2004
+            return dec_clause
+
+        # Meia-largura em RA no dec mais distante do equador do quadrado,
+        # para que o quadrado contenha o círculo inteiro.
+        cos_dec = math.cos(math.radians(max(abs(dec_min), abs(dec_max))))
+        if cos_dec <= 0:
+            return dec_clause
+        dra = radius / cos_dec
+        if dra >= 180.0:  # noqa: PLR2004
+            return dec_clause
+
+        ra = ra % 360.0
+        ra_min = ra - dra
+        ra_max = ra + dra
+
+        if ra_min < 0:
+            ra_clause = or_(col_ra >= ra_min + 360.0, col_ra <= ra_max)
+        elif ra_max >= 360.0:  # noqa: PLR2004
+            ra_clause = or_(col_ra >= ra_min, col_ra <= ra_max - 360.0)
+        else:
+            ra_clause = col_ra.between(ra_min, ra_max)
+
+        return and_(dec_clause, ra_clause).self_group()
 
     def get_count(self, tablename):
         return super().get_count(tablename, schema=self.schema)
