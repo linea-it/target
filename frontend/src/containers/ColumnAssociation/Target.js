@@ -27,7 +27,7 @@ export default function ColumnAssociationTarget({ catalog, onValidationChange })
 
           <UcdColumnMapper
             catalog_id={catalog.id}
-            catalog_type="target"
+            catalog_type={catalog.catalog_type === 'photoz' ? 'photoz' : 'target'}
             ucds={ucds}
             onValidationChange={onValidationChange} />
         </Box>

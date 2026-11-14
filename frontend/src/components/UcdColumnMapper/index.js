@@ -18,7 +18,7 @@ import { getTableColumn, updateTableColumn } from "@/services/Metadata";
 /**
  * UcdColumnMapper  agora recebe:
  * - catalog_id: id do catálogo para buscar colunas
- * - catalog_type: 'target' | 'cluster' | 'members'
+ * - catalog_type: 'target' | 'cluster' | 'members' | 'photoz'
  * - ucds: array de objetos { label, value, mandatory, types }
  *
  * Cada UCD filtrado por catalog_type é listado; ao lado, o select de colunas.
@@ -224,7 +224,7 @@ export default function UcdColumnMapper({ catalog_id, catalog_type, ucds, onVali
 
 UcdColumnMapper.propTypes = {
   catalog_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-  catalog_type: PropTypes.oneOf(["target", "cluster", "members"]).isRequired,
+  catalog_type: PropTypes.oneOf(["target", "cluster", "members", "photoz"]).isRequired,
   ucds: PropTypes.arrayOf(
     PropTypes.shape({
       label: PropTypes.string,

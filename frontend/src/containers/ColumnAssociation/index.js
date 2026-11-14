@@ -20,7 +20,8 @@ export default function ColumnAssociationContainer({ catalog, onValidationChange
     <Box>
       <Stack sx={{ width: '100%' }} spacing={2}>
 
-        {catalog.catalog_type === 'target' && (<ColumnAssociationTarget catalog={catalog} onValidationChange={setIsValid} />)}
+        {/* Photo-z usa o mesmo mapeamento de uma tabela simples, com a UCD de z. */}
+        {['target', 'photoz'].includes(catalog.catalog_type) && (<ColumnAssociationTarget catalog={catalog} onValidationChange={setIsValid} />)}
 
         {catalog.catalog_type === 'cluster' && (<ColumnAssociationCluster catalog={catalog} onValidationChange={setIsValid} direction={direction} />)}
 

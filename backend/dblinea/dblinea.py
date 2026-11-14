@@ -491,17 +491,29 @@ class DBBase:
 
     def _debug_query(self, stm, with_parameters: bool = True, values=None):  # noqa: FBT001, FBT002
         # https://docs.sqlalchemy.org/en/20/faq/sqlexpressions.html#rendering-bound-parameters-inline
-        if not isinstance(stm, str):
-            stm = self.stm_to_str(stm, with_parameters)
+        if not self._debug:
+            return
 
-        if self._debug:
-            # Log opcional da query executada (habilitado por MyDB, ver
-            # debug=True em mydb.py) — não é debug residual, é o único
-            # jeito hoje de inspecionar o SQL de fato enviado ao Postgres.
-            if with_parameters is False and values is not None:
-                print(str(stm) % values)  # noqa: T201
-            else:
-                print(stm)  # noqa: T201
+        # Log opcional da query executada (habilitado por MyDB, ver
+        # debug=True em mydb.py) — não é debug residual, é o único
+        # jeito hoje de inspecionar o SQL de fato enviado ao Postgres.
+        # Nunca pode derrubar a query: em caso de falha, só avisa.
+        try:
+            print(self._render_debug_sql(stm, with_parameters, values))  # noqa: T201
+        except Exception as e:  # noqa: BLE001
+            print(f"[dblinea] could not render query for debug: {e!r}")  # noqa: T201
+
+    def _render_debug_sql(self, stm, with_parameters, values):
+        if isinstance(stm, str):
+            return stm % values if values else stm
+        if with_parameters or values is None:
+            return self.stm_to_str(stm, with_parameters)
+        # Junta os parâmetros já presentes no statement (ex.: busca por área)
+        # com os valores passados na execução (ex.: filtros de url).
+        compiled = stm.compile(dialect=self._database.get_dialect())
+        params = {**compiled.params, **values}
+        sql = str(compiled) % params
+        return sql.replace("\n", " ").replace("\r", "")
 
     def get_column_obj(self, tbl, column_name):
         return getattr(tbl.c, column_name)

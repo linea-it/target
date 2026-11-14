@@ -32,10 +32,9 @@ export const AladinContext = createContext({
   setNeighborClustersVisibility: () => { },
   removeNeighborClusters: () => { },
   photozOverlay: null,
-  getPhotozCatalogs: () => [],
-  setPhotozCatalog: () => { },
-  setPhotozCatalogVisibility: () => { },
-  removePhotozCatalog: () => { },
+  setPhotozSources: () => { },
+  setPhotozVisibility: () => { },
+  removePhotozSources: () => { },
 });
 
 /**

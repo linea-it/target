@@ -157,7 +157,8 @@ export default function CatalogDetailContainer({ catalog }) {
           }}
         >
           <Paper elevation={3} sx={{ flex: 1, width: '100%', minHeight: isMobile ? 420 : 0 }}>
-            {catalog.catalog_type === 'target' && (
+            {/* Tabelas de photo-z são exibidas como uma lista de targets. */}
+            {['target', 'photoz'].includes(catalog.catalog_type) && (
               <TargetDetail />
             )}
             {catalog.catalog_type === 'cluster' && (

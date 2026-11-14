@@ -170,7 +170,11 @@ class UserTableViewSet(ModelViewSet):
         """
         return self._owned_or_public_queryset().filter(
             is_completed=True,
-            catalog_type__in=[Table.CATALOG_TYPE_TARGET, Table.CATALOG_TYPE_CLUSTER],
+            catalog_type__in=[
+                Table.CATALOG_TYPE_TARGET,
+                Table.CATALOG_TYPE_CLUSTER,
+                Table.CATALOG_TYPE_PHOTOZ,
+            ],
         )
 
     def get_object(self):
@@ -328,6 +332,34 @@ class UserTableViewSet(ModelViewSet):
         return Response(results, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["get"])
+    def photoz_tables(self, request):
+        """Tabelas de photo-z que o usuário pode ler (próprias e públicas),
+        para o overlay de photo-z do Aladin do Cluster Detail. Cada item traz
+        a coluna de z (UCD src.redshift.phot), usada nos filtros de intervalo.
+        """
+        tables = (
+            self._owned_or_public_queryset()
+            .filter(is_completed=True, catalog_type=Table.CATALOG_TYPE_PHOTOZ)
+            .select_related("schema")
+            .prefetch_related("columns")
+            .order_by("schema__order", "order", "title")
+        )
+        results = []
+        for table in tables:
+            ucds = self.get_table_ucds(table)
+            results.append(
+                {
+                    "id": table.id,
+                    "title": table.title or table.name,
+                    "schema": table.schema.name,
+                    "table": table.name,
+                    "is_public": table.schema.is_public,
+                    "z_column": ucds.get(Table.PHOTOZ_UCD),
+                },
+            )
+        return Response(results, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["get"])
     def public_schemas(self, request):
         return Response(sorted(PUBLIC_CATALOGS.keys()), status=status.HTTP_200_OK)
 
@@ -368,6 +400,7 @@ class UserTableViewSet(ModelViewSet):
             catalog_type__in=[
                 Table.CATALOG_TYPE_TARGET,
                 Table.CATALOG_TYPE_CLUSTER,
+                Table.CATALOG_TYPE_PHOTOZ,
             ],  # Type members are always completed
         ).first()
         if table:
@@ -422,7 +455,10 @@ class UserTableViewSet(ModelViewSet):
 
         # Check if all mandatory UCDs are assigned
         table_ucds = self.get_table_ucds(table)
-        missing = self.check_mandatory_ucds(table_ucds, Table.REQUIRED_UCDS)
+        missing = self.check_mandatory_ucds(
+            table_ucds,
+            Table.required_ucds_for(table.catalog_type),
+        )
         if len(missing) > 0:
             return Response(
                 {
@@ -561,6 +597,7 @@ class UserTableViewSet(ModelViewSet):
                     "meta_radius_arcmin": _sanitize_scalar(
                         row.get(ucds.get("phys.angSize;src")),
                     ),
+                    "meta_z": _sanitize_scalar(row.get(ucds.get(Table.PHOTOZ_UCD))),
                 },
             )
 

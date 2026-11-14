@@ -1,11 +1,16 @@
 ---
 title: "Catálogo HiPS de photo-z (cor por valor de z) no Aladin do Cluster Detail"
-status: "Implementado (controle de catálogo); config real pendente"
+status: "Substituído por docs/photoz-table-plan.md"
 date: 2026-09-30
 author: glauber.vila.verde@gmail.com
 ---
 
 # Catálogo HiPS de photo-z (cor por valor de z) no Aladin do Cluster Detail
+
+> **Substituído.** O photo-z agora vem de uma tabela registrada no Canvas
+> (`catalog_type = 'photoz'`), por busca por área ao redor do cluster. Ver
+> `docs/photoz-table-plan.md`. O colormap e o desenho por fonte descritos
+> abaixo continuam valendo.
 
 ## Contexto
 

@@ -47,11 +47,13 @@ class Table(models.Model):
     CATALOG_TYPE_TARGET = "target"
     CATALOG_TYPE_CLUSTER = "cluster"
     CATALOG_TYPE_MEMBER = "member"
+    CATALOG_TYPE_PHOTOZ = "photoz"
 
     CATALOG_TYPE_CHOICES = (
         (CATALOG_TYPE_TARGET, _("target")),
         (CATALOG_TYPE_CLUSTER, _("cluster")),
         (CATALOG_TYPE_MEMBER, _("member")),
+        (CATALOG_TYPE_PHOTOZ, _("photoz")),
     )
 
     REQUIRED_UCDS = [
@@ -59,6 +61,10 @@ class Table(models.Model):
         "pos.eq.ra;meta.main",
         "pos.eq.dec;meta.main",
     ]
+
+    # Tabelas de photo-z (fontes coloridas por z no Aladin do Cluster Detail).
+    PHOTOZ_UCD = "src.redshift.phot"
+    PHOTOZ_REQUIRED_UCDS = [*REQUIRED_UCDS, PHOTOZ_UCD]
 
     RELATED_REQUIRED_UCDS = [
         "meta.id;meta.main",
@@ -220,6 +226,15 @@ class Table(models.Model):
     def __str__(self):
         return f"{self.schema.name}.{self.name}"
 
+    @classmethod
+    def required_ucds_for(cls, catalog_type):
+        """UCDs obrigatórias para completar o registro de um tipo de tabela."""
+        if catalog_type == cls.CATALOG_TYPE_MEMBER:
+            return cls.RELATED_REQUIRED_UCDS
+        if catalog_type == cls.CATALOG_TYPE_PHOTOZ:
+            return cls.PHOTOZ_REQUIRED_UCDS
+        return cls.REQUIRED_UCDS
+
 
 class Column(models.Model):
     table = models.ForeignKey(
@@ -337,11 +352,12 @@ class Settings(models.Model):
         default=dict,
     )
 
-    photoz_hips = models.JSONField(
-        verbose_name=_("Photo-z HiPS catalog"),
+    photoz = models.JSONField(
+        verbose_name=_("Photo-z"),
         help_text=_(
-            "Default photo-z HiPS catalog: "
-            "{catalogId, shape, sourceSize, zMin, zMax, showOnOpen}.",
+            "Default photo-z overlay (area search on a photo-z table): "
+            "{tableId, factor, maxRadiusDeg, shape, sourceSize, colormap, "
+            "zMin, zMax, showOnOpen}.",
         ),
         blank=True,
         default=dict,

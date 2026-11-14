@@ -14,7 +14,7 @@ import { DEFAULT_SURVEY_ID } from '@/components/Aladin/useAladin';
 import NeighborClustersDialog from '@/components/Aladin/NeighborClustersDialog';
 import { useNeighborClusters } from '@/components/Aladin/useNeighborClusters';
 import PhotozCatalogDialog from '@/components/Aladin/PhotozCatalogDialog';
-import { useHipsCatalogDefaults } from '@/components/Aladin/useHipsCatalogDefaults';
+import { usePhotoz } from '@/components/Aladin/usePhotoz';
 import { getClusterMembers, getMetadataById, getNotebookHtml, downloadClusterNotebook } from '@/services/Metadata';
 import { useQuery } from '@tanstack/react-query'
 
@@ -45,7 +45,7 @@ function TabPanel({ children, value, index }) {
 
 
 export default function ClusterDetailContainer({ catalog, record }) {
-  const { isReady, setTarget, aladinRef, setImageSurvey, addCatalog, gotoRaDec, toggleMarkerVisibility, takeSnapshot, toggleCatalogVisibility, getMapsForSurvey, getPhotozCatalogs } = useAladinContext();
+  const { isReady, setTarget, aladinRef, setImageSurvey, addCatalog, gotoRaDec, toggleMarkerVisibility, takeSnapshot, toggleCatalogVisibility, getMapsForSurvey } = useAladinContext();
 
   const [selectedMember, setSelectedMember] = React.useState(undefined);
   const [mapsOpen, setMapsOpen] = React.useState(false);
@@ -54,13 +54,11 @@ export default function ClusterDetailContainer({ catalog, record }) {
 
   const defaultImage = catalog?.settings?.default_image || DEFAULT_SURVEY_ID;
   const hasMaps = !!getMapsForSurvey(defaultImage);
-  const hasPhotozCatalogs = getPhotozCatalogs().length > 0;
 
-  // Catálogo HiPS de photo-z com "Show on open" nos Settings.
-  useHipsCatalogDefaults(catalog?.settings);
-
-  // Clusters vizinhos (mesma tabela, busca por área ao redor do cluster).
+  // Clusters vizinhos (mesma tabela) e fontes de photo-z (tabela de photo-z),
+  // ambos por busca por área ao redor do cluster.
   const neighbors = useNeighborClusters(catalog, record);
+  const photoz = usePhotoz(catalog, record);
   const [activeTab, setActiveTab] = React.useState(0);
   const [iframeHeight, setIframeHeight] = React.useState(0);
   const [downloadingNotebook, setDownloadingNotebook] = React.useState(false);
@@ -382,14 +380,14 @@ export default function ClusterDetailContainer({ catalog, record }) {
                   </IconButton>
                 </span>
               </Tooltip>
-              <Tooltip title={hasPhotozCatalogs ? 'Photo-z catalog' : 'No photo-z catalog available'}>
+              <Tooltip title={photoz.tables.length > 0 ? 'Photo-z catalog' : 'No photo-z table available'}>
                 <span>
                   <IconButton
                     aria-label="photoz-catalog"
-                    disabled={!record || !hasPhotozCatalogs}
+                    disabled={!record || photoz.tables.length === 0}
                     onClick={() => setPhotozCatalogOpen(true)}
                   >
-                    <GradientIcon />
+                    {photoz.isFetching ? <CircularProgress size={24} /> : <GradientIcon />}
                   </IconButton>
                 </span>
               </Tooltip>
@@ -428,7 +426,7 @@ export default function ClusterDetailContainer({ catalog, record }) {
       </Paper>
       <MapsDialog open={mapsOpen} onClose={() => setMapsOpen(false)} surveyId={defaultImage} />
       <NeighborClustersDialog open={neighborsOpen} onClose={() => setNeighborsOpen(false)} neighbors={neighbors} />
-      <PhotozCatalogDialog open={photozCatalogOpen} onClose={() => setPhotozCatalogOpen(false)} defaults={catalog?.settings?.photoz_hips} />
+      <PhotozCatalogDialog open={photozCatalogOpen} onClose={() => setPhotozCatalogOpen(false)} photoz={photoz} />
 
       {/* Spacer */}
       <Box mt={6} />
